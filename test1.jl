@@ -9,3 +9,6 @@ end
 
 print(byfrequency(35, 132))
 print(join(map(c -> Char(c), byfrequency(01, 02))))
+
+byfrequency(new_xor, ivblock[15 - found_len])
+
