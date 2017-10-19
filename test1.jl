@@ -1,14 +1,23 @@
-function byfrequency(xor1, xor2) 
-	printables = " etaonisrhlducmfwgpybvkxjqzTAOSIWHBCFMPDLRENGUVYKJQXZ,.?!;:0123456789()<>/\$%@#^*+-_={}|\'\""
-	pset = map(c ->Int(c), collect(printables))
-	diffset = setdiff(Set(0:255), (Set(pset)))
-	allset = vcat(pset, collect(diffset))
-	xorchar = xor1 $ xor2
-	return map(c -> UInt8(c $ xorchar), allset)
+using Requests
+
+const TARGET = "http://google.com/"
+
+"""
+    query(binstr, targ)
+Do http get query for testing 
+"""
+function query(targ)
+    req = get(targ)                     # Send HTTP request to server
+    status = req.status
+    print("Response code: $status\n")
+    return status
 end
 
-print(byfrequency(35, 132))
-print(join(map(c -> Char(c), byfrequency(01, 02))))
+arr = zeros(Integer, 10)
+Threads.@threads for i in 1:10
+#for i in 1:10
+	arr[i] = query(TARGET)
+end
 
-byfrequency(new_xor, ivblock[15 - found_len])
+print("Result: $arr")
 
