@@ -2,8 +2,6 @@
 
 
 println("How many?")
-x = readline()
-r = match(r"\D*(\d+)\D*(\d+)", x)
-println(r)
+r = match(r"\D*(\d+)\D*(\d+)", readline())
 print("cows $(r.captures[2]), bulls $(r.captures[1]).")
 
