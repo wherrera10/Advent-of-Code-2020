@@ -44,12 +44,12 @@ prefers(d, p1, p2, p3) = (pindexin(d[p1], p2) < pindexin(d[p1], p3))
 
 function isstable(mmatchup, fmatchup, mpref, fpref)
     for (mmatch, fmatch) in mmatchup
-		for f in mpref[mmatch]
-		    if(f != fmatch && prefers(mpref, mmatch, f, fmatch)
-	                       && prefers(fpref, f, mmatch, fmatchup[f]))
+        for f in mpref[mmatch]
+            if(f != fmatch && prefers(mpref, mmatch, f, fmatch)
+                           && prefers(fpref, f, mmatch, fmatchup[f]))
                 return false
-		    end
-		end
+            end
+        end
     end
     true
 end
@@ -88,16 +88,15 @@ function galeshapley(men, women, malepref, femalepref)
 end
 
 function tableprint(txt, ans, stab)
-	println(txt)
-	println("   Man     Woman")
-	println("   -----   -----")
-	show(STDOUT, "text/plain", ans)
-	println("\n   ---ORIGINAL---")
-	if(stab)
-		println("   ----STABLE----\n\n")
-	else
-		println("   ---UNSTABLE---\n\n")
-	end
+    println(txt)
+    println("   Man     Woman")
+    println("   -----   -----")
+    show(STDOUT, "text/plain", ans)
+    if(stab)
+        println("\n  ----STABLE----\n\n")
+    else
+        println("\n  ---UNSTABLE---\n\n")
+    end
 end
 
 answer = galeshapley(males, females, malepreferences, femalepreferences)
@@ -120,7 +119,3 @@ answer[2][fia1] = "bob"
 answer[2][fia2] = "abe"
 stabl = isstable(answer[1], answer[2], malepreferences, femalepreferences)
 tableprint("Original Data With Bob and Abe Switched", answer[1], stabl)
-
-
-
-
