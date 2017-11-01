@@ -31,7 +31,6 @@ function markovtranslate(filename, rules)
     testfh  = open(filename)
     txt = join(map(c -> Char(c), read(testfh)))
     close(testfh)
-    translated = ""
     redoing = true
     while redoing
         nomatch = true
