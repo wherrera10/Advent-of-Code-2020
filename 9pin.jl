@@ -1,5 +1,6 @@
-<pre>
-If the nin-pin serial port is, as was descibed above:
+"""
+If the nine-pin version of the serial port specified as:
+
 1  2  3  4  5
 6  7  8  9
                         9 pin
@@ -13,10 +14,9 @@ SG   Signal ground        5
 CD   Carrier detect       1
 + voltage (testing)
 
-We can make the following code for a new serial port type (a type is a kind of struct or object in Julia).
-We can re-use the existing base class BitArray type, a subtype of Julia's DenseArray:
-</pre>
-<code Julia>
+We can then make the following code for a new serial port type:
+"""
+
 mutable struct NinePinSerialPort
     pins::BitArray
     function NinePinSerialPort()
@@ -33,20 +33,19 @@ const DSR = 6
 const RTS = 7
 const CTS = 8
 
-port = NinePinSerialPort()
-
+"""
 # Here we test the type's code.
-
+port = NinePinSerialPort()
 println("Port is now at defaults, which are $port")
 port[CTS] = true
 println("CD pin of port, which is pin $CD, is now $(port[CD])")
 println("CTS pin of port, which is pin $CTS, is now $(port[CTS])")
 println("port is now: $port")
-</lang>
-{{output}}
-<pre>
+
+Output should be:
+
 Port is now at defaults, which are Bool[false, false, false, false, false, false, false, false, false]
 CD pin of port, which is pin 1, is now false
 CTS pin of port, which is pin 8, is now true
 port is now: Bool[false, false, false, false, false, false, false, true, false]
-</pre>
+"""
