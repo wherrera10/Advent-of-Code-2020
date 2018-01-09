@@ -1,0 +1,18 @@
+
+"""
+    averagereference
+Get avarage of signal channels (defaut all channels) as physical channel data.
+"""
+function averagereference(edfh, channels=edfh.mapped_signals)
+    data = signaldata(edfh)
+    siglen = maximum(x->length(x.smp_per_record, edfh.signalparam)
+    avgref = zeros(siglen)
+    spans = map(chan->signalindices(edfh,chan), channels)
+    for rec in data, (i,chan) in enumerate(channels)
+        span = spans[i]
+        endpos = span[2] - span[1] + 1
+        avgref[1:endpos] .+= data[rec, span[1]:span[2]]
+    end
+    avgref ./= length(channels)
+end
+
