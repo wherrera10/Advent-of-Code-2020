@@ -11,17 +11,21 @@ end
 
 abstract struct montage end
 
-mutable struct unipolarmontage
+mutable struct referentialmontage
     activeleads
-    isleft
     referenceleads
 end
 
+isleft(lead) = (m = match("\d+", lead); m != nothing && parse(Int, m.match[1]) % 2 == 1)
 
 mutable struct bipolarmontage
     leads::Array{bipolarlead,1}
 end
 
+
+const LB18_3 = []
+
+CONST R18_3 = []
 
 """
     averagereference
