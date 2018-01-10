@@ -1,4 +1,28 @@
 
+struct lead
+    edfh
+    channelnumber
+end 
+
+struct bipolarlead
+    active
+    reference
+end
+
+abstract struct montage end
+
+mutable struct unipolarmontage
+    activeleads
+    isleft
+    referenceleads
+end
+
+
+mutable struct bipolarmontage
+    leads::Array{bipolarlead,1}
+end
+
+
 """
     averagereference
 Get avarage of signal channels (defaut all channels) as physical channel data.
