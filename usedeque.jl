@@ -12,16 +12,20 @@ function issolvable(board)
     tpuzz = copy(board)
     inversioncount = 1
     asint(x) = (tpuzz[x] == " ") ? 0 : parse(Int64, tpuzz[x])
-    for i in 1:size^2-1
-        tileneededpos = findtile(string(i))
-        if tpuzz[i] != tpuzz[tileneededpos]
-            oldtile = tpuzz[i]
-            tpuzz[i] = tpuzz[tileneededpos]
-            tpuzz[tileneededpos] = oldtile
+    for i in 1:size^2-1, j in i:size^2
+        if tpuzz[i] == " " || tpuzz[j] == " "
+            continue
+        end
+        if parse(Int, tpuzz[i]) < parse(Int, tpuzz[j])
             inversioncount += 1
         end
     end
-    return inversioncount % 2 == 0
+    if size % 2 == 1
+        return inversioncount % 2 == 0
+    end
+    pos = findhole(tpuzz)
+    inversioncount += pos[2]
+    return inversioncount & 1 == 0
 end
 
 function nexttohole(board)
@@ -82,10 +86,11 @@ end
 
 function solve(board)
     puzzle .= string.(board)
-    puzzle[findtile("0")] = " "
-    if issolvable()
+    puzzle[findtile(puzzle, "0")] = " "
+    printboard(puzzle)
+    if issolvable(puzzle)
         println("This puzzle is solvable.")
-        breadthfirst()
+        breadthfirst(puzzle, Array{String, 1}())
     else
         println("This puzzle is not solvable.")
     end
@@ -97,7 +102,7 @@ function breadthfirst(board, movelist)
     else
         singledepth(board, movelist)
         while length(pque) > 0
-            bd = dequeue!(pque)
+            bd = popfirst!(pque)
             singledepth(bd, psoln[bd]) # will usually add to dequeue
         end
     end
@@ -121,7 +126,14 @@ function singledepth(board, movelist)
             newmovelist = copy(movelist)
             push!(newmovelist, mv)
             psoln[newboard] = newmovelist
-            enqueue!(pque, newboard)
+            push!(pque, newboard)
         end
     end
 end
+
+function announcesolution(board)
+
+end
+
+puzzleboard = [[15 14 1 6]; [9 11 4 12]; [0 10 7 3]; [13 8 5 2]]'
+solve(puzzleboard)
