@@ -1,0 +1,1 @@
+Threads.@threads for i in 1:2 println("thread id is ", Threads.threadid()) end
