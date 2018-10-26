@@ -1,22 +1,35 @@
-using Gtk, Cairo, Graphics
-
-win = GtkWindow("Window Canvas", 300, 300) |> (c = GtkCanvas())
-
-draw(c) do widget
-    ctx = getgc(c)
-    h = height(c)
-    w = width(c)
-    # Paint red rectangle
-    rectangle(ctx, 0, 0, w, h/2)
-    set_source_rgb(ctx, 1, 0, 0)
-    fill(ctx)
-    # Paint blue rectangle
-    rectangle(ctx, 0, 3h/4, w, h/4)
-    set_source_rgb(ctx, 0, 0, 1)
-    fill(ctx)
+function compress7(str)
+    vec = zeros(UInt8, div((length(str) * 7), 8) + 1)
+	for (i, ch) in enumerate(str)
+		bytepos = div(i * 7, 8) + 1
+		bitshift = (i * 7 + 1) % 8
+        if bitshift == 0
+            vec[bytepos] =  vec[bytepos] & 0x80 + ch
+        else
+            vec[bytepos] = ((vec[bytepos] << (7 - bitshift)) & 0xff) >> 
+                (7 - bitshift) + (ch << bitshift) & 0xff
+            if bitshift > 1
+                vec[bytepos + 1] = (vec[bytepos + 1] >> (bitshift - 1))
+                    << (bitshift - 1) + ch >> (8 - bitshift)
+            end
+        end
+    end
+    vec
 end
 
-show(c)
+function expand7(vec)
+    str = ""
+    idxbit = 1
+    lowbits = 0
+    for (i, byte) in enumerate(vec)
+        if idxbit == 1
+            str *= Char(byte & 0x7f)
+            lobits = byte >> 7
+            idxbit = 7
+        else
+            str *= lobits + byte << idxbit
+            lobits = (byte << lobits)
+        
 
-sleep(20)
 
+		
