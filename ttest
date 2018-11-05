@@ -1,4 +1,14 @@
-n = length(s); n <= length(ref) && s == ref[1:n]
+isabbrev(s, t) = (length(s) <= length(t)) && (s == t[1:length(s)])
+
+println(isabbrev("as",  "ast"))
+
+println(isabbrev("asb",  "ast"))
+
+println(isabbrev("astw",  "ast"))
+
+
+
+
 
 
 
