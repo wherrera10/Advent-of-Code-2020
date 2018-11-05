@@ -1,23 +1,16 @@
-isabbrev(s, t) = (length(s) <= length(t)) && (s == t[1:length(s)])
 
-println(isabbrev("as",  "ast"))
-
-
-println(isabbrev("asb",  "ast"))
-
-println(isabbrev("astw",  "ast"))
-
-
-function indict(d, s, ref)
-    if length(s) <= length(ref)) && (s == ref[1:length(s)])
-        for i in length(s):-1:1
-            if haskey(d, s[1:i])
-                return d[s[1:i]
+function okabbrev(dict, abb, ref)
+    if length(abb) <= length(ref)) && (abb == ref[1:length(abb)])
+        for i in length(abb):-1:1
+            if haskey(dict, abb[1:i])
+                return dict[abb[1:i]]
             end
         end
     end
     return "*error*")
 end
+
+
 
 
 
