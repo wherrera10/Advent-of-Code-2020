@@ -1,4 +1,18 @@
 
+
+function makedict(txt)
+    dict = Dict{String, String}()
+    arr = split(txt, r"\s+")
+    for (i, s) in enumerate(arr)
+        if (n = tryparse(Int, s) != nothing
+            dict[s[1:n]] = arr[i-1]
+        else
+            dict[s] = s
+        end
+    end
+    dict
+end
+
 function okabbrev(dict, abb, ref)
     if length(abb) <= length(ref) && abb == ref[1:length(abb)]
         for i in length(abb):-1:1
@@ -9,12 +23,6 @@ function okabbrev(dict, abb, ref)
     end
     return "*error*"
 end
-
-
-
-
-
-
 
 
 
