@@ -4,7 +4,7 @@ function makedict(txt)
     dict = Dict{String, String}()
     arr = split(txt, r"\s+")
     for (i, s) in enumerate(arr)
-        if (n = tryparse(Int, s) != nothing
+        if (n = tryparse(Int, s)) != nothing
             dict[s[1:n]] = arr[i-1]
         else
             dict[s] = s
