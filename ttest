@@ -1,3 +1,18 @@
 
+indata = "Fixed length read/write.  Before terminals, computers commonly used punch card readers or paper tape input. A common format before these devices were superseded by terminal technology was based on the Hollerith code, Hollerith code.  These input devices handled 80 columns per card and had a limited character set, encoded by punching holes in one or more rows of the card for each column. These devices assumed/demanded a fixed line width of 80 characters, newlines were not required (and could not even be encoded in some systems).  Task  Write a program to read 80 column fixed length records (no newline terminators (but newline characters allowed in the data)) and then write out the reverse of each line as fixed. "
+
+println(length(indata))
+
+io = IOBuffer(indata)
+
+filedata = [ read(io, 80) for _ in 1:12 ]
+
+for line in filedata
+    s = [Char(c) for c in line]
+    println(join(s, ""))
+end
+
+
+ 
 
 		
