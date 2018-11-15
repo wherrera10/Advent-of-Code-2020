@@ -3,7 +3,9 @@
 {{trans|Perl 6}}
 <lang julia>
 =#
-# The num2text routines are from the "Number names" task, updated for Julia 1.0
+using DataStructures # for deque
+# numtext2ordinal is from the "Spelling of ordinal numbers" task, which uses code
+# from the "Number names" task, updated for Julia 1.0.
  
 const stext = ["one", "two", "three", "four", "five",
                "six", "seven", "eight", "nine"]
@@ -84,31 +86,49 @@ function num2text(n, use_short_scale=true)
     return digits2text!(digits(n, base=10), use_short_scale)
 end
 
-
-toordinal(n) = 
-
-function sentenceletters(maxloops)
-    sentence = "Four is the number of letters in the first word of this sentence, "
-    words = special array map(x->x[1],collect(eachmatch(r"(\w+)", sentence)))
-    wordlengths = Vector{Int}()
-    for i in 1:maxloops
-        push!(words, string(length(words[i])), "in", "the", toordinal(i))
-        push!(wordlengths, length(popfromtop(words))
+const irregular = Dict("one" => "first", "two" => "second", "three" => "third",
+                       "five" => "fifth", "nine" => "ninth", "twelve" => "twelfth")
+const suffix = "th"
+const ysuffix = "ieth"
+ 
+function numtext2ordinal(s)
+    lastword = split(s)[end]
+    redolast = split(lastword, "-")[end]
+    if redolast != lastword
+        lastsplit = "-"
+        word = redolast
+    else
+        lastsplit = " "
+        word = lastword
     end
+    firstpart = reverse(split(reverse(s), lastsplit, limit=2)[end])
+    firstpart = (firstpart == word) ? "": firstpart * lastsplit
+    if haskey(irregular, word)
+        word = irregular[word]
+    elseif word[end] == 'y'
+        word = word[1:end-1] * ysuffix
+    else
+        word = word * suffix
+    end
+    firstpart * word
 end
 
-my $index = 1;
-my @sentence = flat 'Four is the number of letters in the first word of this sentence, '.words,
-  { @sentence[$index++].&alpha.&cardinal, 'in', 'the', |($index.&ordinal.&no-commas~',').words } ... * ;
- 
-sub alpha ( $str ) { $str.subst(/\W/, '', :g).chars }
-sub no-commas ( $str ) { $str.subst(',', '', :g) }
-sub count ( $index ) { @sentence[^$index].join(' ').chars ~ " characters in the sentence, up to and including this word.\n" }
- 
-say 'First 201 word lengths in the sequence:';
-put ' ', map { @sentence[$_].&alpha.fmt("%2d") ~ (((1+$_) %% 25) ?? "\n" !! '') }, ^201;
-say 201.&count;
- 
-for 1e3, 1e4, 1e5, 1e6, 1e7 {
-    say "{.&ordinal.tc} word, '{@sentence[$_ - 1]}', has {@sentence[$_ - 1].&alpha} characters. ", .&count
-}
+const start = "Four is the number of letters in the first word of this sentence, "
+const (word2, word3) = ("in", "the")
+
+struct CountLetters
+    sentence::String
+    words::Deque{String}
+    CountLetters(s) = new(s=start, map(x->x[1],collect(eachmatch(r"(\w+)", s))), 0)
+end
+
+function Base.iterate(iter::CountLetters, state = 1)
+    if length(iter.words) < 1
+        return nothing
+    end
+    returnword = popfirst!(iter.words)
+    nextwordindex = state + 1
+    nextword = front(iter.words)
+    push!(iter.words, num2text(nextword), word2, word3, numtext2ordinal(nextwordindex))
+    (length(nextword), nextwordindex)
+end
