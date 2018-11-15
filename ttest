@@ -1,4 +1,101 @@
-http://slendermeans.org/julia-iterators.html
+using Base, ArgParse
+
+struct Lucky 
+    start::Int
+    nmax::Int
+    Lucky(isodd, nmax) = new(isodd ? 1 : 2, nmax)
+end
+
+struct LuckyState
+    nextindex::Int
+    sequence::Vector{Int}
+end
+
+function Base.iterate(iter::Lucky, state = LuckyState(1, collect(iter.start:2:iter.nmax)))
+    if length(state.sequence) < state.nextindex
+        return nothing
+    elseif state.nextindex == 1
+        return (iter.start, LuckyState(2, state.sequence))
+    end
+    result = state.sequence[state.nextindex]
+    newsequence = Vector{Int}()
+    for (i, el) in enumerate(state.sequence)
+        if i % result != 0
+            push!(newsequence, el)
+        end
+    end
+    (result, LuckyState(state.nextindex + 1, newsequence))
+end
+
+Base.eltype(iter::Lucky) = Int
+
+function test(n = 50)
+    luck = Lucky(true, 100)
+    iter_result = iterate(luck)
+    while iter_result != nothing
+        (elem, state) = iter_result
+        println(elem)
+        iter_result = iterate(luck, state)
+    end
+end
+
+test()
+
+#=
+ 
+void help(Option[] opt) {
+    defaultGetoptPrinter("./lucky j [k] [--lucky|--evenLucky]", opt);
+ 
+    writeln;
+    writeln("       argument(s)        |  what is displayed");
+    writeln("==============================================");
+    writeln("-j=m                      |  mth lucky number");
+    writeln("-j=m  --lucky             |  mth lucky number");
+    writeln("-j=m  --evenLucky         |  mth even lucky number");
+    writeln("-j=m  -k=n                |  mth through nth (inclusive) lucky numbers");
+    writeln("-j=m  -k=n  --lucky       |  mth through nth (inclusive) lucky numbers");
+    writeln("-j=m  -k=n  --evenLucky   |  mth through nth (inclusive) even lucky numbers");
+    writeln("-j=m  -k=-n               |  all lucky numbers in the range [m, n]");
+    writeln("-j=m  -k=-n  --lucky      |  all lucky numbers in the range [m, n]");
+    writeln("-j=m  -k=-n  --evenLucky  |  all even lucky numbers in the range [m, n]");
+}
+ 
+void main(string[] args) {
+    int j;
+    int k;
+    bool evenLucky = false;
+ 
+    void luckyOpt() {
+        evenLucky = false;
+    }
+    auto helpInformation = getopt(
+        args,
+        std.getopt.config.passThrough,
+        std.getopt.config.required,
+        "j", "The starting point to generate lucky numbers", &j,
+        "k", "The ending point for generating lucky numbers", &k,
+        "lucky", "Specify to generate a list of lucky numbers", &luckyOpt,
+        "evenLucky", "Specify to generate a list of even lucky numbers", &evenLucky
+    );
+ 
+    if (helpInformation.helpWanted) {
+        help(helpInformation.options);
+        return;
+    }
+ 
+    if (k>0) {
+        lucky(evenLucky).drop(j-1).take(k-j+1).writeln;
+    } else if (k<0) {
+        auto f = (int a) => j<=a && a<=-k;
+        lucky(evenLucky, -k).filter!f.writeln;
+    } else {
+        lucky(evenLucky).drop(j-1).take(1).writeln;
+    }
+}
+
+ 
+=#
+
 
 
 		
