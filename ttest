@@ -6,7 +6,7 @@
 using DataStructures # for deque
 # numtext2ordinal is from the "Spelling of ordinal numbers" task, which uses code
 # from the "Number names" task, updated for Julia 1.0.
- 
+
 const stext = ["one", "two", "three", "four", "five",
                "six", "seven", "eight", "nine"]
 const teentext = ["eleven", "twelve", "thirteen", "fourteen",
@@ -21,14 +21,14 @@ const ordstext = ["million", "billion", "trillion",
                   "tredecillion", "quattuordecillion", "quindecillion",
                   "sexdecillion", "septendecillion", "octodecillion",
                   "novemdecillion", "vigintillion"]
- 
+
 function normalize_digits!(a)
     while  0 < length(a) && a[end] == 0
         pop!(a)
     end
     return length(a)
 end
- 
+
 function digits2text!(d, use_short_scale=true)
     ndig = normalize_digits!(d)
     0 < ndig || return ""
@@ -77,7 +77,7 @@ function digits2text!(d, use_short_scale=true)
     0 < length(s) || return t
     return t*" "*s
 end
- 
+
 function num2text(n, use_short_scale=true)
     -1 < n || return "minus "*num2text(-n, use_short_scale)
     0 < n || return "zero"
@@ -90,7 +90,7 @@ const irregular = Dict("one" => "first", "two" => "second", "three" => "third",
                        "five" => "fifth", "nine" => "ninth", "twelve" => "twelfth")
 const suffix = "th"
 const ysuffix = "ieth"
- 
+
 function numtext2ordinal(s)
     lastword = split(s)[end]
     redolast = split(lastword, "-")[end]
@@ -102,7 +102,7 @@ function numtext2ordinal(s)
         word = lastword
     end
     firstpart = reverse(split(reverse(s), lastsplit, limit=2)[end])
-    firstpart = (firstpart == word) ? "": firstpart * lastsplit
+    firstpart = (firstpart == word) ? "" : firstpart * lastsplit
     if haskey(irregular, word)
         word = irregular[word]
     elseif word[end] == 'y'
@@ -113,22 +113,53 @@ function numtext2ordinal(s)
     firstpart * word
 end
 
-const start = "Four is the number of letters in the first word of this sentence, "
+const seed = "Four is the number of letters in the first word of this sentence, "
 const (word2, word3) = ("in", "the")
 
-struct CountLetters
-    sentence::String
-    words::Deque{String}
-    CountLetters(s) = new(s=start, map(x->x[1],collect(eachmatch(r"(\w+)", s))), 0)
+lettercount(w) = length(w) -  length(collect(eachmatch(r"-", w)))
+
+function todq(sentence)
+    d = Deque{String}()
+    map(x->push!(d, x[1]), collect(eachmatch(r"([\w\-]+)", sentence)))
+    d
 end
 
-function Base.iterate(iter::CountLetters, state = 1)
+struct CountLetters
+    seedsentence::String
+    words::Deque{String}
+    CountLetters(s) = new(s, todq(s))
+    CountLetters() = CountLetters(seed)
+end
+
+function Base.iterate(iter::CountLetters, state = (1, ""))
     if length(iter.words) < 1
         return nothing
     end
     returnword = popfirst!(iter.words)
-    nextwordindex = state + 1
+    nextwordindex = state[1] + 1
     nextword = front(iter.words)
-    push!(iter.words, num2text(nextword), word2, word3, numtext2ordinal(nextwordindex))
-    (length(nextword), nextwordindex)
+    push!(iter.words, lettercount(nextword), word2, word3, 
+        numtext2ordinal(num2text(nextwordindex)))
+    (lettercount(returnword, (nextwordindex, returnword)))
 end
+
+function sumwords(iterations)
+    countlet = CountLetters()
+    iter_result = iterate(countlet)
+    itercount = 1
+    total = 0
+    while iter_result != nothing
+        (wlen, state) = iter_result
+        total += wlen
+        if itercount == iterations
+            return state[2], total
+        end
+    end
+    throw("Iteration failed on \"Four is the number\" task.")
+end
+
+for n in [1000, 10000, 100000, 1000000, 10000000]
+    (w, sm) = sumwords(n)
+    println("$n words -> $w $sm")
+end
+
