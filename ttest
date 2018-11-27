@@ -1,3 +1,38 @@
 
 
 
+
+using Graphs, SimpleWeightedGraphs
+
+const chessboardsize = 8
+const givenpoints = [(2,4), (2,5), (2,6), (3,6), (4,6), (5,6), (5,5), (5,4), (5,3), (5,2), (4,2), (3,2)]
+vfromcart(p, n) = (p[1] - 1) * n + p[2]
+const obstacles = [ vfromcart(o .+ 1, chessboardsize) for o in givenpoints]
+
+
+
+zbasedpath(path, n) = [(div(v - 1, n), v % n) for v in path]
+
+function surround(x, y, n)
+    bottomx = x > 1 ? x -1 : x
+    topx = x < n ? x + 1 : x
+    bottomy = y > 1 ? y - 1 : y
+    topy = y < n ? y + 1 : y
+    [CartesianIndex(x,y) for x in bottomx:topx for y in bottomy:topy]
+end
+
+function kinggraph(N)
+    graph = SimpleWeightedGraph(64)
+    for row in 1:N, col in 1:N, p in surround(row, col, N)
+        targ = vfromcart(p, N) 
+        hcost = targ in obstacles ? 100 : 1
+        add_edge!(graph, vfromcart(CartesianIndex(row, col), N), targ, hcost)
+    end
+    graph
+end
+
+println("o: $obstacles")
+kgraph = kinggraph(chessboardsize)
+path = enumerate_paths(shortest_paths(kgraph, 1), 63)
+println(path)
+println("Solution is length $(length(path)): ", zbasedpath(path, chessboardsize))
