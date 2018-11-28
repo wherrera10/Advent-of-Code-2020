@@ -1,2 +1,33 @@
 
 
+abstract type AbstractNode{T} end
+struct EmptyNode{T} <: AbstractNode{T} end
+
+mutable struct DLNode{T} <: AbstractNode{T}
+    value::T
+    pred::AbstractNode{T}
+    succ::AbstractNode{T}
+    DLNode(val::T) = new(val::T, nothing, nothing) where {T}
+end
+
+insertpost(pn, nd) = (s = pn.succ; pn.succ = nd; nd.prev = pn; nd.succ = s; nd) 
+
+function printfromroot(r)
+    root = r
+    print(root.val)
+    while root.succ != nothing
+        root = root.succ
+        print(" -> $(root.value)")
+    end
+    println()
+end
+
+node1 = DLNode(1)
+printfromroot(node1)
+node2 = DLNode(2)
+node3 = DLNode(3)
+insertpost(node1, node2)
+printfromroot(node1)
+insertpost(node1, node3)
+printfromroot(node1)
+
