@@ -1,33 +1,95 @@
+using DataStructures
 
-
-abstract type AbstractNode{T} end
-struct EmptyNode{T} <: AbstractNode{T} end
-
-mutable struct DLNode{T} <: AbstractNode{T}
-    value::T
-    pred::AbstractNode{T}
-    succ::AbstractNode{T}
-    DLNode(val::T) = new(val::T, nothing, nothing) where {T}
+struct HuffmanNode
+    ch::Char
+    freq::int
+    code:UInt8
 end
 
-insertpost(pn, nd) = (s = pn.succ; pn.succ = nd; nd.prev = pn; nd.succ = s; nd) 
 
-function printfromroot(r)
-    root = r
-    print(root.val)
-    while root.succ != nothing
-        root = root.succ
-        print(" -> $(root.value)")
+function ftable(str)
+    fdict = Dict{Char, Int}()
+    for char in split(txt, "")
+        if !haskey(tree, char)
+            fdict[char] = 1
+        else
+            fdict[char] += 1
+        end
     end
-    println()
+    fdict
 end
 
-node1 = DLNode(1)
-printfromroot(node1)
-node2 = DLNode(2)
-node3 = DLNode(3)
-insertpost(node1, node2)
-printfromroot(node1)
-insertpost(node1, node3)
-printfromroot(node1)
+hnodesfromdict(d) = [HuffmanNode(ch, freq) for (ch, freq) in d]
 
+
+function maketree(pq)
+    
+end
+
+
+function tree(str)
+    ftab = ftable(str)
+    pq = PriorityQueue{HuffmanNode, (Int, Char)}()
+    for nd in hnodesfromdict(ftab)
+        enqueue!(nd, (nd.freq, nd.ch))
+    end
+    maketree(pq)
+end
+        
+    
+
+
+func walk(n, s, h) {
+    if (n.contains(:a)) {
+        h{n{:a}} = s
+        say "#{n{:a}}: #{s}"
+        return nil
+    }
+    walk(n{:0}, s+'0', h)
+    walk(n{:1}, s+'1', h)
+}
+ 
+func make_tree(text) {
+    var letters = Hash()
+    text.each { |c| letters{c} := 0 ++ }
+    var nodes = letters.keys.map { |l|
+        Hash(a => l, freq => letters{l})
+    }
+ 
+    var n = Hash()
+    while (nodes.sort_by!{|c| c{:freq} }.len > 1) {
+        n = Hash(:0 => nodes.shift, :1 => nodes.shift)
+        n{:freq} = (n{:0}{:freq} + n{:1}{:freq})
+        nodes.append(n)
+    }
+ 
+    walk(n, "", n{:tree} = Hash())
+    return n
+}
+ 
+func encode(s, t) {
+    t = t{:tree}
+    s.chars.map{|c| t{c} }.join
+}
+ 
+func decode (enc, tree) {
+    var n = tree
+    var out = ""
+ 
+    enc.each {|bit|
+        n = n{bit}
+        if (n.contains(:a)) {
+            out += n{:a}
+            n = tree
+        }
+    }
+ 
+    return out
+}
+ 
+var text = "this is an example for huffman encoding"
+var tree = make_tree(text)
+var enc = encode(text, tree)
+ 
+say enc
+say decode(enc, tree)
