@@ -1,153 +1,17 @@
-using Gtk, Graphics, Colors
+testarrays = Vector{Vector{String}}([
+["ignore leading spaces: 2-2", " ignore leading spaces: 2-1", "  ignore leading spaces: 2+0", "   ignore leading spaces: 2+1"],
+["ignore m.a.s spaces: 2-2", "ignore m.a.s  spaces: 2-1", "ignore m.a.s   spaces: 2+0", "ignore m.a.s    spaces: 2+1"],
+["Equiv. spaces: 3-3", "Equiv.\rspaces: 3-2", "Equiv.\x0cspaces: 3-1", "Equiv.\x0bspaces: 3+0", "Equiv.\nspaces: 3+1", "Equiv.\tspaces: 3+2"],
+["cASE INDEPENENT: 3-2", "caSE INDEPENENT: 3-1", "casE INDEPENENT: 3+0", "case INDEPENENT: 3+1"],
+["foo100bar99baz0.txt", "foo100bar10baz0.txt", "foo1000bar99baz10.txt", "foo1000bar99baz9.txt"],
+["The Wind in the Willows", "The 40th step more", "The 39 steps", "Wanda"],
+["Equiv. \xfd accents: 2-2", "Equiv. \xdd accents: 2-1", "Equiv. y accents: 2+0", "Equiv. Y accents: 2+1"],
+["\u0132 ligatured ij", "no ligature"],
+["Start with an \u0292: 2-2", "Start with an \u017f: 2-1", "Start with an \u00df: 2+0", "Start with an s: 2+1"]])
 
-Base.isless(p1::Vec2, p2::Vec2) = (p1.x == p2.x ? p1.y < p2.y : p1.x < p2.x)
+println(testarrays)
 
-struct Line
-	p1:Point
-	p2::Point
-	c::Colorant
-end
+println(replace(testarrays[9][3], r"\xdf|\u00df" => "ss"))
 
-isvertical(Line) = (p1.x == p2.x)
-ishorizontal(Line) = (p1.y == p2.y)
-
-zeroline(c) = line(Point(0, h/2), Point(w, h/2))
-
-dist(p1, p2) = sqrt((p2.y - p1.y)^2 + (p2.x - p1.x)^2)
-
-const colorseq = [colorant"red", colorant"green", colorant"blue"]
-
-function hilbertmutateboxes(line, order)
-    if line.p1 < line.p2 p1 = line.p1; p2 = line.p2
-    else p1 = line.p2; p2 = line.p1
-    end
-    color = colorseq[order %3 + 1]
-	d = dist(p1, p2) / 3
-    if ishorizontal(li)
-        pl = Point(p1.x + d, p1.y])
-        plu = Point(p1,x + d, p1.y - d)
-        pld = Point(p1,x + d, p1.y + d)
-        pr = Point(p2.x - d, p2.y)
-        pru = Point(p2.x - d, p2.y - d)
-        prd = Point(p2.x - d, p2.y + d)
-        lines = [Line(plu, pl), Line(plu, pru), Line(pru, pr),
-                 Line(pr, prd), Line(pld, prd), Line(pld, pl)]
-    else # vertical
-        pu = Point(p1.x, p1.y + d)
-        pul = Point(p1.x - d, p1.y + d)
-        pur = Point(p1.x + d, p1.y + d)
-        pd = Point(p2.x, p2.y - d)
-        pdl = Point(p2.x - d, p2.y - d)
-        pdr = Point(p2.x + d, p2.y - d)
-        lines = [Line(pul, pu), Line(pul, pdl), Line(pdl, pd),
-                 Line(pu, pur), Line(pur, pdr), Line(pd, pdr)]
-    end
-    for li in lines
-        drawline(li, color)
-    end
-    lines
-end
 
     
-
-
-
-
-
-
-
-using DataStructures
-
-struct HuffmanNode
-    ch::Char
-    freq::int
-    code:UInt8
-end
-
-
-function ftable(str)
-    fdict = Dict{Char, Int}()
-    for char in split(txt, "")
-        if !haskey(tree, char)
-            fdict[char] = 1
-        else
-            fdict[char] += 1
-        end
-    end
-    fdict
-end
-
-hnodesfromdict(d) = [HuffmanNode(ch, freq) for (ch, freq) in d]
-
-
-function maketree(pq)
-    
-end
-
-
-function tree(str)
-    ftab = ftable(str)
-    pq = PriorityQueue{HuffmanNode, (Int, Char)}()
-    for nd in hnodesfromdict(ftab)
-        enqueue!(nd, (nd.freq, nd.ch))
-    end
-    maketree(pq)
-end
-        
-    
-
-
-func walk(n, s, h) {
-    if (n.contains(:a)) {
-        h{n{:a}} = s
-        say "#{n{:a}}: #{s}"
-        return nil
-    }
-    walk(n{:0}, s+'0', h)
-    walk(n{:1}, s+'1', h)
-}
- 
-func make_tree(text) {
-    var letters = Hash()
-    text.each { |c| letters{c} := 0 ++ }
-    var nodes = letters.keys.map { |l|
-        Hash(a => l, freq => letters{l})
-    }
- 
-    var n = Hash()
-    while (nodes.sort_by!{|c| c{:freq} }.len > 1) {
-        n = Hash(:0 => nodes.shift, :1 => nodes.shift)
-        n{:freq} = (n{:0}{:freq} + n{:1}{:freq})
-        nodes.append(n)
-    }
- 
-    walk(n, "", n{:tree} = Hash())
-    return n
-}
- 
-func encode(s, t) {
-    t = t{:tree}
-    s.chars.map{|c| t{c} }.join
-}
- 
-func decode (enc, tree) {
-    var n = tree
-    var out = ""
- 
-    enc.each {|bit|
-        n = n{bit}
-        if (n.contains(:a)) {
-            out += n{:a}
-            n = tree
-        }
-    }
- 
-    return out
-}
- 
-var text = "this is an example for huffman encoding"
-var tree = make_tree(text)
-var enc = encode(text, tree)
- 
-say enc
-say decode(enc, tree)
