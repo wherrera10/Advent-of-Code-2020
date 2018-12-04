@@ -1,4 +1,4 @@
-testarrays = Vector{Vector{String}}([
+const testarrays = Vector{Vector{String}}([
 ["ignore leading spaces: 2-2", " ignore leading spaces: 2-1", "  ignore leading spaces: 2+0", "   ignore leading spaces: 2+1"],
 ["ignore m.a.s spaces: 2-2", "ignore m.a.s  spaces: 2-1", "ignore m.a.s   spaces: 2+0", "ignore m.a.s    spaces: 2+1"],
 ["Equiv. spaces: 3-3", "Equiv.\rspaces: 3-2", "Equiv.\x0cspaces: 3-1", "Equiv.\x0bspaces: 3+0", "Equiv.\nspaces: 3+1", "Equiv.\tspaces: 3+2"],
@@ -7,11 +7,14 @@ testarrays = Vector{Vector{String}}([
 ["The Wind in the Willows", "The 40th step more", "The 39 steps", "Wanda"],
 ["Equiv. \xfd accents: 2-2", "Equiv. \xdd accents: 2-1", "Equiv. y accents: 2+0", "Equiv. Y accents: 2+1"],
 ["\u0132 ligatured ij", "no ligature"],
-["Start with an \u0292: 2-2", "Start with an \u017f: 2-1", "Start with an \xdf: 2+0", "Start with an s: 2+1"]])
+["Start with an \u0292: 2-2", "Start with an \u017f: 2-1", "Start with an \u00df: 2+0", "Start with an s: 2+1"]])
 
 println(testarrays)
 
 println(replace(testarrays[9][3], r"\xdf|\u00df" => "ss"))
 
+for (i, ltfunction) in enumerate(sortfunctions)
+    println("Testing sorting mod number $i. Sorted is: $(sort(testarrays[i], lt=ltfunction)).")
+end
 
-    
+
