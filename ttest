@@ -7,7 +7,7 @@ testarrays = Vector{Vector{String}}([
 ["The Wind in the Willows", "The 40th step more", "The 39 steps", "Wanda"],
 ["Equiv. \xfd accents: 2-2", "Equiv. \xdd accents: 2-1", "Equiv. y accents: 2+0", "Equiv. Y accents: 2+1"],
 ["\u0132 ligatured ij", "no ligature"],
-["Start with an \u0292: 2-2", "Start with an \u017f: 2-1", "Start with an \u00df: 2+0", "Start with an s: 2+1"]])
+["Start with an \u0292: 2-2", "Start with an \u017f: 2-1", "Start with an \xdf: 2+0", "Start with an s: 2+1"]])
 
 println(testarrays)
 
