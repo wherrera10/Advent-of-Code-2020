@@ -9,7 +9,7 @@ natural3(x, y) = lowercase(x) < lowercase(y)
 
 #4
 splitbynum(x) = split(x, r"(?<=\D)(?=\d)|(?<=\d)(?=\D)")
-numstringtonum(arr) = [e isa Number ? convert(Float32, e) : e for e in arr]
+numstringtonum(arr) = [(n = tryparse(Float32, e)) != nothing ? n : e for e in arr]
 function natural4(x, y)
     xarr = numstringtonum(splitbynum(x))
     yarr = numstringtonum(splitbynum(y))
@@ -68,7 +68,7 @@ natural7(x, y) = expandlig(x) < expandlig(y)
 
 #8
 const altsdict = Dict('ß' => "ss", 'ſ' => 's', 'ʒ' => 's')
-altstos(x) = (y = tr(x, altsdict); println(y); y)
+altstos(x) = tr(x, altsdict)
 natural8(x, y) = altstos(x) < altstos(y)
 
 lessthanfuncs = [natural1, natural2, natural2, natural3, natural4, natural5, natural6, natural7, natural8]
