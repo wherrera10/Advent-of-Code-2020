@@ -1,1 +1,50 @@
 
+mingreaterfactorial(n) = (i = 1; while factorial(i) < n i += 1 end; i)
+
+factorialbasenumber(n) = zeros(Int64, mingreaterfactorial(n))
+
+factorialbasesequencezeros(n) = repeat(factorialbasenumber(n), 1, n)
+
+function incfac!(arr)
+    for i in 1:length(arr)
+        @assert arr[i] <= i
+        if arr[i] == i
+            continue
+        else
+            arr[i] += 1
+            break
+        end
+    end
+    arr
+end
+
+function factorialbasesequence(n)
+    fmat = factorialbasesequencezeros(n)
+    for i 1:n, j in 2:n, k in 1:i
+        incfac![i, j]
+    end
+    fmat
+end
+
+
+baseforpermutation(n) = [i for i in n-1:-1:0]
+
+function factorialindexedpermutation(n)
+    parr = baseforpermutation(n)
+    perperm = repeat(parr, 1, n)
+    farr = Matrix(n, factorialbasearray(n))
+    for i in 1:n
+
+
+
+function rotdigits!(digits, position, extent)
+    lowpos = position - extent
+    @assert lowpos > 0
+    tmp = digits[position]
+    for i in position:-1:lowpos + 1
+        digits[i] = digits[i -1]
+    end
+    digits[lowpos] = tmp
+    digits
+end
+
