@@ -1,41 +1,51 @@
 
-mingreaterfactorial(n) = (i = 1; while factorial(i) < n i += 1 end; i)
 
-factorialbasenumber(n) = zeros(Int64, mingreaterfactorial(n))
 
-factorialbasesequencezeros(n) = repeat(factorialbasenumber(n), 1, n)
-
-function incfac!(arr)
-    for i in 1:length(arr)
-        @assert arr[i] <= i
-        if arr[i] == i
-            continue
-        else
-            arr[i] += 1
+function factorialbasedarray(n)
+    maxbin = Int64(ceil(sqrt(2* n)))
+    a = zeros(Int64, maxbin)
+    tot = 0
+    for i in maxbin:-1:1
+        tot += i
+        if tot + i > n
             break
         end
+        tot += i
+        a[i] = i
     end
-    arr
+    remain = n - tot
+    a[remain] = remain
+    a
 end
 
-function factorialbasesequence(n)
-    fmat = factorialbasesequencezeros(n)
-    for i 1:n, j in 2:n, k in 1:i
-        incfac![i, j]
+function factorialbasedfollowing(arr)
+    v = deepcopy(arr)
+    if v[1] == 0
+        v[1] = 1
+    else
+        for i in 2:length(arr)
+            if v[i] < i
+                v[i] += 1
+                return v
+            end
+        end
+        v::Vector{Int64} = vcat([1], v)
     end
-    fmat
+    v
 end
 
 
-baseforpermutation(n) = [i for i in n-1:-1:0]
+function factorialnumbersequence(n)
+    vecvec = Vector{Vector{Int64}}()
+    push!(vecvec, [0]
+    for i = 1 to n-1
+        v = factorialbasedfollowing(vecvec[i])
+        push!(vecvec, v)
+    end
+    vecvec
+end
 
-function factorialindexedpermutation(n)
-    parr = baseforpermutation(n)
-    perperm = repeat(parr, 1, n)
-    farr = Matrix(n, factorialbasearray(n))
-    for i in 1:n
-
-
+basepermarray(n) = [i for i in 0:n-1]
 
 function rotdigits!(digits, position, extent)
     lowpos = position - extent
@@ -47,4 +57,12 @@ function rotdigits!(digits, position, extent)
     digits[lowpos] = tmp
     digits
 end
+
+function permwithfactnum(permarr, factarr)
+    for i in length(factarr):-1:1
+        rotdigits!(permarr, i, factarr[i])
+    end
+    permarr
+end
+
 
