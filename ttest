@@ -1,68 +1,20 @@
 
+types = Dict("straight-flush" => 900,
+			  "four-of-a-kind" => 800,
+			  "full-house" => 700,
+			  "flush" => 600,
+			  "straight" => 500,
+			  "three-of-a-kind" => 400,
+			  "two-pair" => 300,
+			  "one-pair" => 200,
+			  "high-card" => 100,
+			  "invalid" => 0
 
+rankmodifiers = Dict("A" => 33, "K" => 32, "Q" => 31, "J" => 30, "10" => 39,
+					"9" => 38, "8" => 37, "7" => 36, "6" => 35, "5" => 34, 
+					"4" => 23, "3" => 22, "2" => 21, "1" => 20)
+                    
+suitmodifiers = Dict("♠" => 4, "♥" => 3, "♦" => 2, "♣" => 1)
 
-function factorialbasedarray(n)
-    maxbin = Int64(ceil(sqrt(2* n)))
-    a = zeros(Int64, maxbin)
-    tot = 0
-    for i in maxbin:-1:1
-        tot += i
-        if tot + i > n
-            break
-        end
-        tot += i
-        a[i] = i
-    end
-    remain = n - tot
-    a[remain] = remain
-    a
-end
-
-function factorialbasedfollowing(arr)
-    v = deepcopy(arr)
-    if v[1] == 0
-        v[1] = 1
-    else
-        for i in 2:length(arr)
-            if v[i] < i
-                v[i] += 1
-                return v
-            end
-        end
-        v::Vector{Int64} = vcat([1], v)
-    end
-    v
-end
-
-
-function factorialnumbersequence(n)
-    vecvec = Vector{Vector{Int64}}()
-    push!(vecvec, [0]
-    for i = 1 to n-1
-        v = factorialbasedfollowing(vecvec[i])
-        push!(vecvec, v)
-    end
-    vecvec
-end
-
-basepermarray(n) = [i for i in 0:n-1]
-
-function rotdigits!(digits, position, extent)
-    lowpos = position - extent
-    @assert lowpos > 0
-    tmp = digits[position]
-    for i in position:-1:lowpos + 1
-        digits[i] = digits[i -1]
-    end
-    digits[lowpos] = tmp
-    digits
-end
-
-function permwithfactnum(permarr, factarr)
-    for i in length(factarr):-1:1
-        rotdigits!(permarr, i, factarr[i])
-    end
-    permarr
-end
 
 
