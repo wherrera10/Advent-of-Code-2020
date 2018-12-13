@@ -13,8 +13,12 @@ types = Dict("straight-flush" => 900,
 rankmodifiers = Dict("A" => 33, "K" => 32, "Q" => 31, "J" => 30, "10" => 39,
 					"9" => 38, "8" => 37, "7" => 36, "6" => 35, "5" => 34, 
 					"4" => 23, "3" => 22, "2" => 21)
+
+rank(card) = rankmodifiers(string(card[1]))
                     
 suitmodifiers = Dict("♠" => 4, "♥" => 3, "♦" => 2, "♣" => 1)
+
+suitrank(card) = suitmodifiers(string(card[2]))
 
 deck = []
 
@@ -34,7 +38,7 @@ end
 function countsuits(d)
     suits = Dict()
     for c in d
-        s = string(c[2]
+        s = string(c[2])
         if !haskey(suits, s)
             suits[s] = 1
         else
@@ -51,12 +55,13 @@ function isstraight(ranksdict)
     else
         s = sort(map(x->rankmodifiers(x), collect(keys(ranksdict))))
         for i in 1:length(s)-1
-        delta = abs(s[i] - s[i+1])
-        if delta != 1
-            if s[i+1] == 33 && s[1] == 21 # aces low straight
-                continue
-            else
-                return false
+            delta = abs(s[i] - s[i+1])
+            if delta != 1
+                if s[i+1] == 33 && s[1] == 21 # aces low straight
+                    continue
+                else
+                    return false
+                end
             end
         end
     end
@@ -66,28 +71,37 @@ end
 function nodupcards(d)
     s = sort(d)
     for i in 1:length(s)-1
-    if s[i] == s[i=1]
-        return false
+        if s[i] == s[i+1]
+            return false
+        end
     end
     true
 end
 
 function islegal(ranks, suits, d)
     all(x-> haskey(rankmodifiers, string(x[1])), ranks) &&
-    all(x -> haskey(suitmodifiers, string(x[2]), suits) && 
+    all(x -> haskey(suitmodifiers, string(x[2])), suits) && 
     maximum(values(ranks)) < 5 && nodupecards(d)
 end
 
 invalid(ranks, suits, d) = !islegal(ranks, suits, d)
 
-highestsuit(suitsdict) = (s = sort(collect(keys(suitsdict), lt(x,y) = suitsdict[x] < suitsdict[y)); s[end])))
+highestsuit(suitsdict) = sort(collect(keys(suitsdict)), lt=suitsdict[x]<suitsdict[y])[end]
 
-highestcard(ranksdict, d)
+function highestrank(ranksdict, d)
     maxcard = maximum((x -> rankmodifiers(string(x)), collect(keys(ranksdict))))
     maxranks = findall(x->rankmodifiers(string(x[1])) == maxcard, d)
     sort(d[maxranks], lt=(x,y)->suitmodifiers(string(x[2])) < suitmodifiers(string(y[2])))[end]
 end
-    
+
+function lessthan(card1, card2)
+    if rank(card1) == rank(card2)
+        return suitrank(card1) < suitrank(card2)
+    end
+    rank(card1) < rank(card2)
+end
+
+highestcard(d) = sort(d, lt=lessthan)[end]
 
 isflush(suitsdict) = length(collect(values(suitsdict))) == 1
 
@@ -103,7 +117,9 @@ istwopair(ranksdict) = sort(collect(values(ranksdict)))[end-1: end] = [2,2]
 
 isonepair(ranksdict) = sort(collect(values(ranksdict)))[end-1: end] = [1,2]
 
-ishighcard(ranks, suits) = maximum(values(ranksdict)) == 1 && !isflush(suits) && !isstraight(d)
+ishighcard(ranks, suits) = maximum(values(ranks)) == 1 && !isflush(suits) && !isstraight(d)
+
+
 
 function scorehand(d)
     suits = countsuits(d)
@@ -122,7 +138,5 @@ function scorehand(d)
     elseif isstraightflush(ranks, suits) return "straight-flush"
     end
 end
-
-
 
     
