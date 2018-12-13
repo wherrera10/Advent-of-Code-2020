@@ -1,142 +1,29 @@
+using Gtk
 
-types = Dict("straight-flush" => 900,
-             "four-of-a-kind" => 800,
-             "full-house" => 700,
-			 "flush" => 600,
-			 "straight" => 500,
-			 "three-of-a-kind" => 400,
-			 "two-pair" => 300,
-			 "one-pair" => 200,
-			 "high-card" => 100,
-			 "invalid" => 0)
 
-rankmodifiers = Dict("A" => 33, "K" => 32, "Q" => 31, "J" => 30, "10" => 39,
-					"9" => 38, "8" => 37, "7" => 36, "6" => 35, "5" => 34, 
-					"4" => 23, "3" => 22, "2" => 21)
+function controlwindow(win, lab)
 
-rank(card) = rankmodifiers(string(card[1]))
-                    
-suitmodifiers = Dict("♠" => 4, "♥" => 3, "♦" => 2, "♣" => 1)
 
-suitrank(card) = suitmodifiers(string(card[2]))
+end
 
-deck = []
 
-function countranks(d)
-    ranks = Dict()
-    for c in d
-        r = string(c[1])
-        if !haskey(ranks, r)
-            ranks[r] = 1
-        else
-            ranks[r] += 1
-        end
+function keypresswindow()
+    tcount = 0
+    txt = "Window Under External Control"
+    win = GtkWindow("Window Control Test", 500, 30) |> (GtkFrame() |> ((vbox = GtkBox(:v)) |> (lab = GtkLabel(txt))))
+    function keycall(w, event)
+        ch = Char(event.keyval)
+        tcount += 1
+        set_gtk_property!(lab, :label, "You have typed $tcount chars including $ch this time")
     end
-    ranks
+    signal_connect(keycall, win, "key-press-event")
+
+    cond = Condition()
+    endit(w) = notify(cond)
+    signal_connect(endit, win, :destroy)
+    showall(win)
+    wait(cond)
 end
 
-function countsuits(d)
-    suits = Dict()
-    for c in d
-        s = string(c[2])
-        if !haskey(suits, s)
-            suits[s] = 1
-        else
-            suits[s] += 1
-        end
-    end
-    suits
-end
+keypresswindow()
 
-function isstraight(ranksdict)
-    v = collect(values(ranksdict))
-    if maximum(v) != 1
-        return false
-    else
-        s = sort(map(x->rankmodifiers(x), collect(keys(ranksdict))))
-        for i in 1:length(s)-1
-            delta = abs(s[i] - s[i+1])
-            if delta != 1
-                if s[i+1] == 33 && s[1] == 21 # aces low straight
-                    continue
-                else
-                    return false
-                end
-            end
-        end
-    end
-    true
-end
-
-function nodupcards(d)
-    s = sort(d)
-    for i in 1:length(s)-1
-        if s[i] == s[i+1]
-            return false
-        end
-    end
-    true
-end
-
-function islegal(ranks, suits, d)
-    all(x-> haskey(rankmodifiers, string(x[1])), ranks) &&
-    all(x -> haskey(suitmodifiers, string(x[2])), suits) && 
-    maximum(values(ranks)) < 5 && nodupecards(d)
-end
-
-invalid(ranks, suits, d) = !islegal(ranks, suits, d)
-
-highestsuit(suitsdict) = sort(collect(keys(suitsdict)), lt=suitsdict[x]<suitsdict[y])[end]
-
-function highestrank(ranksdict, d)
-    maxcard = maximum((x -> rankmodifiers(string(x)), collect(keys(ranksdict))))
-    maxranks = findall(x->rankmodifiers(string(x[1])) == maxcard, d)
-    sort(d[maxranks], lt=(x,y)->suitmodifiers(string(x[2])) < suitmodifiers(string(y[2])))[end]
-end
-
-function lessthan(card1, card2)
-    if rank(card1) == rank(card2)
-        return suitrank(card1) < suitrank(card2)
-    end
-    rank(card1) < rank(card2)
-end
-
-highestcard(d) = sort(d, lt=lessthan)[end]
-
-isflush(suitsdict) = length(collect(values(suitsdict))) == 1
-
-isstraightflush(ranks, suits) = isstraight(ranks) && isflush(suits)
-
-isfourofakind(ranksdict) = maximum(values(ranksdict)) == 4 ? true : false
-
-isfullhouse(ranksdict) = sort(collect(values(ranksdict))) == [2, 3]
-
-isthreeofakind(ranksdict) = maximum(values(ranksdict)) == 3 && !isfullhouse(ranksdict) ? true : false
-
-istwopair(ranksdict) = sort(collect(values(ranksdict)))[end-1: end] = [2,2]
-
-isonepair(ranksdict) = sort(collect(values(ranksdict)))[end-1: end] = [1,2]
-
-ishighcard(ranks, suits) = maximum(values(ranks)) == 1 && !isflush(suits) && !isstraight(d)
-
-
-
-function scorehand(d)
-    suits = countsuits(d)
-    ranks = countranks(d)
-    if invalid(d)
-        return 0
-    end
-    if     ishighcard(ranks, suits)      return "high-card"
-    elseif isonepair(ranks)              return "one-pair"
-    elseif istwopair(ranks)              return "two-pair"
-    elseif isthreeofakind(ranks)         return "three-of-a-kind"
-    elseif isstraight(ranks)             return "straight"
-    elseif isflush(suits)                return "flush" 
-    elseif isfullhouse(ranksdict)        return "full-house"
-    elseif isfourofakind(ranksdict)      return "four-of-a-kind"
-    elseif isstraightflush(ranks, suits) return "straight-flush"
-    end
-end
-
-    
