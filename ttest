@@ -1,1 +1,68 @@
 
+function string2hidato(str)
+    lines = split(str, "\n")
+    nrows, ncols = length(lines), length(split(lines[1], "\s+"))
+    board = fill(-1, (nrows, div(ncols, 3)))
+    presets = Vector{Int}()    
+    startpos = [0, 0]
+    for (i, line) in enumerate(lines), (j, ch) in enumerate(split(line, "\s+"))
+        if ch[1] == '_' || ch == "0"
+            board[i, j] = 0
+        elseif ch == "."
+            continue
+        else # numeral, get 2 digits
+            board[i, j] = parse(Int, ch)
+            push!(presets, board[i, j])
+            if board[i, j] == 1
+                startpos = [i, j]
+            end
+        end
+    end
+    board, sort!(presets), startpos
+end
+
+const movematrix = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
+possiblestarts(board) = findall(x -> x == 0, board)
+
+function hidatosolve(board, fixed, row, col, sought, next)
+    if sought > fixed[end]
+        return true
+    elseif (board[row, col] != 0 && board[row, col] != sought) || (board[row, col] == 0 && fixed[next] == sought)
+        return false
+    end
+    backnum = 0
+    if board[row, col] == sought
+        backnum = sought
+        next += 1
+    end
+    board[row, col] = sought # try board with this cell set to next number
+    maxrow, maxcol = size(board)
+    for move in movematrix
+        if hidatosolve(board, fixed, row + move[1], col + move[2], sought + 1, next)
+            return true
+        end
+    end
+    board[row, col] = backnum # return board to original state
+    false
+end
+
+function printboard(board)
+    d = Dict(-1 => "   ", 0 => "__ ", -2 => "\n")
+    map(x -> d[x] = rpad(lpad(string(x), 2), 3), 1:maximum(board))
+    println(join([d[i] for i in hcat(board, fill(-2, size(board)[1]))'], ""))
+end
+
+hidat = """
+__ 33 35 __ __  .  .  .
+__ __ 24 22 __  .  .  .
+__ __ __ 21 __ __  .  .
+__ 26 __ 13 40 11  .  .
+27 __ __ __  9 __  1  .
+ .  . __ __ 18 __ __  .
+ .  .  .  . __  7 __ __
+ .  .  .  .  .  .  5 __"""
+
+board, fixed, start = hidatoconfigure(hidat)
+printboard(board)
+hidatosolve(board, fixed, start[1], start[2], 1, 1)
+printboard(board)
