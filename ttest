@@ -128,3 +128,4 @@ printboard(board, " 0", "  ")
 hidatosolve(board, maxmoves, knightmoves, fixed, starts[1][1], starts[1][2], 1, 1)
 printboard(board)
 
+
