@@ -1,31 +1,33 @@
 
-function string2hidato(str)
+module Hidato
+
+export hidatosolve, printboard, hidatoconfigure
+
+function hidatoconfigure(str)
     lines = split(str, "\n")
-    nrows, ncols = length(lines), length(split(lines[1], "\s+"))
-    board = fill(-1, (nrows, div(ncols, 3)))
-    presets = Vector{Int}()    
-    startpos = [0, 0]
-    for (i, line) in enumerate(lines), (j, ch) in enumerate(split(line, "\s+"))
-        if ch[1] == '_' || ch == "0"
+    nrows, ncols = length(lines), length(split(lines[1], r"\s+"))
+    board = fill(-1, (nrows, ncols))
+    presets = Vector{Int}()
+    starts = Vector{CartesianIndex{2}}()
+    for (i, line) in enumerate(lines), (j, s) in enumerate(split(strip(line), r"\s+"))
+        c = s[1]
+        if c == '_' || (c == '0' && length(s) == 1)
             board[i, j] = 0
-        elseif ch == "."
+        elseif c == '.'
             continue
         else # numeral, get 2 digits
-            board[i, j] = parse(Int, ch)
+            board[i, j] = parse(Int, s)
             push!(presets, board[i, j])
             if board[i, j] == 1
-                startpos = [i, j]
+                push!(starts, CartesianIndex(i, j))
             end
         end
     end
-    board, sort!(presets), startpos
+    board, sort!(presets), length(starts) == 1 ? starts : findall(x -> x == 0, board)
 end
 
-const movematrix = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
-possiblestarts(board) = findall(x -> x == 0, board)
-
-function hidatosolve(board, fixed, row, col, sought, next)
-    if sought > fixed[end]
+function hidatosolve(board, movematrix, fixed, row, col, sought, next)
+    if length(fixed) > 0 && sought > fixed[end]
         return true
     elseif (board[row, col] != 0 && board[row, col] != sought) || (board[row, col] == 0 && fixed[next] == sought)
         return false
@@ -36,9 +38,10 @@ function hidatosolve(board, fixed, row, col, sought, next)
         next += 1
     end
     board[row, col] = sought # try board with this cell set to next number
-    maxrow, maxcol = size(board)
     for move in movematrix
-        if hidatosolve(board, fixed, row + move[1], col + move[2], sought + 1, next)
+        i, j = row + move[1], col + move[2]
+        if (0 < i <= size(board)[1]) && (0 < j <= size(board)[2]) && 
+            hidatosolve(board, movematrix, fixed, i, j, sought + 1, next)
             return true
         end
     end
@@ -46,11 +49,15 @@ function hidatosolve(board, fixed, row, col, sought, next)
     false
 end
 
-function printboard(board)
-    d = Dict(-1 => "   ", 0 => "__ ", -2 => "\n")
+function printboard(board, emptysquare= "__ ")
+    d = Dict(-1 => "   ", 0 => emptysquare, -2 => "\n")
     map(x -> d[x] = rpad(lpad(string(x), 2), 3), 1:maximum(board))
     println(join([d[i] for i in hcat(board, fill(-2, size(board)[1]))'], ""))
 end
+
+end
+
+using .Hidato
 
 hidat = """
 __ 33 35 __ __  .  .  .
@@ -62,7 +69,11 @@ __ 26 __ 13 40 11  .  .
  .  .  .  . __  7 __ __
  .  .  .  .  .  .  5 __"""
 
-board, fixed, start = hidatoconfigure(hidat)
+const kingmoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
+
+
+
+board, fixed, starts = hidatoconfigure(hidat)
 printboard(board)
-hidatosolve(board, fixed, start[1], start[2], 1, 1)
+hidatosolve(board, kingmoves, fixed, starts[1][1], starts[1][2], 1, 1)
 printboard(board)
