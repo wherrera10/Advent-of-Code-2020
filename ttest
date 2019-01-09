@@ -1,4 +1,3 @@
-
 module Hidato
 
 export hidatosolve, printboard, hidatoconfigure
@@ -9,10 +8,12 @@ function hidatoconfigure(str)
     board = fill(-1, (nrows, ncols))
     presets = Vector{Int}()
     starts = Vector{CartesianIndex{2}}()
+    maxmoves = 0
     for (i, line) in enumerate(lines), (j, s) in enumerate(split(strip(line), r"\s+"))
         c = s[1]
         if c == '_' || (c == '0' && length(s) == 1)
             board[i, j] = 0
+            maxmoves += 1
         elseif c == '.'
             continue
         else # numeral, get 2 digits
@@ -21,15 +22,16 @@ function hidatoconfigure(str)
             if board[i, j] == 1
                 push!(starts, CartesianIndex(i, j))
             end
+            maxmoves += 1
         end
     end
-    board, sort!(presets), length(starts) == 1 ? starts : findall(x -> x == 0, board)
+    board, maxmoves, sort!(presets), length(starts) == 1 ? starts : findall(x -> x == 0, board)
 end
 
-function hidatosolve(board, movematrix, fixed, row, col, sought, next)
-    if length(fixed) > 0 && sought > fixed[end]
+function hidatosolve(board, maxmoves, movematrix, fixed, row, col, sought, next)
+    if sought > maxmoves
         return true
-    elseif (board[row, col] != 0 && board[row, col] != sought) || (board[row, col] == 0 && fixed[next] == sought)
+    elseif (0 != board[row, col] != sought) || (board[row, col] == 0 && sought in fixed)
         return false
     end
     backnum = 0
@@ -40,8 +42,8 @@ function hidatosolve(board, movematrix, fixed, row, col, sought, next)
     board[row, col] = sought # try board with this cell set to next number
     for move in movematrix
         i, j = row + move[1], col + move[2]
-        if (0 < i <= size(board)[1]) && (0 < j <= size(board)[2]) && 
-            hidatosolve(board, movematrix, fixed, i, j, sought + 1, next)
+        if (0 < i <= size(board)[1]) && (0 < j <= size(board)[2]) &&
+            hidatosolve(board, maxmoves, movematrix, fixed, i, j, sought + 1, next)
             return true
         end
     end
@@ -55,25 +57,6 @@ function printboard(board, emptysquare= "__ ")
     println(join([d[i] for i in hcat(board, fill(-2, size(board)[1]))'], ""))
 end
 
-end
-
-using .Hidato
-
-hidat = """
-__ 33 35 __ __  .  .  .
-__ __ 24 22 __  .  .  .
-__ __ __ 21 __ __  .  .
-__ 26 __ 13 40 11  .  .
-27 __ __ __  9 __  1  .
- .  . __ __ 18 __ __  .
- .  .  .  . __  7 __ __
- .  .  .  .  .  .  5 __"""
-
-const kingmoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
+end  # module
 
 
-
-board, fixed, starts = hidatoconfigure(hidat)
-printboard(board)
-hidatosolve(board, kingmoves, fixed, starts[1][1], starts[1][2], 1, 1)
-printboard(board)
