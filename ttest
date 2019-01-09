@@ -1,3 +1,4 @@
+
 module Hidato
 
 export hidatosolve, printboard, hidatoconfigure
@@ -51,12 +52,79 @@ function hidatosolve(board, maxmoves, movematrix, fixed, row, col, sought, next)
     false
 end
 
-function printboard(board, emptysquare= "__ ")
-    d = Dict(-1 => "   ", 0 => emptysquare, -2 => "\n")
+function printboard(board, emptysquare= "__ ", blocked = "   ")
+    d = Dict(-1 => blocked, 0 => emptysquare, -2 => "\n")
     map(x -> d[x] = rpad(lpad(string(x), 2), 3), 1:maximum(board))
     println(join([d[i] for i in hcat(board, fill(-2, size(board)[1]))'], ""))
 end
 
 end  # module
 
+using .Hidato
+
+hidat = """
+__ 33 35 __ __  .  .  .
+__ __ 24 22 __  .  .  .
+__ __ __ 21 __ __  .  .
+__ 26 __ 13 40 11  .  .
+27 __ __ __  9 __  1  .
+ .  . __ __ 18 __ __  .
+ .  .  .  . __  7 __ __
+ .  .  .  .  .  .  5 __"""
+
+const kingmoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
+
+board, maxmoves, fixed, starts = hidatoconfigure(hidat)
+printboard(board)
+hidatosolve(board, maxmoves, kingmoves, fixed, starts[1][1], starts[1][2], 1, 1)
+printboard(board)
+
+const hopid = """
+ . 0 0 . 0 0 .
+ 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0
+ . 0 0 0 0 0 .
+ . . 0 0 0 . .
+ . . . 0 . . . """
+
+const hopidomoves = [[-3, 0], [0, -3], [-2, -2], [-2, 2], [2, -2], [0, 3], [3, 0], [2, 2]]
+
+board, maxmoves, fixed, starts = hidatoconfigure(hopid)
+printboard(board, " 0", "  ")
+hidatosolve(board, maxmoves, hopidomoves, fixed, starts[1][1], starts[1][2], 1, 1)
+printboard(board)
+
+const chessboard = """
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0
+ 0 0 0 0 0 0 0 0 """
+
+const knightmoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
+
+board, maxmoves, fixed, starts = hidatoconfigure(chessboard)
+printboard(board, " 0", "  ")
+hidatosolve(board, maxmoves, knightmoves, fixed, starts[1][1], starts[1][2], 1, 1)
+printboard(board)
+
+const holyknight = """
+ . 0 0 0 . . . .
+ . 0 . 0 0 . . .
+ . 0 0 0 0 0 0 0
+ 0 0 0 . . 0 . 0
+ 0 . 0 . . 0 0 0
+ 1 0 0 0 0 0 0 .
+ . . 0 0 . 0 . .
+ . . . 0 0 0 . . """
+
+const knightmoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
+
+board, maxmoves, fixed, starts = hidatoconfigure(holyknight)
+printboard(board, " 0", "  ")
+hidatosolve(board, maxmoves, knightmoves, fixed, starts[1][1], starts[1][2], 1, 1)
+printboard(board)
 
