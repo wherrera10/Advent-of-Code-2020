@@ -1,160 +1,117 @@
-module Hidato
- 
-export hidatosolve, printboard, hidatoconfigure
- 
-function hidatoconfigure(str)
-    lines = split(str, "\n")
-    nrows, ncols = length(lines), length(split(lines[1], r"\s+"))
-    board = fill(-1, (nrows, ncols))
-    presets = Vector{Int}()
-    starts = Vector{CartesianIndex{2}}()
-    maxmoves = 0
-    for (i, line) in enumerate(lines), (j, s) in enumerate(split(strip(line), r"\s+"))
-        c = s[1]
-        if c == '_' || (c == '0' && length(s) == 1)
-            board[i, j] = 0
-            maxmoves += 1
-        elseif c == '.'
-            continue
-        else # numeral, get 2 digits
-            board[i, j] = parse(Int, s)
-            push!(presets, board[i, j])
-            if board[i, j] == 1
-                push!(starts, CartesianIndex(i, j))
-            end
-            maxmoves += 1
+using PaddedViews
+
+"""
+    resizematrix
+Copy matrix, perhaps with padding with zeros, to a new sized matrix which is size newsize
+Parameter newsize is an NTuple of the type returned by size(matrix).
+The returned matrix is padded with zeros in parts which exceed the dimensions of
+the old matrix, or is shrunk to the size of a smaller matrix.
+"""
+function resizematrix(mat, newsize)
+    viewsize = Vector{Int}()
+    numdims = length(newsize)
+    @assert(numdims == length(size(mat)))
+    for i in 1:numdims
+        push!(viewsize, max(size(mat)[i], newsize[i]))
+    end
+    
+    if numdims == 1
+        matview = PaddedView(0, mat, (viewsize[1],))
+        a = Array{typeof(mat[1]), 1}(matview[1:newsize[1]])
+    elseif numdims == 2
+        matview = PaddedView(0, mat, (viewsize[1], viewsize[2]))
+        a = Array{typeof(mat[1]), 2}(undef, newsize[1], newsize[2])
+        for i in 1:newsize[1], j in 1:newsize[2]
+            a[i, j] = matview[i, j]
+        end
+    else
+        matview = PaddedView(0, mat, (viewsize[1], viewsize[2], viewsize[3]))
+        a = Array{typeof(mat[1]), 3}(undef, newsize[1], newsize[2], newsize[3])
+        for i in 1:newsize[1], j in 1:newsize[2], k in 1:newsize[3]
+            a[i, j, k] = matview[i, j, k]
         end
     end
-    board, maxmoves, sort!(presets), length(starts) == 1 ? starts : findall(x -> x == 0, board)
+    a
 end
- 
-function hidatosolve(board, maxmoves, movematrix, fixed, row, col, sought)
-    if sought > maxmoves
-        return true
-    elseif (0 != board[row, col] != sought) || (board[row, col] == 0 && sought in fixed)
-        return false
-    end
-    backnum = board[row, col] == sought ? sought : 0
-    board[row, col] = sought # try board with this cell set to next number
-    for move in movematrix
-        i, j = row + move[1], col + move[2]
-        if (0 < i <= size(board)[1]) && (0 < j <= size(board)[2]) &&
-            hidatosolve(board, maxmoves, movematrix, fixed, i, j, sought + 1)
-            return true
-        end
-    end
-    board[row, col] = backnum # return board to original state
-    false
+
+"""
+    deconvmulti
+Deconvolute a nultidimensional array.
+Arguments: matrix for A, matrix for C, and the size expected of B
+Returns: matrix for B
+Use fast Fourier transform and division to calculate the inverse of convolution
+for multidimensional arrays. If, with matrix operations, mat A * mat B = mat C,
+then given C and A we want B. So we need to pad A with 0 to the size of C to
+divide the fft()'s, and because we often will recover a matrix for B that may
+have larger dimensions than B actually should have, the result of ifft2() needs
+to be trimmed down to the size of the correct size of B.
+"""
+function deconvmulti(amat, cmat, bsize)
+    xpandedamat = resizematrix(amat, size(cmat))
+    fftquotient = ifft(fft(cmat) ./ fft(xpandedamat))
+    resizematrix(fftquotient, bsize)
 end
- 
-function printboard(board, emptysquare= "__ ", blocked = "   ")
-    d = Dict(-1 => blocked, 0 => emptysquare, -2 => "\n")
-    map(x -> d[x] = rpad(lpad(string(x), 2), 3), 1:maximum(board))
-    println(join([d[i] for i in hcat(board, fill(-2, size(board)[1]))'], ""))
-end
- 
-end  # module
- 
-using .Hidato
- 
-hidat = """
-__ 33 35 __ __  .  .  .
-__ __ 24 22 __  .  .  .
-__ __ __ 21 __ __  .  .
-__ 26 __ 13 40 11  .  .
-27 __ __ __  9 __  1  .
- .  . __ __ 18 __ __  .
- .  .  .  . __  7 __ __
- .  .  .  .  .  .  5 __"""
- 
-const kingmoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
- 
-board, maxmoves, fixed, starts = hidatoconfigure(hidat)
-printboard(board)
-hidatosolve(board, maxmoves, kingmoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
- 
-
-const hopid = """
- . 0 0 . 0 0 .
- 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0
- . 0 0 0 0 0 .
- . . 0 0 0 . .
- . . . 0 . . . """
-
-const hopidomoves = [[-3, 0], [0, -3], [-2, -2], [-2, 2], [2, -2], [0, 3], [3, 0], [2, 2]]
-
-board, maxmoves, fixed, starts = hidatoconfigure(hopid)
-printboard(board, " 0", "  ")
-hidatosolve(board, maxmoves, hopidomoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
-
-const chessboard = """
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0
- 0 0 0 0 0 0 0 0 """
-
-const knightmoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
-
-board, maxmoves, fixed, starts = hidatoconfigure(chessboard)
-printboard(board, " 0", "  ")
-hidatosolve(board, maxmoves, knightmoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
-
-const holyknight = """
- . 0 0 0 . . . .
- . 0 . 0 0 . . .
- . 0 0 0 0 0 0 0
- 0 0 0 . . 0 . 0
- 0 . 0 . . 0 0 0
- 1 0 0 0 0 0 0 .
- . . 0 0 . 0 . .
- . . . 0 0 0 . . """
-
-const knightmoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
-
-board, maxmoves, fixed, starts = hidatoconfigure(holyknight)
-printboard(board, " 0", "  ")
-hidatosolve(board, maxmoves, knightmoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
 
 
-const numbrix1 = """
- 0  0  0  0  0  0  0  0  0
- 0  0 46 45  0 55 74  0  0
- 0 38  0  0 43  0  0 78  0
- 0 35  0  0  0  0  0 71  0
- 0  0 33  0  0  0 59  0  0
- 0 17  0  0  0  0  0 67  0
- 0 18  0  0 11  0  0 64  0
- 0  0 24 21  0  1  2  0  0
- 0  0  0  0  0  0  0  0  0 """
+# dimension 1
+const h1f =  Array{Float64,1}([-8, 2, -9, -2, 9, -8, -2])
+const f1f = Array{Float64,1}([ 6, -9, -7, -5])
+const g1f = Array{Float64,1}([-48, 84, -16, 95, 125, -70, 7, 29, 54, 10])
 
-const numbrix2 = """
- 0  0  0  0  0  0  0  0  0
- 0 11 12 15 18 21 62 61  0
- 0  6  0  0  0  0  0 60  0
- 0 33  0  0  0  0  0 57  0
- 0 32  0  0  0  0  0 56  0
- 0 37  0  1  0  0  0 73  0
- 0 38  0  0  0  0  0 72  0
- 0 43 44 47 48 51 76 77  0
- 0  0  0  0  0  0  0  0  0 """
+# dimension 2
+h2 = [8  1 -7 -2 -9  4;
+      4  5 -5  2  7 -1;
+     -6 -3 -3 -6  9  5]
+h2f = Array{Float64,2}(reshape(h2, (3,6)))
+f2 = [-5  2 -2 -6 -7;
+       9  7 -6  5 -7;
+       1 -1  9  2 -7;
+       5  9 -9  2 -5;
+      -8  5 -2  8  5]
+f2f = Array{Float64,2}(reshape(f2, (5,5)))
+g2 = [40  -21  53   42  105    1  87   60   39 -28;
+      92  -64  19 -167  -71  -47 128 -109   40 -21;
+      58   85 -93   37  101  -14   5   37  -76 -56;
+     -90 -135  60 -125   68   53 223    4  -36 -48;
+      78   16   7 -199  156 -162  29   28 -103 -10;
+     -62  -89  69  -61   66  193 -61   71   -8 -30;
+      48   -6  21   -9 -150  -22 -56   32   85  25]
+g2f = Array{Float64,2}(reshape(g2, (7,10)))
 
-const numbrixmoves = [[-1, 0], [0, -1], [0, 1], [1, 0]]
+# dimension 3:
+h3 = [[[-6 -8 -5  9],[-7, 9, -6, -8],[ 2 -7  9  8]];
+      [[7  4  4 -6], [ 9  9   4  -4],[-3  7 -2 -3]]]
+h3to1 = [-6, -8, -5, 9, -7, 9, -6, -8, 2, -7, 9, 8, 7, 4, 4, -6, 9, 9, 4, -4, -3, 7, -2, -3]
+h3f = Array{Float64,3}(reshape(h3to1, (4,3,2)))
+f3 = [[[-9, 5, -8], [3, 5, 1]],
+      [[-1, -7, 2], [-5, -6, 6]],
+       [[8, 5, 8],[-2, -6, -4]]]
+f3to1 = [-9, 5, -8, 3, 5, 1, -1, -7, 2, -5, -6, 6, 8, 5, 8, -2, -6, -4]
+f3f = Array{Float64,3}(reshape(f3to1, (3,2,3)))
+g3 = [[[54, 42, 53, -42, 85, -72],
+     [45, -170, 94, -36, 48, 73],
+    [-39, 65, -112, -16, -78, -72],
+      [6, -11, -6, 62, 49, 8]],
+   [[-57, 49, -23, 52, -135, 66],
+    [-23, 127, -58, -5, -118, 64],
+     [87, -16, 121, 23, -41, -12],
+    [-19, 29, 35, -148, -11, 45]],
+   [[-55, -147, -146, -31, 55, 60],
+    [-88, -45, -28, 46, -26, -144],
+    [-12, -107, -34, 150, 249, 66],
+     [11, -15, -34, 27, -78, -50]],
+    [[56, 67, 108, 4, 2, -48],
+     [58, 67, 89, 32, 32, -8],
+    [-42, -31, -103, -30, -23, -8],
+      [6, 4, -26, -10, 26, 12]]]
+g3to1 = [54, 42, 53, -42, 85, -72, 45, -170, 94, -36, 48, 73, -39, 65, -112, -16, -78, -72, 6, -11, -6, 62, 49, 8,
+        -57, 49, -23, 52, -135, 66, -23, 127, -58, -5, -118, 64, 87, -16, 121, 23, -41, -12, -19, 29, 35, -148, -11, 45,
+        -55, -147, -146, -31, 55, 60, -88, -45, -28, 46, -26, -144, -12, -107, -34, 150, 249, 66, 11, -15, -34, 27, -78, -50,
+         56, 67, 108, 4, 2, -48, 58, 67, 89, 32, 32, -8, -42, -31, -103, -30, -23, -8, 6, 4, -26, -10, 26, 12]
+g3f = Array{Float64,3}(reshape(g3to1, (6,4,4)))
 
-board, maxmoves, fixed, starts = hidatoconfigure(numbrix1)
-printboard(board, " 0 ", "   ")
-hidatosolve(board, maxmoves, numbrixmoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
 
-board, maxmoves, fixed, starts = hidatoconfigure(numbrix2)
-printboard(board, " 0 ", "   ")
-hidatosolve(board, maxmoves, numbrixmoves, fixed, starts[1][1], starts[1][2], 1)
-printboard(board)
+println("DIM1:\n$(Array{Int,1}(round.(real(deconvmulti(h1f, g1f, size(f1f))))))\n")
+println("DIM2:\n$(Array{Int,2}(round.(real(deconvmulti(h2f, g2f, size(f2f))))))\n")
+println("DIM3:\n$(Array{Int,3}(round.(real(deconvmulti(h3f, g3f, size(f3f))))))\n")
+
