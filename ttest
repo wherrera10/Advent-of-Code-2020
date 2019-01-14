@@ -149,6 +149,8 @@ const test3txt = raw"""
 /* character literal */  ' '
 """
 
-println()
+println("Line Col        Name        Value")
 for tok in tokenize(test3txt)
-    println(
+    println(lpad(tok.startline, 3), lpad(tok.startcol, 5), lpad(tok.name, 18), "  ", tok.value != nothing ? tok.value : "")
+end
+
