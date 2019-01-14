@@ -1,117 +1,154 @@
-using PaddedViews
-
-"""
-    resizematrix
-Copy matrix, perhaps with padding with zeros, to a new sized matrix which is size newsize
-Parameter newsize is an NTuple of the type returned by size(matrix).
-The returned matrix is padded with zeros in parts which exceed the dimensions of
-the old matrix, or is shrunk to the size of a smaller matrix.
-"""
-function resizematrix(mat, newsize)
-    viewsize = Vector{Int}()
-    numdims = length(newsize)
-    @assert(numdims == length(size(mat)))
-    for i in 1:numdims
-        push!(viewsize, max(size(mat)[i], newsize[i]))
-    end
-    
-    if numdims == 1
-        matview = PaddedView(0, mat, (viewsize[1],))
-        a = Array{typeof(mat[1]), 1}(matview[1:newsize[1]])
-    elseif numdims == 2
-        matview = PaddedView(0, mat, (viewsize[1], viewsize[2]))
-        a = Array{typeof(mat[1]), 2}(undef, newsize[1], newsize[2])
-        for i in 1:newsize[1], j in 1:newsize[2]
-            a[i, j] = matview[i, j]
-        end
-    else
-        matview = PaddedView(0, mat, (viewsize[1], viewsize[2], viewsize[3]))
-        a = Array{typeof(mat[1]), 3}(undef, newsize[1], newsize[2], newsize[3])
-        for i in 1:newsize[1], j in 1:newsize[2], k in 1:newsize[3]
-            a[i, j, k] = matview[i, j, k]
-        end
-    end
-    a
+struct Tokenized
+    startline::Int
+    startcol::Int
+    name::String
+    value::Union{Nothing, Int, String}
 end
 
-"""
-    deconvmulti
-Deconvolute a nultidimensional array.
-Arguments: matrix for A, matrix for C, and the size expected of B
-Returns: matrix for B
-Use fast Fourier transform and division to calculate the inverse of convolution
-for multidimensional arrays. If, with matrix operations, mat A * mat B = mat C,
-then given C and A we want B. So we need to pad A with 0 to the size of C to
-divide the fft()'s, and because we often will recover a matrix for B that may
-have larger dimensions than B actually should have, the result of ifft2() needs
-to be trimmed down to the size of the correct size of B.
-"""
-function deconvmulti(amat, cmat, bsize)
-    xpandedamat = resizematrix(amat, size(cmat))
-    fftquotient = ifft(fft(cmat) ./ fft(xpandedamat))
-    resizematrix(fftquotient, bsize)
+const optokens = Dict("*" => "Op_multiply", "/" => "Op_divide", "%" => "Op_mod", "+" => "Op_add",
+                      "-" => "Op_subtract", "!" => "Op_not", "<" => "Op_less", "<=" => "Op_lessequal",
+                      ">" => "Op_greater", ">=" => "Op_greaterequal", "==" => "Op_equal", "!=" => "Op_notequal",
+                      "!" => "Op_not", "=" => "Op_assign", "&&" => "Op_and", "||" => "Op_or")
+
+const keywordtokens = Dict("if" => "Keyword_if", "else" => "Keyword_else", "while" => "Keyword_while",
+                           "print" => "Keyword_print", "putc" => "Keyword_putc")
+
+const symboltokens = Dict("(" => "LeftParen", ")" => "RightParen", "[" => "LeftBrace",
+                          "]" => "RightBrace", ";" => "Semicolon", "," => "Comma")
+
+const errors = ["Empty character constant.", "Unknown escape sequence.", "Multi-character constant.",
+                "End-of-file in comment. Closing comment characters not found.",
+                "End-of-file while scanning string literal. Closing string character not found.",
+                "End-of-line while scanning string literal. Closing string character not found before end-of-line.",
+                "Unrecognized character.", "Invalid number. Starts like a number, but ends in non-numeric characters."]
+
+asws(s) = " " ^ length(s)
+comment2ws(t) = (while occursin("/*", t) t = replace(t, r"\/\* .+? (?: \*\/)"xs => asws; count = 1) end; t)
+hasinvalidescapes(t) = ((m = match(r"\\.", t)) != nothing && m.match != "\\\\" && m.match != "\\n")
+hasemptycharconstant(t) = (match(r"\'\'", t) != nothing)
+hasmulticharconstant(t) = ((m = match(r"\'[^\'][^\']+\'", t)) != nothing && m.match != "\'\\\\\'" && m.match != "\'\\n\'")
+hasunbalancedquotes(t) = isodd(length(findall(x -> x == '\"', t)))
+hasunrecognizedchar(t) = match(r"[^\w\s\d\*\/\%\+\-\<\>\=\!\&\|\(\)\{\}\;\,\"\'\\]", t) != nothing
+
+function throwiferror(line, n)
+    if hasemptycharconstant(line)
+        throw("Tokenizer error line $n: " * errors[1])
+    end
+    if hasinvalidescapes(line)
+        throw("Tokenizer error line $n: " * errors[2])
+    end
+    if hasmulticharconstant(line)
+    println("error at ", match(r"\'[^\'][^\']+\'", line).match)
+        throw("Tokenizer error line $n: " * errors[3])
+    end
+    if occursin("/*", line)
+        throw("Tokenizer error line $n: " * errors[4])
+    end
+    if hasunrecognizedchar(line)
+        throw("Tokenizer error line $n: " * errors[7])
+    end
 end
 
+function tokenize(txt)
+    tokens = Vector{Tokenized}()
+    txt = comment2ws(txt)
+    lines = split(txt, "\n")
+    if hasunbalancedquotes(txt)
+        throw("Tokenizer error: $(errors[5])")
+    end
+    for (startline, line) in enumerate(lines)
+        if strip(line) == ""
+            continue
+        end
+        throwiferror(line, startline)
+        lastc = Char(0)
+        withintoken = 0
+        for (startcol, c) in enumerate(line)
+            if withintoken > 0
+                withintoken -= 1
+                continue
+            elseif isspace(c[1])
+                continue
+            elseif (c == '=') && (length(line) > startcol) && ((c2 = line[startcol + 1]) in ['<', '>', '=', '!'])
+                    push!(tokens, Tokenized(startline, startcol, optokens[c * c2], nothing))
+                    withintoken = 1
+            elseif (c == '&') || (c == '|')
+                if length(line) > startcol && line[startcol + 1] == c
+                    push!(tokens, Tokenized(startline, startcol, optokens[c * c], nothing))
+                    withintoken = 1
+                else
+                    throw("Tokenizer error line $startline: $(error[7])")
+                end
+            elseif (c == '-') && ((length(filter(x -> x.startline == startline, tokens)) < 1) ||
+                                  (tokens[end].name in collect(values(optokens))))
+                    push!(tokens, Tokenized(startline, startcol, "Op_negate", nothing))
+            elseif haskey(optokens, c)
+                push!(tokens, Tokenized(startline, startcol, optokens[c], nothing))
+            elseif haskey(symboltokens, c)
+                push!(tokens, Tokenized(startline, startcol, symboltokens[c], nothing))
+            elseif isdigit(c)
+                integerstring = match(r"^\d+", line[startcol:end]).match
+                i = parse(Int, integerstring)
+                push!(tokens, Tokenized(startline, startcol, "Integer", i))
+                withintoken = length(integerstring) - 1
+            elseif c == Char(39)  # single quote
+                if (m = match(r"([^\\\'\n]|\\n|\\\\)\'", line[startcol+1:end])) != nothing
+                    chs = m.captures[1]
+                    i = chs[1] == "\\" ? (chs[2] == 'n' ? Int('\n') : Int('\\')) : Int(chs[1])
+                    push!(tokens, Tokenized(startline, startcol, "Integer", i))
+                    withintoken = length(chs) + 1
+                else
+                    println("line $startline: bad match with ", line[startcol+1:end])
+                end
+            elseif c == Char(34)  # double quote
+                if (m = match(r"([^\"\n]+)\"", line[startcol+1:end])) == nothing
+                    throw("Tokenizer error line $startline: " * errors[6])
+                end
+                litstring = m.captures[1]
+                push!(tokens, Tokenized(startline, startcol, "String", string(litstring)))
+                withintoken = length(litstring) + 1
+            elseif (cols = findfirst(r"[a-zA-Z]+", line[startcol:end])) != nothing
+                litstring = line[cols]
+                if haskey(keywordtokens, litstring)
+                    push!(tokens, Tokenized(startline, startcol, keywordtokens[litstring], nothing))
+                else
+                    litstring = match(r"[_a-zA-Z0-9]+", line[startcol:end]).match
+                    push!(tokens, Tokenized(startline, startcol, "Identifier", string(litstring)))
+                end
+                withintoken = length(litstring) - 1
+            end
+            lastc = c
+        end
+    end
+    push!(tokens, Tokenized(length(lines), length(lines[end]), "End_of_input", nothing))
+    tokens
+end
 
-# dimension 1
-const h1f =  Array{Float64,1}([-8, 2, -9, -2, 9, -8, -2])
-const f1f = Array{Float64,1}([ 6, -9, -7, -5])
-const g1f = Array{Float64,1}([-48, 84, -16, 95, 125, -70, 7, 29, 54, 10])
+const test3txt = raw"""
+/*
+  All lexical tokens - not syntactically correct, but that will
+  have to wait until syntax analysis
+ */
+/* Print   */  print    /* Sub     */  -
+/* Putc    */  putc     /* Lss     */  <
+/* If      */  if       /* Gtr     */  >
+/* Else    */  else     /* Leq     */  <=
+/* While   */  while    /* Geq     */  >=
+/* Lbrace  */  {        /* Eq      */  ==
+/* Rbrace  */  }        /* Neq     */  !=
+/* Lparen  */  (        /* And     */  &&
+/* Rparen  */  )        /* Or      */  ||
+/* Uminus  */  -        /* Semi    */  ;
+/* Not     */  !        /* Comma   */  ,
+/* Mul     */  *        /* Assign  */  =
+/* Div     */  /        /* Integer */  42
+/* Mod     */  %        /* String  */  "String literal"
+/* Add     */  +        /* Ident   */  variable_name
+/* character literal */  '\n'
+/* character literal */  '\\'
+/* character literal */  ' '
+"""
 
-# dimension 2
-h2 = [8  1 -7 -2 -9  4;
-      4  5 -5  2  7 -1;
-     -6 -3 -3 -6  9  5]
-h2f = Array{Float64,2}(reshape(h2, (3,6)))
-f2 = [-5  2 -2 -6 -7;
-       9  7 -6  5 -7;
-       1 -1  9  2 -7;
-       5  9 -9  2 -5;
-      -8  5 -2  8  5]
-f2f = Array{Float64,2}(reshape(f2, (5,5)))
-g2 = [40  -21  53   42  105    1  87   60   39 -28;
-      92  -64  19 -167  -71  -47 128 -109   40 -21;
-      58   85 -93   37  101  -14   5   37  -76 -56;
-     -90 -135  60 -125   68   53 223    4  -36 -48;
-      78   16   7 -199  156 -162  29   28 -103 -10;
-     -62  -89  69  -61   66  193 -61   71   -8 -30;
-      48   -6  21   -9 -150  -22 -56   32   85  25]
-g2f = Array{Float64,2}(reshape(g2, (7,10)))
-
-# dimension 3:
-h3 = [[[-6 -8 -5  9],[-7, 9, -6, -8],[ 2 -7  9  8]];
-      [[7  4  4 -6], [ 9  9   4  -4],[-3  7 -2 -3]]]
-h3to1 = [-6, -8, -5, 9, -7, 9, -6, -8, 2, -7, 9, 8, 7, 4, 4, -6, 9, 9, 4, -4, -3, 7, -2, -3]
-h3f = Array{Float64,3}(reshape(h3to1, (4,3,2)))
-f3 = [[[-9, 5, -8], [3, 5, 1]],
-      [[-1, -7, 2], [-5, -6, 6]],
-       [[8, 5, 8],[-2, -6, -4]]]
-f3to1 = [-9, 5, -8, 3, 5, 1, -1, -7, 2, -5, -6, 6, 8, 5, 8, -2, -6, -4]
-f3f = Array{Float64,3}(reshape(f3to1, (3,2,3)))
-g3 = [[[54, 42, 53, -42, 85, -72],
-     [45, -170, 94, -36, 48, 73],
-    [-39, 65, -112, -16, -78, -72],
-      [6, -11, -6, 62, 49, 8]],
-   [[-57, 49, -23, 52, -135, 66],
-    [-23, 127, -58, -5, -118, 64],
-     [87, -16, 121, 23, -41, -12],
-    [-19, 29, 35, -148, -11, 45]],
-   [[-55, -147, -146, -31, 55, 60],
-    [-88, -45, -28, 46, -26, -144],
-    [-12, -107, -34, 150, 249, 66],
-     [11, -15, -34, 27, -78, -50]],
-    [[56, 67, 108, 4, 2, -48],
-     [58, 67, 89, 32, 32, -8],
-    [-42, -31, -103, -30, -23, -8],
-      [6, 4, -26, -10, 26, 12]]]
-g3to1 = [54, 42, 53, -42, 85, -72, 45, -170, 94, -36, 48, 73, -39, 65, -112, -16, -78, -72, 6, -11, -6, 62, 49, 8,
-        -57, 49, -23, 52, -135, 66, -23, 127, -58, -5, -118, 64, 87, -16, 121, 23, -41, -12, -19, 29, 35, -148, -11, 45,
-        -55, -147, -146, -31, 55, 60, -88, -45, -28, 46, -26, -144, -12, -107, -34, 150, 249, 66, 11, -15, -34, 27, -78, -50,
-         56, 67, 108, 4, 2, -48, 58, 67, 89, 32, 32, -8, -42, -31, -103, -30, -23, -8, 6, 4, -26, -10, 26, 12]
-g3f = Array{Float64,3}(reshape(g3to1, (6,4,4)))
-
-
-println("DIM1:\n$(Array{Int,1}(round.(real(deconvmulti(h1f, g1f, size(f1f))))))\n")
-println("DIM2:\n$(Array{Int,2}(round.(real(deconvmulti(h2f, g2f, size(f2f))))))\n")
-println("DIM3:\n$(Array{Int,3}(round.(real(deconvmulti(h3f, g3f, size(f3f))))))\n")
-
+println()
+for tok in tokenize(test3txt)
+    println(
