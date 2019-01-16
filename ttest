@@ -1,156 +1,98 @@
-struct Tokenized
-    startline::Int
-    startcol::Int
-    name::String
-    value::Union{Nothing, Int, String}
-end
+# {{trans|Go}}
 
-const optokens = Dict("*" => "Op_multiply", "/" => "Op_divide", "%" => "Op_mod", "+" => "Op_add",
-                      "-" => "Op_subtract", "!" => "Op_not", "<" => "Op_less", "<=" => "Op_lessequal",
-                      ">" => "Op_greater", ">=" => "Op_greaterequal", "==" => "Op_equal", "!=" => "Op_notequal",
-                      "!" => "Op_not", "=" => "Op_assign", "&&" => "Op_and", "||" => "Op_or")
-
-const keywordtokens = Dict("if" => "Keyword_if", "else" => "Keyword_else", "while" => "Keyword_while",
-                           "print" => "Keyword_print", "putc" => "Keyword_putc")
-
-const symboltokens = Dict("(" => "LeftParen", ")" => "RightParen", "[" => "LeftBrace",
-                          "]" => "RightBrace", ";" => "Semicolon", "," => "Comma")
-
-const errors = ["Empty character constant.", "Unknown escape sequence.", "Multi-character constant.",
-                "End-of-file in comment. Closing comment characters not found.",
-                "End-of-file while scanning string literal. Closing string character not found.",
-                "End-of-line while scanning string literal. Closing string character not found before end-of-line.",
-                "Unrecognized character.", "Invalid number. Starts like a number, but ends in non-numeric characters."]
-
-asws(s) = " " ^ length(s)
-comment2ws(t) = (while occursin("/*", t) t = replace(t, r"\/\* .+? (?: \*\/)"xs => asws; count = 1) end; t)
-hasinvalidescapes(t) = ((m = match(r"\\.", t)) != nothing && m.match != "\\\\" && m.match != "\\n")
-hasemptycharconstant(t) = (match(r"\'\'", t) != nothing)
-hasmulticharconstant(t) = ((m = match(r"\'[^\'][^\']+\'", t)) != nothing && m.match != "\'\\\\\'" && m.match != "\'\\n\'")
-hasunbalancedquotes(t) = isodd(length(findall(x -> x == '\"', t)))
-hasunrecognizedchar(t) = match(r"[^\w\s\d\*\/\%\+\-\<\>\=\!\&\|\(\)\{\}\;\,\"\'\\]", t) != nothing
-
-function throwiferror(line, n)
-    if hasemptycharconstant(line)
-        throw("Tokenizer error line $n: " * errors[1])
-    end
-    if hasinvalidescapes(line)
-        throw("Tokenizer error line $n: " * errors[2])
-    end
-    if hasmulticharconstant(line)
-    println("error at ", match(r"\'[^\'][^\']+\'", line).match)
-        throw("Tokenizer error line $n: " * errors[3])
-    end
-    if occursin("/*", line)
-        throw("Tokenizer error line $n: " * errors[4])
-    end
-    if hasunrecognizedchar(line)
-        throw("Tokenizer error line $n: " * errors[7])
-    end
-end
-
-function tokenize(txt)
-    tokens = Vector{Tokenized}()
-    txt = comment2ws(txt)
-    lines = split(txt, "\n")
-    if hasunbalancedquotes(txt)
-        throw("Tokenizer error: $(errors[5])")
-    end
-    for (startline, line) in enumerate(lines)
-        if strip(line) == ""
-            continue
+function factorialbase(size, makelist)
+    listlist = Vector{Vector{Int}}()
+    n = 0
+    while true
+        divisor = 2
+        makelist && (lis = zeros(Int, size))
+        k = n
+        while k > 0
+            k, r = divrem(k, divisor)
+            makelist && (divisor <= size + 1) && (lis[size - divisor + 2] = r)
+            divisor += 1
         end
-        throwiferror(line, startline)
-        lastc = Char(0)
-        withintoken = 0
-        for (startcol, c) in enumerate(line)
-            if withintoken > 0
-                withintoken -= 1
+        if divisor > size + 2
+            break
+        end
+        n += 1
+        makelist && push!(listlist, lis)
+    end
+    return n, listlist
+end
+
+function maptoperms(factnums)
+    perms = Vector{Vector{Int}}()
+    psize = length(factnums[1]) + 1
+    start = [i for i in 0:psize-1]
+    for fn in factnums
+        perm = deepcopy(start)
+        for m in 1:length(fn)
+            g = fn[m]
+            if g == 0
                 continue
-            elseif isspace(c[1])
-                continue
-            elseif (c == '=') && (length(line) > startcol) && ((c2 = line[startcol + 1]) in ['<', '>', '=', '!'])
-                    push!(tokens, Tokenized(startline, startcol, optokens[c * c2], nothing))
-                    withintoken = 1
-            elseif (c == '&') || (c == '|')
-                if length(line) > startcol && line[startcol + 1] == c
-                    push!(tokens, Tokenized(startline, startcol, optokens[c * c], nothing))
-                    withintoken = 1
-                else
-                    throw("Tokenizer error line $startline: $(error[7])")
-                end
-            elseif (c == '-') && ((length(filter(x -> x.startline == startline, tokens)) < 1) ||
-                                  (tokens[end].name in collect(values(optokens))))
-                    push!(tokens, Tokenized(startline, startcol, "Op_negate", nothing))
-            elseif haskey(optokens, c)
-                push!(tokens, Tokenized(startline, startcol, optokens[c], nothing))
-            elseif haskey(symboltokens, c)
-                push!(tokens, Tokenized(startline, startcol, symboltokens[c], nothing))
-            elseif isdigit(c)
-                integerstring = match(r"^\d+", line[startcol:end]).match
-                i = parse(Int, integerstring)
-                push!(tokens, Tokenized(startline, startcol, "Integer", i))
-                withintoken = length(integerstring) - 1
-            elseif c == Char(39)  # single quote
-                if (m = match(r"([^\\\'\n]|\\n|\\\\)\'", line[startcol+1:end])) != nothing
-                    chs = m.captures[1]
-                    i = chs[1] == "\\" ? (chs[2] == 'n' ? Int('\n') : Int('\\')) : Int(chs[1])
-                    push!(tokens, Tokenized(startline, startcol, "Integer", i))
-                    withintoken = length(chs) + 1
-                else
-                    println("line $startline: bad match with ", line[startcol+1:end])
-                end
-            elseif c == Char(34)  # double quote
-                if (m = match(r"([^\"\n]+)\"", line[startcol+1:end])) == nothing
-                    throw("Tokenizer error line $startline: " * errors[6])
-                end
-                litstring = m.captures[1]
-                push!(tokens, Tokenized(startline, startcol, "String", string(litstring)))
-                withintoken = length(litstring) + 1
-            elseif (cols = findfirst(r"[a-zA-Z]+", line[startcol:end])) != nothing
-                litstring = line[cols]
-                if haskey(keywordtokens, litstring)
-                    push!(tokens, Tokenized(startline, startcol, keywordtokens[litstring], nothing))
-                else
-                    litstring = match(r"[_a-zA-Z0-9]+", line[startcol:end]).match
-                    push!(tokens, Tokenized(startline, startcol, "Identifier", string(litstring)))
-                end
-                withintoken = length(litstring) - 1
             end
-            lastc = c
+            first = m
+            last = m + g
+            for i in 1:g
+                temp = perm[first]
+                for j in first:last-1
+                    perm[j] = perm[j+1]
+                end
+                perm[last] = temp
+            end
+        end
+        push!(perms, perm)
+    end
+    perms
+end
+
+ijoin(ints, sep) = join([string(i) for i in ints], sep)
+undot(s) = [parse(Int, s) for s in split(s, ".")]
+
+function factbasenums()
+    count, factnums = factorialbase(3, true)
+    perms = maptoperms(factnums)
+    for (i, fn) = enumerate(factnums)
+        println("$(join(fn, ".")) -> $(join(perms[i], ""))\n")
+    end
+
+    count, _ = factorialbase(10, false)
+    println("\nPermutations generated = $count")
+    println("compared to 11! which  = $(factorial(11))\n")
+
+    fbn51s = [
+        "39.49.7.47.29.30.2.12.10.3.29.37.33.17.12.31.29.34.17.25.2.4.25.4.1.14.20.6.21.18.1.1.1.4.0.5.15.12.4.3.10.10.9.1.6.5.5.3.0.0.0",
+        "51.48.16.22.3.0.19.34.29.1.36.30.12.32.12.29.30.26.14.21.8.12.1.3.10.4.7.17.6.21.8.12.15.15.13.15.7.3.12.11.9.5.5.6.6.3.4.0.3.2.1"]
+
+    factnums = vcat(undot(fbn51s[1]), undot(fbn51s[2]))
+    perms = maptoperms(factnums)
+    shoe = raw"A♠K♠Q♠J♠T♠9♠8♠7♠6♠5♠4♠3♠2♠A♥K♥Q♥J♥T♥9♥8♥7♥6♥5♥4♥3♥2♥A♦K♦Q♦J♦T♦9♦8♦7♦6♦5♦4♦3♦2♦A♣K♣Q♣J♣T♣9♣8♣7♣6♣5♣4♣3♣2♣"
+    cards = Vector{String}(52)
+
+    for i in 0:51
+        cards[i+1] = string(shoe[2*i+1:2*i+2])
+        if cards[i+1][1] == 'T'
+            cards[i+1] = "10" * cards[i+1][2]
         end
     end
-    push!(tokens, Tokenized(length(lines), length(lines[end]), "End_of_input", nothing))
-    tokens
+
+    for (i, fbn51) in enumerate(fbn51s)
+        println(fbn51)
+        for d in perms[i]
+            print(cards[d])
+        end
+        println("\n")
+    end
+
+    fbn51 = [shuffle(1:52-i)[1] for i in 1:51]
+    println(join(string.(fbn51), "."))
+
+    perms = maptoperms(fbn51)
+    for d in perms[1]
+        print(cards[d])
+    end
+    println()
 end
 
-const test3txt = raw"""
-/*
-  All lexical tokens - not syntactically correct, but that will
-  have to wait until syntax analysis
- */
-/* Print   */  print    /* Sub     */  -
-/* Putc    */  putc     /* Lss     */  <
-/* If      */  if       /* Gtr     */  >
-/* Else    */  else     /* Leq     */  <=
-/* While   */  while    /* Geq     */  >=
-/* Lbrace  */  {        /* Eq      */  ==
-/* Rbrace  */  }        /* Neq     */  !=
-/* Lparen  */  (        /* And     */  &&
-/* Rparen  */  )        /* Or      */  ||
-/* Uminus  */  -        /* Semi    */  ;
-/* Not     */  !        /* Comma   */  ,
-/* Mul     */  *        /* Assign  */  =
-/* Div     */  /        /* Integer */  42
-/* Mod     */  %        /* String  */  "String literal"
-/* Add     */  +        /* Ident   */  variable_name
-/* character literal */  '\n'
-/* character literal */  '\\'
-/* character literal */  ' '
-"""
-
-println("Line Col        Name        Value")
-for tok in tokenize(test3txt)
-    println(lpad(tok.startline, 3), lpad(tok.startcol, 5), lpad(tok.name, 18), "  ", tok.value != nothing ? tok.value : "")
-end
-
+factbasenums()
