@@ -1,73 +1,46 @@
 
-function makefactorialbased(N, makelist)
-    listlist = Vector{Vector{Int}}()
-    count = 0
-    while true
-        divisor = 2
-        makelist && (lis = zeros(Int, N))
-        k = count
-        while k > 0
-            k, r = divrem(k, divisor)
-            makelist && (divisor <= N + 1) && (lis[N - divisor + 2] = r)
-            divisor += 1
-        end
-        if divisor > N + 2
-            break
-        end
-        count += 1
-        makelist && push!(listlist, lis)
-    end
-    return count, listlist
+using Gtk, Colors
+
+const offset = 50
+const hgt = 450
+const wid = 500
+
+win = GtkWindow("Honeycombs", hgt, wid)
+grid = GtkGrid()
+# add grid of buttons? how to alternate 1/2 space columns?
+
+
+function hexmat(p, rad)
+    shor = rad * 0.5
+    long = rad * sqrt(3.0) / 2.0
+    mat = [long, shor, shor, long, -shor, long, -long, shor, -long, -shor, -shor, -long, -long, shor, -shor, long]
+    reshape(mat, 2, 6)
+    mat[1, :] .+ p.x
+    mat[2, :] .+ p.y
+    [Point(mat[1, n], mat[2, n]) for n in 1:6]
 end
 
-function facmap(factnumbase)
-    perm = [i for i in 0:length(factnumbase)]
-    for (n, g) in enumerate(factnumbase)
-        if g != 0
-            perm[n:n + g] .= circshift(perm[n:n + g], 1)
-        end
+function honeycomb(ctx, almatrix, h, w)
+    centers = fill(Point(0, 0), 5, 4)
+    xdelta = 150
+    ydelta = 100
+    rw, cl = size(almatrix)
+    for i in cl, j in rw
+        center = Point((cl - 1) * xdelta + offset, (rw - 1) * ydelta + ((rw - 1 ) % 2 + 1) * offset)
+        centers[rw, cl] = center
+        hexagon(ctx, center, offset, almatrix[rw, cl])
     end
-    perm
+    # put a button as a rectangle inside each hexagon of size offset * sqrt(2) with text from almatrix
+    centers
 end
 
-makerandfacbase(ndig) = [rand(collect(0:i)) for i in ndig:-1:1]
-
-function factbasenums()
-    count, factnums = makefactorialbased(3, true)
-    perms = map(facmap, factnums)
-    for (i, fn) = enumerate(factnums)
-        println("$(join(string.(fn), ".")) -> $(join(string(perms[i]), ""))")
-    end
-
-    count, _ = makefactorialbased(10, false)
-    println("\nPermutations generated = $count")
-    println("compared to 11! which  = $(factorial(11))\n")
-
-    fac51digits = map(s -> [parse(Int, s) for s in split(s, ".")], [
-        "39.49.7.47.29.30.2.12.10.3.29.37.33.17.12.31.29.34.17.25.2.4.25.4.1.14.20.6.21.18.1.1.1.4.0.5.15.12.4.3.10.10.9.1.6.5.5.3.0.0.0",
-        "51.48.16.22.3.0.19.34.29.1.36.30.12.32.12.29.30.26.14.21.8.12.1.3.10.4.7.17.6.21.8.12.15.15.13.15.7.3.12.11.9.5.5.6.6.3.4.0.3.2.1"])
-    perms = map(facmap, fac51digits)
-
-    cardshoe = "A♠K♠Q♠J♠T♠9♠8♠7♠6♠5♠4♠3♠2♠A♥K♥Q♥J♥T♥9♥8♥7♥6♥5♥4♥3♥2♥A♦K♦Q♦J♦T♦9♦8♦7♦6♦5♦4♦3♦2♦A♣K♣Q♣J♣T♣9♣8♣7♣6♣5♣4♣3♣2♣"
-    carr = split(cardshoe, "")
-    cards = map(x->join(x, ""),[carr[2*i+1] == 'T' ? 
-                               ["10", carr[i+1][2]] : [carr[2*i+1], carr[2*i+2]] for i in 0:51])
-    
-    for ordering in perms
-        println(ordering)
-        for i in 1:length(ordering)
-            print(cards[ordering[i] + 1])
-        end
-        println("\n")
-    end
-
-    myrandorder = makerandfacbase(51)
-    perm = facmap(myrandorder)
-    println(join(string.(myrandorder), "."))
-    for i in 1:length(perm)
-        print(cards[perm[i] + 1])
-    end
-    println()
+function hexagon(pos, rad, ltr)
+    setcolor(colorant"black")
+    polygon(ctx, hexmat(pos, rad))
+    setcolor(colorant"red")
+    textcentered(ltr, pos.x, pos.y)
 end
 
-factbasenums()
+const randletters = reshape(shuffle(collect(UInt8('A'):UInt8('Z')))[1:20], (5, 4))
+
+
