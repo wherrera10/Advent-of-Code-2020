@@ -1,96 +1,71 @@
-# {{trans|Go}}
 
-function factorialbase(size, makelist)
+function makefactorialbased(N, makelist)
     listlist = Vector{Vector{Int}}()
-    n = 0
+    count = 0
     while true
         divisor = 2
-        makelist && (lis = zeros(Int, size))
-        k = n
+        makelist && (lis = zeros(Int, N))
+        k = count
         while k > 0
             k, r = divrem(k, divisor)
-            makelist && (divisor <= size + 1) && (lis[size - divisor + 2] = r)
+            makelist && (divisor <= N + 1) && (lis[N - divisor + 2] = r)
             divisor += 1
         end
-        if divisor > size + 2
+        if divisor > N + 2
             break
         end
-        n += 1
+        count += 1
         makelist && push!(listlist, lis)
     end
-    return n, listlist
+    return count, listlist
 end
 
-function maptoperms(factnums)
-    perms = Vector{Vector{Int}}()
-    psize = length(factnums[1]) + 1
-    start = [i for i in 0:psize-1]
-    for fn in factnums
-        perm = deepcopy(start)
-        for m in 1:length(fn)
-            g = fn[m]
-            if g == 0
-                continue
-            end
-            first = m
-            last = m + g
-            for i in 1:g
-                temp = perm[first]
-                for j in first:last-1
-                    perm[j] = perm[j+1]
-                end
-                perm[last] = temp
-            end
+function facmap(factnumbase)
+    perm = [i for i in 0:length(factnumbase)]
+    for (n, g) in enumerate(factnumbase)
+        if g != 0
+            perm[n:n + g] .= circshift(perm[n:n + g], 1)
         end
-        push!(perms, perm)
     end
-    perms
+    perm
 end
 
-ijoin(ints, sep) = join([string(i) for i in ints], sep)
-undot(s) = [parse(Int, s) for s in split(s, ".")]
+makerandfacbase(ndig) = [rand(collect(0:i)) for i in ndig:-1:1]
 
 function factbasenums()
-    count, factnums = factorialbase(3, true)
-    perms = maptoperms(factnums)
+    count, factnums = makefactorialbased(3, true)
+    perms = map(facmap, factnums)
     for (i, fn) = enumerate(factnums)
-        println("$(join(fn, ".")) -> $(join(perms[i], ""))\n")
+        println("$(join(string.(fn), ".")) -> $(join(string(perms[i]), ""))")
     end
 
-    count, _ = factorialbase(10, false)
+    count, _ = makefactorialbased(10, false)
     println("\nPermutations generated = $count")
     println("compared to 11! which  = $(factorial(11))\n")
 
-    fbn51s = [
+    fac51digits = map(s -> [parse(Int, s) for s in split(s, ".")], [
         "39.49.7.47.29.30.2.12.10.3.29.37.33.17.12.31.29.34.17.25.2.4.25.4.1.14.20.6.21.18.1.1.1.4.0.5.15.12.4.3.10.10.9.1.6.5.5.3.0.0.0",
-        "51.48.16.22.3.0.19.34.29.1.36.30.12.32.12.29.30.26.14.21.8.12.1.3.10.4.7.17.6.21.8.12.15.15.13.15.7.3.12.11.9.5.5.6.6.3.4.0.3.2.1"]
+        "51.48.16.22.3.0.19.34.29.1.36.30.12.32.12.29.30.26.14.21.8.12.1.3.10.4.7.17.6.21.8.12.15.15.13.15.7.3.12.11.9.5.5.6.6.3.4.0.3.2.1"])
+    perms = map(facmap, fac51digits)
 
-    factnums = vcat(undot(fbn51s[1]), undot(fbn51s[2]))
-    perms = maptoperms(factnums)
-    shoe = raw"A♠K♠Q♠J♠T♠9♠8♠7♠6♠5♠4♠3♠2♠A♥K♥Q♥J♥T♥9♥8♥7♥6♥5♥4♥3♥2♥A♦K♦Q♦J♦T♦9♦8♦7♦6♦5♦4♦3♦2♦A♣K♣Q♣J♣T♣9♣8♣7♣6♣5♣4♣3♣2♣"
-    cards = Vector{String}(52)
-
-    for i in 0:51
-        cards[i+1] = string(shoe[2*i+1:2*i+2])
-        if cards[i+1][1] == 'T'
-            cards[i+1] = "10" * cards[i+1][2]
-        end
-    end
-
-    for (i, fbn51) in enumerate(fbn51s)
-        println(fbn51)
-        for d in perms[i]
-            print(cards[d])
+    cardshoe = "A♠K♠Q♠J♠T♠9♠8♠7♠6♠5♠4♠3♠2♠A♥K♥Q♥J♥T♥9♥8♥7♥6♥5♥4♥3♥2♥A♦K♦Q♦J♦T♦9♦8♦7♦6♦5♦4♦3♦2♦A♣K♣Q♣J♣T♣9♣8♣7♣6♣5♣4♣3♣2♣"
+    carr = split(cardshoe, "")
+    cards = map(x->join(x, ""),[carr[2*i+1] == 'T' ? 
+                               ["10", carr[i+1][2]] : [carr[2*i+1], carr[2*i+2]] for i in 0:51])
+    
+    for ordering in perms
+        println(ordering)
+        for i in 1:length(ordering)
+            print(cards[ordering[i] + 1])
         end
         println("\n")
     end
 
-    fbn51 = [shuffle(1:52-i)[1] for i in 1:51]
-    println(join(string.(fbn51), "."))
-
-    perms = maptoperms(fbn51)
-    for d in perms[1]
-        print(cards[d])
+    myrandorder = makerandfacbase(51)
+    perm = facmap(myrandorder)
+    println(join(string.(myrandorder), "."))
+    for i in 1:length(perm)
+        print(cards[perm[i] + 1])
     end
     println()
 end
