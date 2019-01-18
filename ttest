@@ -1,14 +1,25 @@
-
 using Gtk, Colors
 
 const offset = 50
 const hgt = 450
 const wid = 500
+const randletters = reshape(shuffle(collect(UInt8('A'):UInt8('Z')))[1:20], (5, 4))
+const win = GtkWindow("Honeycombs", hgt, wid)
 
-win = GtkWindow("Honeycombs", hgt, wid)
-grid = GtkGrid()
-# add grid of buttons? how to alternate 1/2 space columns?
+condition = Condition()
+endit(w) = notify(condition)
+signal_connect(endit, win, :destroy)
+showall(win)
+wait(condition)
 
+mutable struct Hexagon
+    center::Point
+    radius::Int
+    color::Colorant
+    widg::Button
+end
+
+const honeycomb = Dict{Point, Hexagon}()
 
 function hexmat(p, rad)
     shor = rad * 0.5
@@ -20,7 +31,7 @@ function hexmat(p, rad)
     [Point(mat[1, n], mat[2, n]) for n in 1:6]
 end
 
-function honeycomb(ctx, almatrix, h, w)
+function makehoneycomb(ctx, almatrix, h, w)
     centers = fill(Point(0, 0), 5, 4)
     xdelta = 150
     ydelta = 100
@@ -28,19 +39,38 @@ function honeycomb(ctx, almatrix, h, w)
     for i in cl, j in rw
         center = Point((cl - 1) * xdelta + offset, (rw - 1) * ydelta + ((rw - 1 ) % 2 + 1) * offset)
         centers[rw, cl] = center
-        hexagon(ctx, center, offset, almatrix[rw, cl])
+        h = hexagon(ctx, center, offset, almatrix[rw, cl])
+        honeycomb[center] = h
     end
-    # put a button as a rectangle inside each hexagon of size offset * sqrt(2) with text from almatrix
     centers
 end
 
-function hexagon(pos, rad, ltr)
+function hexagon(ctx, pos, rad, ltr, colr = colorant"red")
     setcolor(colorant"black")
     polygon(ctx, hexmat(pos, rad))
-    setcolor(colorant"red")
-    textcentered(ltr, pos.x, pos.y)
+    setcolor(colr)
+    # put a button as a rectangle inside each hexagon of size offset * sqrt(2) with text from almatrix
+    but = Button(ltr)
+    # set buttton to switch color on click
+    return Hexagon(pos, rad, colr, but)
 end
 
-const randletters = reshape(shuffle(collect(UInt8('A'):UInt8('Z')))[1:20], (5, 4))
+function inhexagon(pos, center, rad)
+    distance = sqrt((pos.x - center.x)^2 + (pos.y - center.y)^2)
+    if distance <= rad
+        testx = testy = -1  # test point always outside pentagon
+        varr = hexmat(center, rad)
+        crossing = false
+        for i in 1:6
+            j = i == 1 ? 6: i -1
+            if testx < (varr[j].x - varr[i].x) * (testy - varr[i].y) /
+                       (varr[j].y - varr[i].y + varr[i].x)
+                crossing = !crossing
+            end
+        end
+        return crossing
+    end
+    false
+end
 
 
