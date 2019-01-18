@@ -1,76 +1,17 @@
-using Gtk, Colors
+public static int main (string[] args) {
+	// Create a context:
+	Cairo.ImageSurface surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, 180, 40);
+	Cairo.Context context = new Cairo.Context (surface);
 
-const offset = 50
-const hgt = 450
-const wid = 500
-const randletters = reshape(shuffle(collect(UInt8('A'):UInt8('Z')))[1:20], (5, 4))
-const win = GtkWindow("Honeycombs", hgt, wid)
+	// Text:
+	context.set_source_rgb (0.1, 0.1, 0.1); 
+	context.select_font_face ("Adventure", Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+	context.set_font_size (20);
+	context.move_to (20, 30);
+	context.show_text ("Indiana Jones");  
 
-condition = Condition()
-endit(w) = notify(condition)
-signal_connect(endit, win, :destroy)
-showall(win)
-wait(condition)
+	// Save the image:
+	surface.write_to_png ("img.png");
 
-mutable struct Hexagon
-    center::Point
-    radius::Int
-    color::Colorant
-    widg::Button
-end
-
-const honeycomb = Dict{Point, Hexagon}()
-
-function hexmat(p, rad)
-    shor = rad * 0.5
-    long = rad * sqrt(3.0) / 2.0
-    mat = [long, shor, shor, long, -shor, long, -long, shor, -long, -shor, -shor, -long, -long, shor, -shor, long]
-    reshape(mat, 2, 6)
-    mat[1, :] .+ p.x
-    mat[2, :] .+ p.y
-    [Point(mat[1, n], mat[2, n]) for n in 1:6]
-end
-
-function makehoneycomb(ctx, almatrix, h, w)
-    centers = fill(Point(0, 0), 5, 4)
-    xdelta = 150
-    ydelta = 100
-    rw, cl = size(almatrix)
-    for i in cl, j in rw
-        center = Point((cl - 1) * xdelta + offset, (rw - 1) * ydelta + ((rw - 1 ) % 2 + 1) * offset)
-        centers[rw, cl] = center
-        h = hexagon(ctx, center, offset, almatrix[rw, cl])
-        honeycomb[center] = h
-    end
-    centers
-end
-
-function hexagon(ctx, pos, rad, ltr, colr = colorant"red")
-    setcolor(colorant"black")
-    polygon(ctx, hexmat(pos, rad))
-    setcolor(colr)
-    # put a button as a rectangle inside each hexagon of size offset * sqrt(2) with text from almatrix
-    but = Button(ltr)
-    # set buttton to switch color on click
-    return Hexagon(pos, rad, colr, but)
-end
-
-function inhexagon(pos, center, rad)
-    distance = sqrt((pos.x - center.x)^2 + (pos.y - center.y)^2)
-    if distance <= rad
-        testx = testy = -1  # test point always outside pentagon
-        varr = hexmat(center, rad)
-        crossing = false
-        for i in 1:6
-            j = i == 1 ? 6: i -1
-            if testx < (varr[j].x - varr[i].x) * (testy - varr[i].y) /
-                       (varr[j].y - varr[i].y + varr[i].x)
-                crossing = !crossing
-            end
-        end
-        return crossing
-    end
-    false
-end
-
-
+	return 0;
+}
