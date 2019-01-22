@@ -1,17 +1,17 @@
-public static int main (string[] args) {
-	// Create a context:
-	Cairo.ImageSurface surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, 180, 40);
-	Cairo.Context context = new Cairo.Context (surface);
 
-	// Text:
-	context.set_source_rgb (0.1, 0.1, 0.1); 
-	context.select_font_face ("Adventure", Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
-	context.set_font_size (20);
-	context.move_to (20, 30);
-	context.show_text ("Indiana Jones");  
+function vmrun(io)
+    header = readline(io)
+    [datasize, strings] = match(r"\w+:\s*(\d+)\s+\w+:\s*(\d+)", header).captures
+    print("$datasize $strings")
+    strings = Vector{String}()
+    for i in 1:parse(Int, strings)
+        line = replace(strip(readline(io), ['"', '\n']), r"\\." => x -> x[end] == 'n' ? "\n" : string(x[end]))
+        push(strings, line)
+    end
+    
+    while !eof(io)
+        line = strip(readline(io)
+        offset, op, arg1, arg2 = match(r"(\d+)\s+(\w+)\s*(\S+)?\s*(\S+)?", line).captures
+    end
+end
 
-	// Save the image:
-	surface.write_to_png ("img.png");
-
-	return 0;
-}
