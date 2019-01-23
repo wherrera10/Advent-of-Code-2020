@@ -1,33 +1,40 @@
+const data = Vector{Int32}()
+const stack = Vector{Int32}()
+const code = Vector{UInt8}()
+
+value() = (x = pc; pc += 4; reinterpret(UIn32, code[x:x+3])[1])
 tobool(x::Bool) = x
 tobool(x) = (x != 0)
 
-value() = (x = pc; pc += 4; reinterpret(Uint8, binary[x:pc])[1])
+halt, add, sub, mul, Div, mod, not, neg, and, or, lt, gt, le, ge, ne, eq, prts,
+    prti, prtc, store, Fetch, push, jmp, jz = UInt8.(collect(1:24))
 
-ops = Dict(
-    "halt"  => () -> exit(),
-    "add"   => () -> begin stack[end-1] += stack[end]; pop!(stack); stack[end] end,
-    "sub"   => () -> begin stack[end-1] -= stack[end]; pop!(stack); stack[end] end,
-    "mul"   => () -> begin stack[end-1] *= stack[end]; pop!(stack); stack[end] end,
-    "div"   => () -> begin stack[end-1] /= stack[end]; pop!(stack); stack[end] end,
-    "mod"   => () -> begin stack[end-1] %= stack[1]; pop!(stack); stack[end] end,
-    "not"   => () -> stack[end] = stack[end] ? 0 : 1,
-    "neg"   => () -> stack[end] = -stack[end],
-    "and"   => () -> begin stack[end-1] = tobool(stack[end-1]) && tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
-    "or"    => () -> begin stack[end-1] = tobool(stack[end-1]) || tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
-    "lt"    => () -> begin x = (stack[end-1] < stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "gt"    => () -> begin x = (stack[end-1] > stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "le"    => () -> begin x = (stack[end-1] <= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "ge"    => () -> begin x = (stack[end-1] >= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "ne"    => () -> begin x = (stack[end-1] != stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "eq"    => () -> begin x = (stack[end-1] == stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
-    "prts"  => () -> print(strings[pop!(stack)),
-    "prti"  => () -> print(pop!(stack),
-    "prtc"  => () -> print(Char(pop!(stack))),
-    "store" => () -> data[value()] = pop!(stack),
-    "fetch" => () -> if haskey(data, value()) push!(stack, data[value()]) else push!(stack, 0),
-    "push"  => () -> push(stack, value()),
-    "jmp"   => () -> pc += value() - 4,
-    "jz"    => sub { (pc += pop(stack)) != 0 ? 4 : value() - 4,
+const ops = Dict(
+    halt  => () -> exit(),
+    add   => () -> begin stack[end-1] += stack[end]; pop!(stack); stack[end] end,
+    sub   => () -> begin stack[end-1] -= stack[end]; pop!(stack); stack[end] end,
+    mul   => () -> begin stack[end-1] *= stack[end]; pop!(stack); stack[end] end,
+    Div   => () -> begin stack[end-1] /= stack[end]; pop!(stack); stack[end] end,
+    mod   => () -> begin stack[end-1] %= stack[1]; pop!(stack); stack[end] end,
+    not   => () -> stack[end] = stack[end] ? 0 : 1,
+    neg   => () -> stack[end] = -stack[end],
+    and   => () -> begin stack[end-1] = tobool(stack[end-1]) && tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
+    or    => () -> begin stack[end-1] = tobool(stack[end-1]) || tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
+    lt    => () -> begin x = (stack[end-1] < stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    gt    => () -> begin x = (stack[end-1] > stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    le    => () -> begin x = (stack[end-1] <= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    ge    => () -> begin x = (stack[end-1] >= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    ne    => () -> begin x = (stack[end-1] != stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    eq    => () -> begin x = (stack[end-1] == stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    prts  => () -> print(strings[pop!(stack)),
+    prti  => () -> print(pop!(stack),
+    prtc  => () -> print(Char(pop!(stack))),
+    store => () -> data[value()] = pop!(stack),
+    Fetch => () -> if haskey(data, value()) push!(stack, data[value()]) else push!(stack, 0),
+    push  => () -> push(stack, value()),
+    jmp   => () -> pc += value(),
+    jz    => () -> x = pop!(stack); if x == 0 pc += value() + 4)
+
 
 
 function vmrun(io)
@@ -42,8 +49,19 @@ function vmrun(io)
     end
 
     while !eof(io)
-        line = strip(readline(io)
+        line = strip(readline(io))
+    println("processing $line")
         offset, op, arg1, arg2 = match(r"(\d+)\s+(\w+)\s*(\S+)?\s*(\S+)?", line).captures
+        push!(code, eval(Symbol(op)))
+        if arg1 != nothing
+            v = parse(Int32, strip(arg1, ['[', ']', '(', ')']))
+            foreach(x -> push!(code, x), reinterpret(UInt8, v))
+        end
     end
+
+    #RUN THE CODE IN VM
+
+
+
 end
 
