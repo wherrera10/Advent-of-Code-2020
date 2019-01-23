@@ -1,5 +1,37 @@
+tobool(x::Bool) = x
+tobool(x) = (x != 0)
+
+value() = (x = pc; pc += 4; reinterpret(Uint8, binary[x:pc])[1])
+
+ops = Dict(
+    "halt"  => () -> exit(),
+    "add"   => () -> begin stack[end-1] += stack[end]; pop!(stack); stack[end] end,
+    "sub"   => () -> begin stack[end-1] -= stack[end]; pop!(stack); stack[end] end,
+    "mul"   => () -> begin stack[end-1] *= stack[end]; pop!(stack); stack[end] end,
+    "div"   => () -> begin stack[end-1] /= stack[end]; pop!(stack); stack[end] end,
+    "mod"   => () -> begin stack[end-1] %= stack[1]; pop!(stack); stack[end] end,
+    "not"   => () -> stack[end] = stack[end] ? 0 : 1,
+    "neg"   => () -> stack[end] = -stack[end],
+    "and"   => () -> begin stack[end-1] = tobool(stack[end-1]) && tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
+    "or"    => () -> begin stack[end-1] = tobool(stack[end-1]) || tobool($stack[end]) ? 1 : 0; pop!(stack); stack[end] end,
+    "lt"    => () -> begin x = (stack[end-1] < stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "gt"    => () -> begin x = (stack[end-1] > stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "le"    => () -> begin x = (stack[end-1] <= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "ge"    => () -> begin x = (stack[end-1] >= stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "ne"    => () -> begin x = (stack[end-1] != stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "eq"    => () -> begin x = (stack[end-1] == stack[end] ? 1 : 0); pop!(stack); stack[end] = x end,
+    "prts"  => () -> print(strings[pop!(stack)),
+    "prti"  => () -> print(pop!(stack),
+    "prtc"  => () -> print(Char(pop!(stack))),
+    "store" => () -> data[value()] = pop!(stack),
+    "fetch" => () -> if haskey(data, value()) push!(stack, data[value()]) else push!(stack, 0),
+    "push"  => () -> push(stack, value()),
+    "jmp"   => () -> pc += value() - 4,
+    "jz"    => sub { (pc += pop(stack)) != 0 ? 4 : value() - 4,
+
 
 function vmrun(io)
+    stack = Vector{UInt32}()
     header = readline(io)
     [datasize, strings] = match(r"\w+:\s*(\d+)\s+\w+:\s*(\d+)", header).captures
     print("$datasize $strings")
@@ -8,7 +40,7 @@ function vmrun(io)
         line = replace(strip(readline(io), ['"', '\n']), r"\\." => x -> x[end] == 'n' ? "\n" : string(x[end]))
         push(strings, line)
     end
-    
+
     while !eof(io)
         line = strip(readline(io)
         offset, op, arg1, arg2 = match(r"(\d+)\s+(\w+)\s*(\S+)?\s*(\S+)?", line).captures
