@@ -1,19 +1,67 @@
-Module WumpusGame {
-      Print "Game: Hunt The Wumpus"
-      Arrows=5
-      Dim Room(1 to 20)
-      Room(1)=(2,6,5),(3,8,1),(4,10,2),(5,2,3),(1,14,4)
-      Room(6)=(15,1,7),(17,6,8),(7,2,9),(18,8,10),(9,3,11)
-      Room(11)=(19,10,12),(11,4,13),(20,12,14),(5,11,13), (6,16,14)
-      Room(16)=(20,15,17),(16,7,18),(17,9,19),(18,11,20),(19,13,16)
-      Enum Things {EmptyRoom, Bat1, Bat2, Pit1, Pit2, Wumpus}
-      Dim Content(1 to 20)=EmptyRoom
-      i=each(Things,2)  ' from 2 to End
-      While i {
-            r=random(1,20)
-            if Content(r)<>EmptyRoom then restart
-            Content(r)=Eval(i)
-      }
+const starttxt = """
+
+     ATTENTION ALL WUMPUS LOVERS!!!
+     THERE ARE NOW TWO ADDITIONS TO THE WUMPUS FAMILY
+     OF PROGRAMS.
+ 
+      WUMP2:  SOME DIFFERENT CAVE ARRANGEMENTS
+      WUMP3:  DIFFERENT HAZARDS
+      
+"""
+ 
+const helptxt = """
+     WELCOME TO 'HUNT THE WUMPUS'
+      THE WUMPUS LIVES IN A CAVE OF 20 ROOMS. EACH ROOM
+     HAS 3 TUNNELS LEADING TO OTHER ROOMS. (LOOK AT A
+     DODECAHEDRON TO SEE HOW THIS WORKS-IF YOU DON'T KNOW
+     WHAT A DODECAHEDRON IS, ASK SOMEONE)
+ 
+         HAZARDS:
+     BOTTOMLESS PITS - TWO ROOMS HAVE BOTTOMLESS PITS IN THEM
+         IF YOU GO THERE, YOU FALL INTO THE PIT (& LOSE!)
+     SUPER BATS - TWO OTHER ROOMS HAVE SUPER BATS. IF YOU
+         GO THERE, A BAT GRABS YOU AND TAKES YOU TO SOME OTHER
+         ROOM AT RANDOM. (WHICH MIGHT BE TROUBLESOME)
+ 
+         WUMPUS:
+     THE WUMPUS IS NOT BOTHERED BY THE HAZARDS (HE HAS SUCKER
+     FEET AND IS TOO BIG FOR A BAT TO LIFT).  USUALLY
+     HE IS ASLEEP. TWO THINGS WAKE HIM UP: YOUR ENTERING
+     HIS ROOM OR YOUR SHOOTING AN ARROW.
+         IF THE WUMPUS WAKES, HE MOVES (P=.75) ONE ROOM
+     OR STAYS STILL (P=.25). AFTER THAT, IF HE IS WHERE YOU
+     ARE, HE EATS YOU UP (& YOU LOSE!)
+ 
+         YOU:
+     EACH TURN YOU MAY MOVE OR SHOOT A CROOKED ARROW
+       MOVING: YOU CAN GO ONE ROOM (THRU ONE TUNNEL)
+       ARROWS: YOU HAVE 5 ARROWS. YOU LOSE WHEN YOU RUN OUT.
+       EACH ARROW CAN GO FROM 1 TO 5 ROOMS. YOU AIM BY TELLING
+       THE COMPUTER THE ROOM#S YOU WANT THE ARROW TO GO TO.
+       IF THE ARROW CAN'T GO THAT WAY (IE NO TUNNEL) IT MOVES
+       AT RANDOM TO THE NEXT ROOM.
+         IF THE ARROW HITS THE WUMPUS, YOU WIN.
+         IF THE ARROW HITS YOU, YOU LOSE.
+ 
+        WARNINGS:
+        WHEN YOU ARE ONE ROOM AWAY FROM WUMPUS OR HAZARD,
+        THE COMPUTER SAYS:
+     WUMPUS-  'I SMELL A WUMPUS'
+     BAT   -  'BATS NEARBY'
+     PIT   -  'I FEEL A DRAFT'
+ """
+
+function wumpushunt()
+      println(starttxt, helptxt)
+      arrows = 5
+      rooms = Vector{Vector{Int}}()
+      push!(rooms, [2,6,5], [3,8,1], [4,10,2], [5,2,3], [1,14,4], [15,1,7],
+        [17,6,8], [7,2,9], [18,8,10], [9,3,11], [19,10,12], [11,4,13],
+        [20,12,14], [5,11,13], [6,16,14], [20,15,17], [16,7,18],
+        [17,9,19], [18,11,20], [19,13,16])
+      roomcontents = shuffle(push!(fill("Empty", 15), "Bat", "Bat", "Pit", "Pit", "Wumpus"))
+      randnextroom(room) = rand(rooms[room])
+      newplayerroom(cr, range = 40) = (for i in 1:range) cr = randnextroom(cr) end; cr)
       WumpusPos=r
       PlayerPos=-1
       TranspotPlayer()
