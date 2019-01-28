@@ -1,3 +1,164 @@
 
+const dirs = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]]
+const nrows    = 10
+const ncols    = nrows
+const gridsize = nrows * ncols
+const minwords = 25
+const filename = "linux.words"
+
+re1 = Regex("^[a-z]{3,$nrows}\$")
+re2 = Regex("[^A-Z]")
+
+mutable struct LetterGrid
+    nattempts::Int
+    nrows::Int
+    ncols::Int
+    cells::Matrix{Char}
+    solutions::Vector{String}
+    LetterGrid() = new(0, nrows, ncols, fill("", nrows, ncols), Vector{String}())
+end
+
+function readwords(filnam)
+    words = Vector{String}
+    fp = open(filnam, "r")
+    while !eof(filnam)
+        push(words, lowercase(strip(readline(fp))))
+    end
+    close(fp)
+    words
+end
+
+function wordmatrix(words)
+    n = 100
+    for i in 1:n
+        grid = LetterGrid()
+        messagelen = placemessage(grid, "Rosetta Code")
+        target = grid.nrows * grid.ncols - messagelen
+        cellsfilled = 0
+        shuffle!(words)
+        for word in words
+            cellsfilled += gr.tryplaceword(word)
+            if cellsfilled == target
+                if length(grid.solutions) >= minwords
+                    grid.nattempts = i
+                    return grid
+                else
+                    break
+                end
+            end
+        end
+    end
+    throw("Failed to place words after n attempts")
+end
+
+function placemessage(mat, msg)
+    msg = uppercase(msg)
+    msg = replace(msg, r"[^A-Z]" => "")
+    messagelen = length(msg)
+    if messagelen > 0 && messagelen < gridsize
+        gapsize = div(gridsize, messagelen)
+        for i in 0:messagelen-1
+            pos = i * gapsize + rand(1:gapsize)
+            grid.cells[div(pos, ncols)][pos % ncols] = msg[i]
+        }
+        return messageLen
+    }
+    return 0
+}
+
+function tryplaceword(mat, word)
+    randDir := rand.Intn(len(dirs))
+    randPos := rand.Intn(gridSize)
+    for dir := 0; dir < len(dirs); dir++ {
+        dir = (dir + randDir) % len(dirs)
+        for pos := 0; pos < gridSize; pos++ {
+            pos = (pos + randPos) % gridSize
+            lettersPlaced := gr.tryLocation(word, dir, pos)
+            if lettersPlaced > 0 {
+                return lettersPlaced
+            }
+        }
+    }
+    return 0
+}
+
+func (gr *grid) tryLocation(word string, dir, pos int) int {
+    r := pos / nCols
+    c := pos % nCols
+    le := len(word)
+
+    // check bounds
+    if (dirs[dir][0] == 1 && (le+c) > nCols) ||
+        (dirs[dir][0] == -1 && (le-1) > c) ||
+        (dirs[dir][1] == 1 && (le+r) > nRows) ||
+        (dirs[dir][1] == -1 && (le-1) > r) {
+        return 0
+    }
+    overlaps := 0
+
+    // check cells
+    rr := r
+    cc := c
+    for i := 0; i < le; i++ {
+        if gr.cells[rr][cc] != 0 && gr.cells[rr][cc] != word[i] {
+            return 0
+        }
+        cc += dirs[dir][0]
+        rr += dirs[dir][1]
+    }
+
+    // place
+    rr = r
+    cc = c
+    for i := 0; i < le; i++ {
+        if gr.cells[rr][cc] == word[i] {
+            overlaps++
+        } else {
+            gr.cells[rr][cc] = word[i]
+        }
+        if i < le-1 {
+            cc += dirs[dir][0]
+            rr += dirs[dir][1]
+        }
+    }
+
+    lettersPlaced := le - overlaps
+    if lettersPlaced > 0 {
+        sol := fmt.Sprintf("%-10s (%d,%d)(%d,%d)", word, c, r, cc, rr)
+        gr.solutions = append(gr.solutions, sol)
+    }
+    return lettersPlaced
+}
+
+func printResult(gr *grid) {
+    if gr.numAttempts == 0 {
+        fmt.Println("No grid to display")
+        return
+    }
+    size := len(gr.solutions)
+    fmt.Println("Attempts:", gr.numAttempts)
+    fmt.Println("Number of words:", size)
+    fmt.Println("\n     0  1  2  3  4  5  6  7  8  9")
+    for r := 0; r < nRows; r++ {
+        fmt.Printf("\n%d   ", r)
+        for c := 0; c < nCols; c++ {
+            fmt.Printf(" %c ", gr.cells[r][c])
+        }
+    }
+    fmt.Println("\n")
+    for i := 0; i < size-1; i += 2 {
+        fmt.Printf("%s   %s\n", gr.solutions[i], gr.solutions[i+1])
+    }
+    if size%2 == 1 {
+        fmt.Println(gr.solutions[size-1])
+    }
+}
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+    unixDictPath := "/usr/share/dict/words"
+    printResult(createWordSearch(readWords(unixDictPath)))
+}
+
  
  
