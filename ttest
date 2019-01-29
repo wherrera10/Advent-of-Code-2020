@@ -1,5 +1,5 @@
 
-const dirs = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]]
+const stepdirections = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]]
 const nrows    = 10
 const ncols    = nrows
 const gridsize = nrows * ncols
@@ -37,7 +37,7 @@ function wordmatrix(words)
         cellsfilled = 0
         shuffle!(words)
         for word in words
-            cellsfilled += gr.tryplaceword(word)
+            cellsfilled += tryplaceword(grid, word)
             if cellsfilled == target
                 if length(grid.solutions) >= minwords
                     grid.nattempts = i
@@ -56,23 +56,21 @@ function placemessage(mat, msg)
     msg = replace(msg, r"[^A-Z]" => "")
     messagelen = length(msg)
     if messagelen > 0 && messagelen < gridsize
-        gapsize = div(gridsize, messagelen)
-        for i in 0:messagelen-1
-            pos = i * gapsize + rand(1:gapsize)
-            grid.cells[div(pos, ncols)][pos % ncols] = msg[i]
-        }
+        positions = Int.(floor.(LinRange(messagelen, gridsize, messagelen) .+
+                     (rand(messagelen) .- 0.5) * messagelen / 3)) .- div(messagelen, 3)
+        foreach(i -> mat[positions[i]] = msg[i], 1:messagelen)
         return messageLen
-    }
+    end
     return 0
-}
+end
 
 function tryplaceword(mat, word)
-    randDir := rand.Intn(len(dirs))
-    randPos := rand.Intn(gridSize)
-    for dir := 0; dir < len(dirs); dir++ {
-        dir = (dir + randDir) % len(dirs)
-        for pos := 0; pos < gridSize; pos++ {
-            pos = (pos + randPos) % gridSize
+    randdir = rand(1:length(stepdirections))
+    randpos = rand(1:gridsize)
+    for dir in 0:length(stepdirections)- 1
+        dir = (dir .+  randdir) .% length(stepdirections)
+        for pos in 0:gridsize-1
+            pos = (pos + randpos) % gridsize
             lettersPlaced := gr.tryLocation(word, dir, pos)
             if lettersPlaced > 0 {
                 return lettersPlaced
@@ -160,5 +158,5 @@ func main() {
     printResult(createWordSearch(readWords(unixDictPath)))
 }
 
- 
+
  
