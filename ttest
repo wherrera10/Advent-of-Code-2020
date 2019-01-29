@@ -4,10 +4,6 @@ const nrows    = 10
 const ncols    = nrows
 const gridsize = nrows * ncols
 const minwords = 25
-const filename = "linux.words"
-
-re1 = Regex("^[a-z]{3,$nrows}\$")
-re2 = Regex("[^A-Z]")
 
 mutable struct LetterGrid
     nattempts::Int
@@ -15,20 +11,11 @@ mutable struct LetterGrid
     ncols::Int
     cells::Matrix{Char}
     solutions::Vector{String}
-    LetterGrid() = new(0, nrows, ncols, fill("", nrows, ncols), Vector{String}())
+    LetterGrid() = new(0, nrows, ncols, fill(' ', nrows, ncols), Vector{String}())
 end
 
-function readwords(filnam)
-    words = Vector{String}
-    fp = open(filnam, "r")
-    while !eof(filnam)
-        push(words, lowercase(strip(readline(fp))))
-    end
-    close(fp)
-    words
-end
-
-function wordmatrix(words)
+function wordmatrix(filename)
+    words = [lowercase(line) for line in readlines(filename) if match(r"^[a-zA-Z]+$", line) != nothing]
     n = 100
     for i in 1:n
         grid = LetterGrid()
@@ -51,112 +38,102 @@ function wordmatrix(words)
     throw("Failed to place words after n attempts")
 end
 
-function placemessage(mat, msg)
+function placemessage(grid, msg)
     msg = uppercase(msg)
     msg = replace(msg, r"[^A-Z]" => "")
     messagelen = length(msg)
     if messagelen > 0 && messagelen < gridsize
         positions = Int.(floor.(LinRange(messagelen, gridsize, messagelen) .+
                      (rand(messagelen) .- 0.5) * messagelen / 3)) .- div(messagelen, 3)
-        foreach(i -> mat[positions[i]] = msg[i], 1:messagelen)
-        return messageLen
+        foreach(i -> grid.cells[positions[i]] = msg[i], 1:messagelen)
+        return messagelen
     end
     return 0
 end
 
-function tryplaceword(mat, word)
-    randdir = rand(1:length(stepdirections))
+function tryplaceword(grid, word)
+    dlen = length(stepdirections)
+    randdir = rand(1:dlen)
     randpos = rand(1:gridsize)
-    for dir in 0:length(stepdirections)- 1
-        dir = (dir .+  randdir) .% length(stepdirections)
-        for pos in 0:gridsize-1
-            pos = (pos + randpos) % gridsize
-            lettersPlaced := gr.tryLocation(word, dir, pos)
-            if lettersPlaced > 0 {
-                return lettersPlaced
-            }
-        }
-    }
+    for dir in 1:dlen
+        dir = dir + randdir > dlen ? dir + randdir - dlen : dir + randdir
+        for pos in 1:gridsize
+            pos = pos + randpos > gridsize ? pos + randpos - gridsize : pos + randpos
+            lettersplaced = trylocation(grid, word, dir, pos)
+            if lettersplaced > 0
+                return lettersplaced
+            end
+        end
+    end
     return 0
-}
+end
 
-func (gr *grid) tryLocation(word string, dir, pos int) int {
-    r := pos / nCols
-    c := pos % nCols
-    le := len(word)
-
-    // check bounds
-    if (dirs[dir][0] == 1 && (le+c) > nCols) ||
-        (dirs[dir][0] == -1 && (le-1) > c) ||
-        (dirs[dir][1] == 1 && (le+r) > nRows) ||
-        (dirs[dir][1] == -1 && (le-1) > r) {
+function trylocation(grid, word, dir, pos)
+    r, c = divrem(pos, ncols)
+    len = length(word)
+    if  (stepdirections[dir][1] == 1 && (len + c) > ncols) || 
+        (stepdirections[dir][1] == -1 && (len - 1) > c) ||
+        (stepdirections[dir][2] == 1 && (len + r) > nrows) ||
+        (stepdirections[dir][2] == -1 && (len - 1) > r)
         return 0
-    }
-    overlaps := 0
-
-    // check cells
-    rr := r
-    cc := c
-    for i := 0; i < le; i++ {
-        if gr.cells[rr][cc] != 0 && gr.cells[rr][cc] != word[i] {
+    end
+    overlaps = 0
+    rr = r + 1
+    if rr > nrows rr = nrows end
+    cc = c + 1
+    if cc > ncols cc = ncols end
+    for i in 1:len-1
+        if grid.cells[rr, cc] != 0 && grid.cells[rr, cc] != word[i]
             return 0
-        }
-        cc += dirs[dir][0]
-        rr += dirs[dir][1]
-    }
+        end
+        cc += stepdirections[dir][1]
+        if cc > ncols cc = ncols end
+        rr += stepdirections[dir][2]
+        if rr > nrows rr = nrows end
+    end
+    rr = r + 1
+    if rr > nrows rr = nrows end
+    cc = c + 1
+    if cc > ncols cc = ncols end
+    for i in 1:len
+        if grid.cells[rr, cc] == word[i]
+            overlaps += 1
+        else
+            grid.cells[rr, cc] = word[i]
+        end
+        if i < len - 1
+            cc += stepdirections[dir][1]
+            rr += stepdirections[dir][2]
+        end
+    end
 
-    // place
-    rr = r
-    cc = c
-    for i := 0; i < le; i++ {
-        if gr.cells[rr][cc] == word[i] {
-            overlaps++
-        } else {
-            gr.cells[rr][cc] = word[i]
-        }
-        if i < le-1 {
-            cc += dirs[dir][0]
-            rr += dirs[dir][1]
-        }
-    }
+    lettersplaced = len - overlaps
+    if lettersplaced > 0
+        push!(grid.solutions, lpad(word, 10) * " ($c, $r)($cc,$rr)")
+    end
+    return lettersplaced
+end
 
-    lettersPlaced := le - overlaps
-    if lettersPlaced > 0 {
-        sol := fmt.Sprintf("%-10s (%d,%d)(%d,%d)", word, c, r, cc, rr)
-        gr.solutions = append(gr.solutions, sol)
-    }
-    return lettersPlaced
-}
-
-func printResult(gr *grid) {
-    if gr.numAttempts == 0 {
-        fmt.Println("No grid to display")
+function printresult(grid)
+    if grid.nattempts == 0
+        println("No grid to display: no solution found.")
         return
-    }
-    size := len(gr.solutions)
-    fmt.Println("Attempts:", gr.numAttempts)
-    fmt.Println("Number of words:", size)
-    fmt.Println("\n     0  1  2  3  4  5  6  7  8  9")
-    for r := 0; r < nRows; r++ {
-        fmt.Printf("\n%d   ", r)
-        for c := 0; c < nCols; c++ {
-            fmt.Printf(" %c ", gr.cells[r][c])
-        }
-    }
-    fmt.Println("\n")
-    for i := 0; i < size-1; i += 2 {
-        fmt.Printf("%s   %s\n", gr.solutions[i], gr.solutions[i+1])
-    }
-    if size%2 == 1 {
-        fmt.Println(gr.solutions[size-1])
-    }
-}
+    end
+    size = length(grid.solutions)
+    println("Attempts: ", grid.nattempts)
+    println("Number of words: ", size)
+    println("\n     0  1  2  3  4  5  6  7  8  9")
+    for r in 1:nrows
+        print("\n$r   ")
+        for c in 1:ncols
+            print(" $(grid.cells[r, c]) ")
+        end
+    end
+    println()
+    for i in 1:2:size
+        println("$(grid.solutions[i])   $(i < size ? grid.solutions[i+1] : "")")
+    end
+end
 
-func main() {
-    rand.Seed(time.Now().UnixNano())
-    unixDictPath := "/usr/share/dict/words"
-    printResult(createWordSearch(readWords(unixDictPath)))
-}
+printresult(wordmatrix("words.txt"))
 
-
- 
