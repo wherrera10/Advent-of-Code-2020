@@ -16,9 +16,9 @@ mutable struct LetterGrid
     LetterGrid() = new(0, nrows, ncols, fill(' ', nrows, ncols), Vector{String}())
 end
 
-function wordmatrix(filename)
+function wordmatrix(filename, usepropernames = true)
     words = [lowercase(line) for line in readlines(filename)
-        if match(r"^[a-zA-Z]+$", line) != nothing && 
+        if match(r"^[a-zA-Z]+$", line) != nothing && (usepropernames || match(r"^[a-z]$", line) != nothing)
             length(line) >= minwordsize && length(line) <= ncols]
     n = 100
     for i in 1:n
