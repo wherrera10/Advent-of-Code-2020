@@ -1,9 +1,11 @@
+using Random
 
 const stepdirections = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]]
 const nrows    = 10
 const ncols    = nrows
 const gridsize = nrows * ncols
 const minwords = 25
+const minwordsize = 3
 
 mutable struct LetterGrid
     nattempts::Int
@@ -15,7 +17,9 @@ mutable struct LetterGrid
 end
 
 function wordmatrix(filename)
-    words = [lowercase(line) for line in readlines(filename) if match(r"^[a-zA-Z]+$", line) != nothing]
+    words = [lowercase(line) for line in readlines(filename)
+        if match(r"^[a-zA-Z]+$", line) != nothing && 
+            length(line) >= minwordsize && length(line) <= ncols]
     n = 100
     for i in 1:n
         grid = LetterGrid()
@@ -43,22 +47,17 @@ function placemessage(grid, msg)
     msg = replace(msg, r"[^A-Z]" => "")
     messagelen = length(msg)
     if messagelen > 0 && messagelen < gridsize
-        positions = Int.(floor.(LinRange(messagelen, gridsize, messagelen) .+
+        p = Int.(floor.(LinRange(messagelen, gridsize, messagelen) .+
                      (rand(messagelen) .- 0.5) * messagelen / 3)) .- div(messagelen, 3)
-        foreach(i -> grid.cells[positions[i]] = msg[i], 1:messagelen)
+        foreach(i -> grid.cells[div(p[i], nrows) + 1, p[i] % nrows + 1] = msg[i], 1:length(p))
         return messagelen
     end
     return 0
 end
 
 function tryplaceword(grid, word)
-    dlen = length(stepdirections)
-    randdir = rand(1:dlen)
-    randpos = rand(1:gridsize)
-    for dir in 1:dlen
-        dir = dir + randdir > dlen ? dir + randdir - dlen : dir + randdir
-        for pos in 1:gridsize
-            pos = pos + randpos > gridsize ? pos + randpos - gridsize : pos + randpos
+    for dir in shuffle(stepdirections)
+        for pos in shuffle(1:length(grid.cells))
             lettersplaced = trylocation(grid, word, dir, pos)
             if lettersplaced > 0
                 return lettersplaced
@@ -69,47 +68,26 @@ function tryplaceword(grid, word)
 end
 
 function trylocation(grid, word, dir, pos)
-    r, c = divrem(pos, ncols)
-    len = length(word)
-    if  (stepdirections[dir][1] == 1 && (len + c) > ncols) || 
-        (stepdirections[dir][1] == -1 && (len - 1) > c) ||
-        (stepdirections[dir][2] == 1 && (len + r) > nrows) ||
-        (stepdirections[dir][2] == -1 && (len - 1) > r)
+    r, c = divrem(pos, nrows) .+ [1, 1]
+    positions = [[r, c] .+ (dir .* i) for i in 1:length(word)]
+    if !all(x -> 0 < x[1] <= nrows && 0 < x[2] <= ncols, positions)
         return 0
     end
-    overlaps = 0
-    rr = r + 1
-    if rr > nrows rr = nrows end
-    cc = c + 1
-    if cc > ncols cc = ncols end
-    for i in 1:len-1
-        if grid.cells[rr, cc] != 0 && grid.cells[rr, cc] != word[i]
+    for (i, p) in enumerate(positions)
+        letter = grid.cells[p[1],p[2]]
+        if letter != ' ' && letter != word[i]
             return 0
         end
-        cc += stepdirections[dir][1]
-        if cc > ncols cc = ncols end
-        rr += stepdirections[dir][2]
-        if rr > nrows rr = nrows end
     end
-    rr = r + 1
-    if rr > nrows rr = nrows end
-    cc = c + 1
-    if cc > ncols cc = ncols end
-    for i in 1:len
-        if grid.cells[rr, cc] == word[i]
-            overlaps += 1
-        else
-            grid.cells[rr, cc] = word[i]
-        end
-        if i < len - 1
-            cc += stepdirections[dir][1]
-            rr += stepdirections[dir][2]
+    lettersplaced = 0
+    for (i, p) in enumerate(positions)
+        if grid.cells[p[1], p[2]] == ' '
+            lettersplaced += 1
+            grid.cells[p[1],p[2]] = word[i]
         end
     end
-
-    lettersplaced = len - overlaps
     if lettersplaced > 0
-        push!(grid.solutions, lpad(word, 10) * " ($c, $r)($cc,$rr)")
+        push!(grid.solutions, lpad(word, 10) * " $(positions[1]) to $(positions[end])")
     end
     return lettersplaced
 end
