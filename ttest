@@ -1,10 +1,32 @@
 
+
+struct Choices
+    dimen::Int
+    choice::Vector{Vector{Int}}
+    Choices(cho::Vector{Vector{Int}}) = new(length(cho), cho)
+end
+
+function Base.iterate(cho::Choices, state)
+    for i in cho.dimen:-1:1
+        state[i] += 1
+        if state[i] > length(choices[i])
+            state[i] = 1
+        else
+            break
+        end
+    end
+    return prod(state) == 1 ? nothing : (cho, state)
+end
+Base.iterate(cho::Choices) = (state = ones(cho.dimen); return Base.iterate(cho, state))
+Base.eltype(Choices) = Choices
+
 struct NonogramPuzzle
     nrows::Int
     ncols::Int
     xhints::Vector{Vector{Int}}
     yhints::Vector{Vector{Int}}
     solutions::Vector{Vector{Vector{Int}}}
+    NonogramPuzzle(xh, yh) = new(length(xh), length(yh), xh, yh, Vector{Vector{Vector{Int}}}())
 end
 
 function hintsfromcol(rowvec, col)
@@ -43,25 +65,17 @@ function rowsfromhints(a, len)
     possibilities
 end
 
-function stackrows(ngram, pstacks, remaining)
-    hints = ngram.xhints[ngram.nrows - remaining]
-    newstacks = [vcat(s, r) for s in pstacks, r in rowsfromhints(hints, ngram.nrows)]
-    return remaining < 2 ? newstacks : stackrows(ngram, newstacks, remaining - 1)
-end
-
 function trygrids(nonogram)
-    stacks = stackrows(nonogram, Vector{Vector{Int}}(), nonogram.nrows)
-    for stack in stacks
-        for y in 1:nonogram.ncols
-            if sum(x -> stack[x][y], 1:length(stack)) != sum(nonogram.yhints[y])
-                break
-            end
-        end
-        if all(y -> hintsfromcol(nonogram, y) = nonogram.yhints[y], 1:ncols)
+    choices = [rowsfromhints(nonogram.xhints[i], nrows) for i in 1:nonogram.nrows]
+    cho = Choices(choices)
+    for ivec in cho
+        stack = [choices[i][ivec[i]] for i in i:cho.dimen]
+        if all(y -> hintsfromcol(stack, y) = nonogram.yhints[y], 1:ncols)
             push!(nonogram.solutions, stack)
         end
     end
 end
+
 
 const nonogramlettertext = """
 C BA CB BB F AE F A B
