@@ -1,117 +1,100 @@
-using Random
 
-const stepdirections = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]]
-const nrows    = 10
-const ncols    = nrows
-const gridsize = nrows * ncols
-const minwords = 25
-const minwordsize = 3
-
-mutable struct LetterGrid
-    nattempts::Int
+struct NonogramPuzzle
     nrows::Int
     ncols::Int
-    cells::Matrix{Char}
-    solutions::Vector{String}
-    LetterGrid() = new(0, nrows, ncols, fill(' ', nrows, ncols), Vector{String}())
+    xhints::Vector{Vector{Int}}
+    yhints::Vector{Vector{Int}}
+    solutions::Vector{Vector{Vector{Int}}}
 end
 
-function wordmatrix(filename, usepropernames = true)
-    words = [lowercase(line) for line in readlines(filename)
-        if match(r"^[a-zA-Z]+$", line) != nothing && (usepropernames || match(r"^[a-z]$", line) != nothing)
-            length(line) >= minwordsize && length(line) <= ncols]
-    n = 100
-    for i in 1:n
-        grid = LetterGrid()
-        messagelen = placemessage(grid, "Rosetta Code")
-        target = grid.nrows * grid.ncols - messagelen
-        cellsfilled = 0
-        shuffle!(words)
-        for word in words
-            cellsfilled += tryplaceword(grid, word)
-            if cellsfilled == target
-                if length(grid.solutions) >= minwords
-                    grid.nattempts = i
-                    return grid
-                else
-                    break
-                end
+function hintsfromcol(rowvec, col)
+    hints = Vector{Int}()
+    hintrun = 0
+    for row in rowvec
+        if row[col] != 0
+            hintrun += 1
+        elseif starthint != 0
+            push!(hints, hintrun)
+            hintrun = 0
+        end
+    end
+    hints
+end
+
+function rowsfromhints(a, len)
+    possibilities = Vector{Vector{Int}}()
+    v = Vector{Int}()
+    j = 1
+    for (i, runlen) in enumerate(a)
+        if i == 1
+            v = zeros(len)
+            nextstart = 1
+        end
+        if nextstart + runlen - 1 <= len
+            v[nextstart:nextstart + runlen - 1] .= 1
+            j += runlen + 1
+            if i == length(a)
+                push!(possibilities, v)
+            end
+        else
+            break
+        end
+    end
+    possibilities
+end
+
+function stackrows(ngram, pstacks, remaining)
+    hints = ngram.xhints[ngram.nrows - remaining]
+    newstacks = [vcat(s, r) for s in pstacks, r in rowsfromhints(hints, ngram.nrows)]
+    return remaining < 2 ? newstacks : stackrows(ngram, newstacks, remaining - 1)
+end
+
+function trygrids(nonogram)
+    stacks = stackrows(nonogram, Vector{Vector{Int}}(), nonogram.nrows)
+    for stack in stacks
+        for y in 1:nonogram.ncols
+            if sum(x -> stack[x][y], 1:length(stack)) != sum(nonogram.yhints[y])
+                break
             end
         end
-    end
-    throw("Failed to place words after n attempts")
-end
-
-function placemessage(grid, msg)
-    msg = uppercase(msg)
-    msg = replace(msg, r"[^A-Z]" => "")
-    messagelen = length(msg)
-    if messagelen > 0 && messagelen < gridsize
-        p = Int.(floor.(LinRange(messagelen, gridsize, messagelen) .+
-                     (rand(messagelen) .- 0.5) * messagelen / 3)) .- div(messagelen, 3)
-        foreach(i -> grid.cells[div(p[i], nrows) + 1, p[i] % nrows + 1] = msg[i], 1:length(p))
-        return messagelen
-    end
-    return 0
-end
-
-function tryplaceword(grid, word)
-    for dir in shuffle(stepdirections)
-        for pos in shuffle(1:length(grid.cells))
-            lettersplaced = trylocation(grid, word, dir, pos)
-            if lettersplaced > 0
-                return lettersplaced
-            end
+        if all(y -> hintsfromcol(nonogram, y) = nonogram.yhints[y], 1:ncols)
+            push!(nonogram.solutions, stack)
         end
     end
-    return 0
 end
 
-function trylocation(grid, word, dir, pos)
-    r, c = divrem(pos, nrows) .+ [1, 1]
-    positions = [[r, c] .+ (dir .* i) for i in 1:length(word)]
-    if !all(x -> 0 < x[1] <= nrows && 0 < x[2] <= ncols, positions)
-        return 0
-    end
-    for (i, p) in enumerate(positions)
-        letter = grid.cells[p[1],p[2]]
-        if letter != ' ' && letter != word[i]
-            return 0
-        end
-    end
-    lettersplaced = 0
-    for (i, p) in enumerate(positions)
-        if grid.cells[p[1], p[2]] == ' '
-            lettersplaced += 1
-            grid.cells[p[1],p[2]] = word[i]
-        end
-    end
-    if lettersplaced > 0
-        push!(grid.solutions, lpad(word, 10) * " $(positions[1]) to $(positions[end])")
-    end
-    return lettersplaced
-end
+const nonogramlettertext = """
+C BA CB BB F AE F A B
+AB CA AE GA E C D C
 
-function printresult(grid)
-    if grid.nattempts == 0
-        println("No grid to display: no solution found.")
-        return
-    end
-    size = length(grid.solutions)
-    println("Attempts: ", grid.nattempts)
-    println("Number of words: ", size)
-    println("\n     0  1  2  3  4  5  6  7  8  9")
-    for r in 1:nrows
-        print("\n$r   ")
-        for c in 1:ncols
-            print(" $(grid.cells[r, c]) ")
+F CAC ACAC CN AAA AABB EBB EAA ECCC HCCC
+D D AE CD AE A DA BBB CC AAB BAA AAB DA AAB AAA BAB AAA CD BBA DA
+
+CA BDA ACC BD CCAC CBBAC BBBBB BAABAA ABAD AABB BBH BBBD ABBAAA CCEA AACAAB BCACC ACBH DCH ADBE ADBB DBE ECE DAA DB CC
+BC CAC CBAB BDD CDBDE BEBDF ADCDFA DCCFB DBCFC ABDBA BBF AAF BADB DBF AAAAD BDG CEF CBDB BBB FC
+
+E BCB BEA BH BEK AABAF ABAC BAA BFB OD JH BADCF Q Q R AN AAN EI H G
+E CB BAB AAA AAA AC BB ACC ACCA AGB AIA AJ AJ ACE AH BAF CAG DAG FAH FJ GJ ADK ABK BL CM
+"""
+
+function processtestpuzzles(txt)
+    txtline2ints(s) = [[UInt8(ch - 'A') for ch in r] for r in split(s, r"\s+")]
+    letterpuzzletoarray(sx, sy) = (txtline2ints(sx), txtline2ints(sy))
+    puzlines = map(strip(split(txt, "\n\n")))
+    for p in puzlines
+        xh, yh = letterpuzzletoarray(p[1], p[2])
+        nonogram = NonogramPuzzle(length(xh), length(yh), xh, yh, Vector{Vector{Vector{Int}}}())
+        trygrids(nonogram)
+        if length(nonogram.solutions) != 0
+            println(nonogram.solutions)
         end
-    end
-    println()
-    for i in 1:2:size
-        println("$(grid.solutions[i])   $(i < size ? grid.solutions[i+1] : "")")
     end
 end
 
-printresult(wordmatrix("words.txt"))
+#=
+    "Extra example not solvable by deduction alone:".writeln;
+    "B B A A\nB B A A".solve;
 
+    "Extra example where there is no solution:".writeln;
+    "B A A\nA A A".solve;
+=#
