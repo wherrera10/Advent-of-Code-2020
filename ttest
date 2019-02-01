@@ -37,12 +37,9 @@ function sequences(hints, len)
     for leftspace in 0:(len - minlen(hints))
         header = vcat(fill(0, leftspace), fill(1, hints[1]), [0])
         rightspace = len - length(header)
-println("allbut $allbuthead, header $header, rightspace $rightspace")
         if isempty(allbuthead)
-            push!(possibilities, rightspace <= 0 ? header[1:len] : vcat(header, fill(1, rightspace)))            
-    push!(possibilities, [1])
+            push!(possibilities, rightspace <= 0 ? header[1:len] : vcat(header, fill(0, rightspace)))            
         else
-    println("allbut $allbuthead, rs $rightspace, seq ", sequences(allbuthead, rightspace))
             foreach(x -> push!(possibilities, vcat(header, x)), sequences(allbuthead, rightspace))
         end
     end
