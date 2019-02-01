@@ -47,11 +47,11 @@ function sequences(hints, len)
 end
 
 function trygrids(nonogram)
-    choices = [rowsfromhints(nonogram.xhints[i], nonogram.nrows) for i in 1:nonogram.nrows]
+    choices = [sequences(nonogram.xhints[i], nonogram.nrows) for i in 1:nonogram.nrows]
     for tryprod in product(choices...)
 println("testing choice $tryprod")
 println("comparing ", hintsfromcol(tryprod, 1), " with ", nonogram.yhints[1])
-        if all(y -> hintsfromcol(tryprod, y) = nonogram.yhints[y], 1:ncols)
+        if all(y -> hintsfromcol(tryprod, y) == nonogram.yhints[y], 1:nonogram.ncols)
             push!(nonogram.solutions, stack)
         end
     end
