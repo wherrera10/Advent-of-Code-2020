@@ -1,96 +1,26 @@
 
-using Base.Iterators
+tablestyle = raw""" "border-collapse: separate; text-align: center; border-spacing: 3px 0px;" """
+columnstyle = raw""" "border: solid black 2px;background-color: #fffff0;border-bottom: double 6px;
+  border-radius: 1em;-moz-border-radius: 1em;-webkit-border-radius: 1em;'.
+  'vertical-align: bottom;width: 3.25em;" """
 
-struct NonogramPuzzle
-    nrows::Int
-    ncols::Int
-    xhints::Vector{Vector{Int}}
-    yhints::Vector{Vector{Int}}
-    solutions::Vector{Vector{Vector{Int}}}
-    NonogramPuzzle(xh, yh) = new(length(xh), length(yh), xh, yh, Vector{Vector{Vector{Int}}}())
+function cartouches(num, digits)
+    render = map(x -> "| style=$columnstyle | $x", digits)
+    return "\n{| style=$tablestyle|+ $num|-$render|}"
 end
 
-function hintsfromcol(rowvec, col)
-    hints = Vector{Int}()
-    hintrun = 0
-    for row in rowvec
-        if row[col] != 0
-            hintrun += 1
-        elseif hintrun > 0
-            push!(hints, hintrun)
-            hintrun = 0
-        end
-    end
-    hints
+glyphs(x, y) = (x == 0 && y == 0) ? "Θ" : "<br>" * "●" ^ x * "───" ^ y
+
+tomayan(n) = (s = string(n, base=20); map(ch -> reverse(divrem(parse(Int, ch, base=20), 5)), split(s, "")))
+    
+const outtxt = Vector{String}()
+
+for n in [4005, 8017, 326205, 886205, 26960840421]
+    txt = cartouches(n, tomayan(n)) * join(map(x -> glyphs(x[1], x[2]), tomayan(n)))
+    push!(outtxt, txt)
 end
 
-function sequences(hints, len)
-    minsized(arr) = vcat(map(x -> vcat(fill(1, x), [0]), arr)...)[1:end-1]
-    minlen(arr) = sum(arr) + length(arr) - 1 
-    if isempty(hints)
-        return fill(0, len)
-    elseif minlen(hints) == len
-        return minsized(hints)
-    end
-    possibilities = Vector{Vector{Int}}()
-    allbuthead = hints[2:end]
-    for leftspace in 0:(len - minlen(hints))
-        header = vcat(fill(0, leftspace), fill(1, hints[1]), [0])
-        rightspace = len - length(header)
-        if isempty(allbuthead)
-            push!(possibilities, rightspace <= 0 ? header[1:len] : vcat(header, fill(0, rightspace)))            
-        else
-            foreach(x -> push!(possibilities, vcat(header, x)), sequences(allbuthead, rightspace))
-        end
-    end
-    possibilities
-end
-
-function trygrids(nonogram)
-    choices = [sequences(nonogram.xhints[i], nonogram.nrows) for i in 1:nonogram.nrows]
-    for tryprod in product(choices...)
-println("testing choice $tryprod")
-println("comparing ", hintsfromcol(tryprod, 1), " with ", nonogram.yhints[1])
-        if all(y -> hintsfromcol(tryprod, y) == nonogram.yhints[y], 1:nonogram.ncols)
-            push!(nonogram.solutions, stack)
-        end
-    end
-end
-
-
-const nonogramlettertext = """
-C BA CB BB F AE F A B
-AB CA AE GA E C D C
-
-F CAC ACAC CN AAA AABB EBB EAA ECCC HCCC
-D D AE CD AE A DA BBB CC AAB BAA AAB DA AAB AAA BAB AAA CD BBA DA
-
-CA BDA ACC BD CCAC CBBAC BBBBB BAABAA ABAD AABB BBH BBBD ABBAAA CCEA AACAAB BCACC ACBH DCH ADBE ADBB DBE ECE DAA DB CC
-BC CAC CBAB BDD CDBDE BEBDF ADCDFA DCCFB DBCFC ABDBA BBF AAF BADB DBF AAAAD BDG CEF CBDB BBB FC
-
-E BCB BEA BH BEK AABAF ABAC BAA BFB OD JH BADCF Q Q R AN AAN EI H G
-E CB BAB AAA AAA AC BB ACC ACCA AGB AIA AJ AJ ACE AH BAF CAG DAG FAH FJ GJ ADK ABK BL CM
-"""
-
-function processtestpuzzles(txt)
-    txtline2ints(s) = [[UInt8(ch - 'A') for ch in r] for r in split(s, r"\s+")]
-    linepairs = uppercase.(string.(split(txt, "\n\n")))
-    for xyhints in linepairs
-        xh, yh = map(x -> txtline2ints(strip(x)), split(xyhints, "\n"))
-        nonogram = NonogramPuzzle(xh, yh)
-        trygrids(nonogram)
-        if length(nonogram.solutions) > 0
-            println(nonogram.solutions)
-        end
-    end
-end
-
-processtestpuzzles(nonogramlettertext)
-
-#=
-    "Extra example not solvable by deduction alone:".writeln;
-    "B B A A\nB B A A".solve;
-
-    "Extra example where there is no solution:".writeln;
-    "B A A\nA A A".solve;
-=#
+fp = open("test.html", "w")
+write(fp, "<html><header> Mayan</header><body>")
+write(fp, join(outtxt, "\n<br>\n"))
+write(fp, "</body></html>")
