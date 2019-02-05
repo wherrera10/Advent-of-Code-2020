@@ -21,4 +21,50 @@ end
 
 testmayan()
 
+<!DOCTYPE html>
+<title>Example</title>
+<style>
+table.roundedCorners { 
+  border: 1px solid DarkOrange;
+  border-radius: 13px; 
+  border-spacing: 0;
+  }
+table.roundedCorners td, 
+table.roundedCorners th { 
+  border-bottom: 1px solid DarkOrange;
+  padding: 10px; 
+  }
+table.roundedCorners tr:last-child > td {
+  border-bottom: none;
+}
+</style>
+
+<table class="roundedCorners">
+  <tr>
+    <th>Table Header</th>
+    <th>Table Header</th>
+    <th>Table Header</th>
+  </tr>
+  <tr>
+    <td>Table cell</td>
+    <td>Table cell</td>
+    <td>Table cell</td>
+  </tr>
+  <tr>
+    <td>Table cell</td>
+    <td>Table cell</td>
+    <td>Table cell</td>
+  </tr>
+  <tr>
+    <td>Table cell</td>
+    <td>Table cell</td>
+    <td>Table cell</td>
+  </tr>
+  <tr>
+    <td>Table cell</td>
+    <td>Table cell</td>
+    <td>Table cell</td>
+  </tr>
+</table>
+
 
