@@ -5,13 +5,32 @@ mayan_glyphs(x, y) = (x == 0 && y == 0) ? "\n<td>Θ</td>\n" : "<td>\n" * "●" ^
 inttomayan(n) = (s = string(n, base=20); map(ch -> reverse(divrem(parse(Int, ch, base=20), 5)), split(s, "")))
 
 function testmayan()
-    startstring = """\n<style>html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}
-                table, th, td { align: bottom; border: 1px solid black;}</style>\n"""
+    startstring = """\n
+    <style>
+        html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}
+        table, th, td { 
+            table.roundedCorners { 
+                border: 4px solid DarkOrange;
+                border-radius: 13px; 
+                border-spacing: 0;
+            }
+            table.roundedCorners td, 
+            table.roundedCorners th { 
+                border-bottom: 4px solid DarkOrange;
+                padding: 10px; 
+            }
+            table.roundedCorners tr:last-child > td {
+                border-bottom: none;
+            }
+            align: bottom; 
+            border: 1px solid black;
+        }
+    </style>\n"""
 
     txt = startstring
 
     for n in [4005, 8017, 326205, 886205, 26960840421]
-    txt *= "<table><tr>><th>The Mayan representation for the integer $n is: </th>" *
+    txt *= "<h3>The Mayan representation for the integer $n is: </h3><table class=\"roundedcorners\"><tr>" *
             join(map(x -> mayan_glyphs(x[1], x[2]), inttomayan(n))) * "</tr></table>\n\n"
     end
 
@@ -20,51 +39,5 @@ end
 
 
 testmayan()
-
-<!DOCTYPE html>
-<title>Example</title>
-<style>
-table.roundedCorners { 
-  border: 1px solid DarkOrange;
-  border-radius: 13px; 
-  border-spacing: 0;
-  }
-table.roundedCorners td, 
-table.roundedCorners th { 
-  border-bottom: 1px solid DarkOrange;
-  padding: 10px; 
-  }
-table.roundedCorners tr:last-child > td {
-  border-bottom: none;
-}
-</style>
-
-<table class="roundedCorners">
-  <tr>
-    <th>Table Header</th>
-    <th>Table Header</th>
-    <th>Table Header</th>
-  </tr>
-  <tr>
-    <td>Table cell</td>
-    <td>Table cell</td>
-    <td>Table cell</td>
-  </tr>
-  <tr>
-    <td>Table cell</td>
-    <td>Table cell</td>
-    <td>Table cell</td>
-  </tr>
-  <tr>
-    <td>Table cell</td>
-    <td>Table cell</td>
-    <td>Table cell</td>
-  </tr>
-  <tr>
-    <td>Table cell</td>
-    <td>Table cell</td>
-    <td>Table cell</td>
-  </tr>
-</table>
 
 
