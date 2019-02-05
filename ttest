@@ -26,7 +26,7 @@ table.roundedcorners th {
 
     txt = startstring
 
-    for n in [4005, 8017, 326205, 886205, 26960840421]
+    for n in [4005, 8017, 326205, 886205, 2147483647]
     txt *= "<h3>The Mayan representation for the integer $n is: </h3><table class=\"roundedcorners\"><tr>" *
             join(map(x -> mayan_glyphs(x[1], x[2]), inttomayan(n))) * "</tr></table>\n\n"
     end
