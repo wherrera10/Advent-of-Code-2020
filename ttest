@@ -1,26 +1,24 @@
+using Gumbo
 
-tablestyle = raw""" "border-collapse: separate; text-align: center; border-spacing: 3px 0px;" """
-columnstyle = raw""" "border: solid black 2px;background-color: #fffff0;border-bottom: double 6px;
-  border-radius: 1em;-moz-border-radius: 1em;-webkit-border-radius: 1em;'.
-  'vertical-align: bottom;width: 3.25em;" """
+mayan_glyphs(x, y) = (x == 0 && y == 0) ? "\n<td>Θ</td>\n" : "<td>\n" * "●" ^ x * "<br />\n───" ^ y * "</td>\n"
 
-function cartouches(num, digits)
-    render = map(x -> "| style=$columnstyle | $x", digits)
-    return "\n{| style=$tablestyle|+ $num|-$render|}"
+inttomayan(n) = (s = string(n, base=20); map(ch -> reverse(divrem(parse(Int, ch, base=20), 5)), split(s, "")))
+
+function testmayan()
+    startstring = """\n<style>html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}
+                table, th, td { align: bottom; border: 1px solid black;}</style>\n"""
+
+    txt = startstring
+
+    for n in [4005, 8017, 326205, 886205, 26960840421]
+    txt *= "<table><tr>><th>The Mayan representation for the integer $n is: </th>" *
+            join(map(x -> mayan_glyphs(x[1], x[2]), inttomayan(n))) * "</tr></table>\n\n"
+    end
+
+    println(parsehtml(txt))
 end
 
-glyphs(x, y) = (x == 0 && y == 0) ? "Θ" : "<br>" * "●" ^ x * "───" ^ y
 
-tomayan(n) = (s = string(n, base=20); map(ch -> reverse(divrem(parse(Int, ch, base=20), 5)), split(s, "")))
-    
-const outtxt = Vector{String}()
+testmayan()
 
-for n in [4005, 8017, 326205, 886205, 26960840421]
-    txt = cartouches(n, tomayan(n)) * join(map(x -> glyphs(x[1], x[2]), tomayan(n)))
-    push!(outtxt, txt)
-end
 
-fp = open("test.html", "w")
-write(fp, "<html><header> Mayan</header><body>")
-write(fp, join(outtxt, "\n<br>\n"))
-write(fp, "</body></html>")
