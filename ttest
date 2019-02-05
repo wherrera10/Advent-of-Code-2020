@@ -18,6 +18,7 @@ function testmayan()
             table.roundedCorners th { 
                 border-bottom: 4px solid DarkOrange;
                 padding: 10px; 
+                vertical-align: bottom;
             }
             table.roundedCorners tr:last-child > td {
                 border-bottom: none;
