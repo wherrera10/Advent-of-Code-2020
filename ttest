@@ -1,183 +1,19 @@
-const ns = [0]
+using Memoize
 
-function fft(buf, n)
-    out = deepcopy(buf)
-    fft2(buf, out, n, 1)
-end
- 
-function fft2(buf, out, n, step)
-    if step < n
-        fft2(out, buf, n, step*2)
-        fft2(out[step:end], buf[step:end], n, step*2)
-        for j in 1:2:n
-            fj, fn = Float64(j), Float64(n)
-            t = exp(-1 * pi * im) * Complex(fj) / fn * out[j+step]
-            buf[div(j, 2)] = out[j] + t
-            buf[div(j + n, 2)] = out[j] - t
-        end
-    end
-end
- 
-# pad slice length to power of two
-function padtwo(g, le, ns)
-    n = 1
-    if ns[1] != 0
-        n = ns[1]
+@memoize function scs(x, y)
+    if x == ""
+        return y
+    elseif y == ""
+        return x
+    elseif x[1] == y[1]
+        return "$(x[1])$(scs(x[2:end], y[2:end]))"
+    elseif length(scs(x, y[2:end])) <= length(scs(x[2:end], y))
+        return "$(y[1])$(scs(x, y[2:end]))"
     else
-        while n < le
-            n *= 2
-        end
-    end
-    buf = zeros(Complex{Int128}, n)
-    for i in 1:le
-        buf[i] = Complex(g[i])
-    end
-    ns[1] = n
-    return buf
-end
- 
-function deconv(g, lg, f, lf, out, rowle)
-    ns[1] = 0
-    g2 = padtwo(g, lg, ns)
-    f2 = padtwo(f, lf, ns)
-    fft(g2, ns)
-    fft(f2, ns)
-    h = zeros(Complex{Int128}, ns[1])
-    for i in 1:ns[1]
-        h[i] = g2[i] / f2[i]
-    end
-    fft(h, ns)
-    for i in 1:ns[1]
-        if math.Abs(real(h[i])) < 1e-10
-            h[i] = 0
-        end
-    end
-    for i in 1:rowLe-lf-lg
-     FIXME   out[i] = real(h[(ns[1] - i) % ns[1]] / 32)
+        return "$(x[1])$(scs(x[2:end], y))"
     end
 end
- 
-function unpack2(m, rows, le, tole)
-    buf = zeros(Float64, rows*tole)
-    for i in 0:rows-1, j in 1:le
-            buf[i*tole+j] = m[i + 1][j]
-    end
-    return buf
-end
- 
-function pack2(buf []float64, rows, fromLe, toLe int, out [][]float64) {
-    for i := 0; i < rows; i++ {
-        for j := 0; j < toLe; j++ {
-            out[i][j] = buf[i*fromLe+j] / 4
-        }
-    }
-}
- 
-func deconv2(g [][]float64, rowG, colG int, f [][]float64, rowF, colF int, out [][]float64) {
-    g2 := unpack2(g, rowG, colG, colG)
-    f2 := unpack2(f, rowF, colF, colG)
-    ff := make([]float64, (rowG-rowF+1)*colG)
-    deconv(g2, rowG*colG, f2, rowF*colG, ff, colG)
-    pack2(ff, rowG-rowF+1, colG, colG-colF+1, out)
-}
- 
-func unpack3(m [][][]float64, x, y, z, toY, toZ int) []float64 {
-    buf := make([]float64, x*toY*toZ)
-    for i := 0; i < x; i++ {
-        for j := 0; j < y; j++ {
-            for k := 0; k < z; k++ {
-                buf[(i*toY+j)*toZ+k] = m[i][j][k]
-            }
-        }
-    }
-    return buf
-}
- 
-func pack3(buf []float64, x, y, z, toY, toZ int, out [][][]float64) {
-    for i := 0; i < x; i++ {
-        for j := 0; j < toY; j++ {
-            for k := 0; k < toZ; k++ {
-                out[i][j][k] = buf[(i*y+j)*z+k] / 4
-            }
-        }
-    }
-}
- 
-func deconv3(g [][][]float64, gx, gy, gz int, f [][][]float64, fx, fy, fz int, out [][][]float64) {
-    g2 := unpack3(g, gx, gy, gz, gy, gz)
-    f2 := unpack3(f, fx, fy, fz, gy, gz)
-    ff := make([]float64, (gx-fx+1)*gy*gz)
-    deconv(g2, gx*gy*gz, f2, fx*gy*gz, ff, gy*gz)
-    pack3(ff, gx-fx+1, gy, gz, gy-fy+1, gz-fz+1, out)
-}
- 
-func main() {
-    f := [][][]float64{
-        {{-9, 5, -8}, {3, 5, 1}},
-        {{-1, -7, 2}, {-5, -6, 6}},
-        {{8, 5, 8}, {-2, -6, -4}},
-    }
-    fx, fy, fz := len(f), len(f[0]), len(f[0][0])
- 
-    g := [][][]float64{
-        {{54, 42, 53, -42, 85, -72}, {45, -170, 94, -36, 48, 73},
-            {-39, 65, -112, -16, -78, -72}, {6, -11, -6, 62, 49, 8}},
-        {{-57, 49, -23, 52, -135, 66}, {-23, 127, -58, -5, -118, 64},
-            {87, -16, 121, 23, -41, -12}, {-19, 29, 35, -148, -11, 45}},
-        {{-55, -147, -146, -31, 55, 60}, {-88, -45, -28, 46, -26, -144},
-            {-12, -107, -34, 150, 249, 66}, {11, -15, -34, 27, -78, -50}},
-        {{56, 67, 108, 4, 2, -48}, {58, 67, 89, 32, 32, -8},
-            {-42, -31, -103, -30, -23, -8}, {6, 4, -26, -10, 26, 12},
-        },
-    }
-    gx, gy, gz := len(g), len(g[0]), len(g[0][0])
- 
-    h := [][][]float64{
-        {{-6, -8, -5, 9}, {-7, 9, -6, -8}, {2, -7, 9, 8}},
-        {{7, 4, 4, -6}, {9, 9, 4, -4}, {-3, 7, -2, -3}},
-    }
-    hx, hy, hz := gx-fx+1, gy-fy+1, gz-fz+1
- 
-    h2 := make([][][]float64, hx)
-    for i := 0; i < hx; i++ {
-        h2[i] = make([][]float64, hy)
-        for j := 0; j < hy; j++ {
-            h2[i][j] = make([]float64, hz)
-        }
-    }
-    deconv3(g, gx, gy, gz, f, fx, fy, fz, h2)
-    fmt.Println("deconv3(g, f):\n")
-    for i := 0; i < hx; i++ {
-        for j := 0; j < hy; j++ {
-            for k := 0; k < hz; k++ {
-                fmt.Printf("% .10g  ", h2[i][j][k])
-            }
-            fmt.Println()
-        }
-        if i < hx-1 {
-            fmt.Println()
-        }
-    }
- 
-    kx, ky, kz := gx-hx+1, gy-hy+1, gz-hz+1
-    f2 := make([][][]float64, kx)
-    for i := 0; i < kx; i++ {
-        f2[i] = make([][]float64, ky)
-        for j := 0; j < ky; j++ {
-            f2[i][j] = make([]float64, kz)
-        }
-    }
-    deconv3(g, gx, gy, gz, h, hx, hy, hz, f2)
-    fmt.Println("\ndeconv(g, h):\n")
-    for i := 0; i < kx; i++ {
-        for j := 0; j < ky; j++ {
-            for k := 0; k < kz; k++ {
-                fmt.Printf("% .10g  ", f2[i][j][k])
-            }
-            fmt.Println()
-        }
-        if i < kx-1 {
-            fmt.Println()
-        }
-    }
-}
+
+println(scs("abcbdab", "bdcaba"))
+
+
