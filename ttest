@@ -73,7 +73,8 @@ struct Skylight <: Item
 end
 
 const charcrayons = Dict{Char,Crayon}('p' => crayon"white", ' ' => crayon"black", 'g' => crayon"yellow",
-                                      's' => crayon"blue", 'l' => crayon"green", '_' => crayon"red",
+                                      's' => crayon"blue", 'l' => crayon"green", '_' => crayon"red", 
+                                      '^' => crayon"light_cyan", '~' => crayon"blue",
                                       '\u2592' => crayon"light_gray", '\u2593' => crayon"dark_gray")
 
 onpoint(p, level) = haskey(level.content, p) ? level.content[p] : Item[]
@@ -431,11 +432,13 @@ function playerdig(player)
     if direc == "U"
         if rand() < defaults.baseluck
             addatpoint(Skylight(), player.location.p, player.location.level)
+            player.location.level.grid[player.location.p.x, player.location.p.y] = '^'
             println("There is now a hole in the ceiling above you.")
         end
     elseif direc == "D"
         if rand() < defaults.baseluck
             addatpoint(Pit(), player.location.p, player.location.level)
+            player.location.level.grid[player.location.p.x, player.location.p.y] = '_'
             println("There is now a pit in the floor at your feet.")
         end
     else
