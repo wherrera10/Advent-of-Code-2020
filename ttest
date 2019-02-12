@@ -38,6 +38,9 @@ end
 mutable struct Agent <: Item
     location::Location
     inventory::Vector{Item}
+    wearing::Vector{Item}
+    wielding::Vector{Item}
+    Agent(loc) = new(loc, Item[Gold(0)], Item[], Item[])
 end
 
 mutable struct Gold <: Item
