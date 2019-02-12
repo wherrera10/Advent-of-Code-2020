@@ -9,7 +9,7 @@ end
 const obstacles = (wall = '\u2592', permwall = '\u2593', water = '~')
 
 const defaults = (baseluck = 0.5, levelrooms = 4, itemrarity = 0.2, maxroomdim = 20,
-                    wallheight = 3, leveldim = 100, prizeroomlevel = 5, map = 1)
+    wallheight = 3, leveldim = 100, prizeroomlevel = 5, fastdig = true, map = 1)
 
 abstract type Item end
 
@@ -65,7 +65,11 @@ end
 struct Skylight <: Item
     disp::Char
     Skylight() = new('^')
+end
 
+onpoint(p, level) = haskey(level.contents, p) ? level.contents[p] : Item[]
+hastype(t::Type, arr) = begin for i in arr if typeof(i) == t return true end end; false end
+hastype(t, p, level) = hastype(t, onpoint(p, level))
 x1y1x2y2(room) = [room.origin.x, room.origin.y, room.origin.x + room.xsize, room.origin.y + room.ysize]
 inroom(x, y, rm) = begin x1, y1, x2, y2 = x1y1x2y2(rm); x1 <= x <= x2 && y1 <= y <= y2 end
 inroom(p, rm) = inroom(p.x, p.y, rm)
@@ -104,13 +108,11 @@ function emptypoints(room, level)
 end
 randemptypoint(room, level) = (pts = emptypoints(room, level); isempty(pts) ? room.origin .+ 2 : rand(pts))
 
-
+addatpoint(i, p, l) = (if !haskey(l.content, p) l.content[p] = Vector{Item}() end; push!(l.content[p], i))
+        
 function addtoroom(item, room, level)
     p = randemptypoint(room, level)
-    if !haskey(level.content, p)
-        level.content[p] = Vector{Item}()
-    end
-    push!(level.content[p], item)
+    addatpoint(item, p, level)
     level.grid[p.x, p.y] = item.disp
 end
 
@@ -226,6 +228,21 @@ function displayroom(player, lit=true)
     println()
 end
 
+function displaylevel(player, showunvisited=true)
+end
+
+function queryprompt(query, choices, choicetxt="")
+    carr = map(x -> uppercase(strip(string(x))), collect(choices))
+    while true
+        print(query, " ", choicetxt == "" ? carr : choicetxt, ": ")
+        choice = uppercase(strip(readline(stdin)))
+        if choice in carr
+            return choice
+        end
+        println()
+    end
+end
+
 help() = println("n north, s south, w west, e east, d down, u up, i inventory, o roominfo, t take, r drop, q equip, a attack/dig")
 
 function playerdisplayinventory(player)
@@ -257,11 +274,12 @@ println("Room at coordinates $(x1y1x2y2(player.location.room)).")
 end
 
 function playerpickup(player)
-    function addgold(gitem)
+    function addgold(gitem, player)
         if findfirst(x -> typeof(x) == Gold, player.inventory) == nothing
             push!(player.inventory, Gold(0))
         end
-        player.inventory[findall(x -> typeof(x) == Gold, player.inventory)[1]].value += gitem.value
+        player.inventory[findall(x -> typeof(x) == Gold,
+            player.inventory)[1]].value += gitem.value
     end
     canpickup(i::Gold) = true
     canpickup(i::Sledge) = true
@@ -269,7 +287,8 @@ function playerpickup(player)
     canpickup(i::Item) = (println("Cannot pick that up."); false)
     takeit(g::Gold) = begin addgold(g); println("You add $(g.value) in gold.") end
     takeit(s::Sledge) = begin push!(player.inventory, s); println("You have a sledge.") end
-    takeit(s::Ladder) = begin push!(player.inventory, s); println("You have a ladder.") end    
+    takeit(s::Ladder) = begin push!(player.inventory, s); println("You have a ladder.") end
+
     d = player.location.level.content
     if player.location.room != nothing && haskey(d, player.location.p)
         for _ in 1:length(d[player.location.p])
@@ -312,15 +331,20 @@ end
 
 function playerup(player)
     if haskey(player.location.level.content, player.location.p) &&
-        findfirst(x -> x isa Ladder, player.location.level.content[player.location.p]) != nothing
+        hastype(Skylight, player.location.p, player.location.level) &&
+        hastype(Ladder, player.location.p, player.location.level)
         newlevel(player, -1)
+    else
+        println("You need a ladder placed at a skylight to go upwards.")
     end
 end
 
 function playerdown(player)
     if haskey(player.location.level.content, player.location.p) &&
-        findfirst(x -> x isa Pit, player.location.level.content[player.location.p]) != nothing
+        hastype(Pit, player.location.p, player.location.level)
         newlevel(player, 1)
+    else
+        println("You can only move downwards at a Pit in the floor.")
     end
 end
 
@@ -328,20 +352,42 @@ function playerdig(player)
     movedirs = Dict("N" => [0, -1], "W" => [-1, 0], "S" => [0, 1], "E" => [1, 0])
     direc = queryprompt("Direction?", ["N", "S", "E", "W", "U", "D"])
     if direc == "U"
-        #CEILING, MAKE SKYLIGHT
+        if rand() < defaults.baseluck
+            addatpoint(Skylight(), player.location.p, level)
+            println("There is now a hole in the ceiling above you.")
+        end
+    end
     elseif direc == "D"
-        # FLOOR, MAKE PIT
+        if rand() < defaults.baseluck
+            addatpoint(Pit(), player.location.p, level)
+            println("There is now a pit in the floor at your feet.")
+        end
     else
         goalp = Point(player.location.p.x + movedirs[direc][1], player.location.p.y +
             movedirs[direc][2], player.location.p.z)
         if player.location.level.grid[goalp.x, goalp.y] == obstacles.wall
             if rand() < defaults.baseluck
-                player.location.level.grid[goalp.x, goalp.y] = ' '
+                if defaults.fastdig
+                    depth = 0
+                    for i in 1:div(defaults.leveldim, 10)
+                        p = Point(player.location.p.x + movedirs[direc][1] * i,
+                            player.location.p.y + movedirs[direc][2] * i, player.location.p.z)
+                        if level.grid(p.x, p.y) == obstacles.wall
+                           level.grid(p.x, p.y) = " "
+                           depth += 1
+                        end
+                    end
+                    if depth > 3
+                        println("Boom! That hammer's attack on walls is amazing.")
+                    end
+                else
+                    player.location.level.grid[goalp.x, goalp.y] = ' '
+                end
             end
         elseif player.location.level.grid[goalp.x, goalp.y] == obstacles.permwall
             println("This kind of wall cannot be removed.")
         end
-    END
+    end
 end
 
 function playermove(player, dx, dy)
@@ -357,21 +403,10 @@ playerW(player) = playermove(player, -1, 0)
 playerS(player) = playermove(player, 0, 1)
 playerE(player) = playermove(player, 1, 0)
 
-const usercommands = Dict("N" => playerN, "S" => playerS, "E" => playerE, "W" => playerW, "U" => playerup,
-                          "D" => playerdown, "I" => playerdisplayinventory, "O" => playerroominfo,
-                          "T" => playertake, "R" => playerremove, "Q" => playerequip, "A" => playerdig, "?" => help)
-
-function queryprompt(query, choices, choicetxt="")
-    carr = map(x -> uppercase(strip(string(x))), collect(choices))
-    while true
-        print(query, " ", choicetxt == "" ? carr : choicetxt, ": ")
-        choice = uppercase(strip(readline(stdin)))
-        if choice in carr
-            return choice
-        end
-        println()
-    end
-end
+const usercommands = Dict("N" => playerN, "S" => playerS, "E" => playerE, "W" => playerW,
+                          "U" => playerup, "D" => playerdown, "I" => playerdisplayinventory,
+                          "O" => playerroominfo, "T" => playertake, "R" => playerremove,
+                          "Q" => playerequip, "A" => playerdig, "?" => help)
 
 function runuser(player)
     updateroom(player)
@@ -380,7 +415,8 @@ function runuser(player)
     else
         displayroom(player)
     end
-    choice = queryprompt("Choose move (nsewudiotrqa?)", ["N", "S", "E", "W", "U", "D", "I", "O", "T", "R", "Q", "A", "?"])
+    choice = queryprompt("Choose move (nsewudiotrqa?)",
+        ["N", "S", "E", "W", "U", "D", "I", "O", "T", "R", "Q", "A", "?"])
     usercommands[choice](player)
 end
 
@@ -401,3 +437,4 @@ function rungame()
 end
 
 rungame()
+
