@@ -1,3 +1,27 @@
+#=
+level  map in window text below
+
+I'm afraid you've misunderstood how scrollbars work in GTK; usually you don't create a scrollbar directly, 
+but you place the widget you would like to scroll in a GtkScrolledWindow. This creates scrollbars 
+automatically and connects them to the widget inside the scrolled window; in your case, the text view.
+
+Here's what your createConsoleBox() function should look like:
+
+GtkWidget* createConsoleBox()
+{
+    GtkWidget* textArea = gtk_text_view_new();
+    GtkWidget* scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+    GtkWidget* textEntry = gtk_entry_new();
+    GtkWidget* console = gtk_table_new(3, 1, FALSE);
+
+    gtk_container_add(GTK_CONTAINER(scrolledwindow), textArea);
+    gtk_table_attach_defaults(GTK_TABLE(console), scrolledwindow, 0, 1, 0, 1);
+    gtk_table_attach_defaults(GTK_TABLE(console), textEntry, 0, 1, 1, 2);
+
+    return console;
+}
+
+=#
 using Crayons
 
 struct Point
