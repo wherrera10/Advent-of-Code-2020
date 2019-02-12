@@ -85,7 +85,7 @@ inroom(p::Point, rm) = inroom(p.x, p.y, rm)
 isinventory(t::Type, player) = hastype(t, player.inventory)
 iswielding(t::Type, player) = hastype(t, player.wielding)
 iswearing(t::Type, player) = hastype(t, player.wearing)
-iseqip(i::Ladder) = true
+isequip(i::Ladder) = true
 isequip(i::Sledge) = true
 isequip(i::Item) = false
 
@@ -301,7 +301,7 @@ function playerequip(player)
             yn = queryprompt("Equip $item? (y)es, (n)o, (q)uit choice", ["Y", "N", "Q"])
             if yn == "Y"
                 if iswielding(typeof(item), player)
-                    println("You are already wielding a $t.")
+                    println("You are already wielding a $(typeof(item)).")
                 else
                     push!(player.wielding, item)
                     deleteat!(player.inventory, i)
@@ -378,7 +378,7 @@ function playertake(player)
 end
 
 function exitmap(player)
-    println("You exit the game with inventory $(player.inventory).")
+    println("You exit the game with inventory $(player.inventory), wielding $(player.wielding).")
     exit()
 end
 
@@ -516,5 +516,3 @@ function rungame()
 end
 
 rungame()
-
-
