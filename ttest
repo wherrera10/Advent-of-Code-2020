@@ -1,11 +1,57 @@
-function alias
-    aliaschan = Channel{Char}(10)
-    aliaskeyhit(w, event) = push!(aliaschan, Char(event.keyval))
-    signal_connect(aliaskeyhit, win, "key-press-event")
-    logln("Hit the NEW key to use as an alias:")
-    newch = string(take!(aliaschan))
-    logln("Hit the FORMER key that will be aliased:")
-    oldch = string(take!(aliaschan))
-    aliases[newch] = oldch
-    signal_connect(keyhit, win, "key-press-event") #restore old handler
+randomchoicetostop(player) = rand() < 0.0005
+variablerandtostop(player) = any(x -> x.score > player.score, player.others) ? rand() < 0.2 : rand() < 0.5
+overtwentystop(player) = player.ante > 20 ? true : false
+over20unlesslosingstop(player) = (any(x -> x.score > 99, player.others) || player.ante <= 20) ? true : false
+
+strategies = Dict("random choice to stop" => randomchoicetostop, "variable rand to stop" => variablerandtostop,
+                  "roll to 20" => overtwentystop, "roll to 20 then if not losing stop" => over20unlesslosingstop)
+
+mutable struct Player
+    score::Int
+    ante::Int
+    wins::Int
+    losses::Int
+    others::Vector{Player}
+    strategy::String
 end
+
+const playergroup = [Player(0, 0, 0, 0, Player[], s) for s in keys(strategies)]
+foreach(p -> p.others = filter(x -> x != p, playergroup), playergroup)
+println(playergroup[1])
+function turn(player)
+    player.ante = 0
+    roll() = (r = rand(collect(1:6)); if r == 1 return false end; player.ante += r; true)
+    scorewin() = begin player.wins += 1; foreach(x -> x.losses += 1, player.others) end
+    while roll() == true
+        if player.score + player.ante >= 100
+            scorewin()
+            return false
+        elseif strategies[player.strategy](player)
+            player.score += player.ante
+            return true
+        end
+    end
+    true
+end
+
+function rungames(N)
+    for i in 1:N
+        pgroup = shuffle(playergroup)
+        curplayer = 1
+        while true
+            if (turn(pgroup[curplayer]))
+                curplayer = (curplayer == length(pgroup)) ? 1 : curplayer + 1
+            else
+                break
+            end
+        end
+    end
+    results = sort([(p.wins/(p.wins + p.losses), p.strategy) for p in playergroup], rev=true)
+    println("             Strategy                % of wins (N = $N)")
+    println("---------------------------------------------------------")
+    for pair in results
+        println(lpad(pair[2], 34), lpad(pair[1], 18))
+    end
+end
+
+rungames(10000000)
