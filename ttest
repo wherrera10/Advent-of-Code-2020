@@ -1,57 +1,55 @@
-randomchoicetostop(player) = rand() < 0.0005
-variablerandtostop(player) = any(x -> x.score > player.score, player.others) ? rand() < 0.2 : rand() < 0.5
-overtwentystop(player) = player.ante > 20 ? true : false
-over20unlesslosingstop(player) = (any(x -> x.score > 99, player.others) || player.ante <= 20) ? true : false
-
-strategies = Dict("random choice to stop" => randomchoicetostop, "variable rand to stop" => variablerandtostop,
-                  "roll to 20" => overtwentystop, "roll to 20 then if not losing stop" => over20unlesslosingstop)
-
-mutable struct Player
-    score::Int
-    ante::Int
-    wins::Int
-    losses::Int
-    others::Vector{Player}
-    strategy::String
+struct Point
+    x::Float64
+    y::Float64
 end
 
-const playergroup = [Player(0, 0, 0, 0, Player[], s) for s in keys(strategies)]
-foreach(p -> p.others = filter(x -> x != p, playergroup), playergroup)
-println(playergroup[1])
-function turn(player)
-    player.ante = 0
-    roll() = (r = rand(collect(1:6)); if r == 1 return false end; player.ante += r; true)
-    scorewin() = begin player.wins += 1; foreach(x -> x.losses += 1, player.others) end
-    while roll() == true
-        if player.score + player.ante >= 100
-            scorewin()
-            return false
-        elseif strategies[player.strategy](player)
-            player.score += player.ante
-            return true
-        end
-    end
-    true
+inside(p, a, b) = (b.x - a.x) * (p.y - a.y) > (b.y - a.y) * (p.x - a.x)
+
+function intersection(a, b, s, f)
+    dc = [a.x - b.x, a.y - b.y]
+    dp = [s.x - f.x, s.y - f.y]
+    n1 = a.x * b.y - a.y * b.x
+    n2 = s.x * f.y - s.y * f.x
+    n3 = 1.0 / (dc[1] * dp[2] - dc[2] * dp[1])
+    Point((n1 * dp[1] - n2 * dc[1]) * n3, (n1 * dp[2] - n2 * dc[2]) * n3)
 end
 
-function rungames(N)
-    for i in 1:N
-        pgroup = shuffle(playergroup)
-        curplayer = 1
-        while true
-            if (turn(pgroup[curplayer]))
-                curplayer = (curplayer == length(pgroup)) ? 1 : curplayer + 1
-            else
-                break
+function clipSH(spoly::Vector{Point}, cpoly::Vector{Point})
+    outlist = spoly
+    q = cpoly[end]
+
+    for p in cpoly
+        inlist = outlist
+        outlist = Point[]
+        s = inlist[end]
+
+        for vtx in inlist
+            if inside(vtx, q, p)
+                if !inside(s, q, p)
+                    push!(outlist, intersection(q, p, s, vtx))
+                end
+                push!(outlist, vtx)
+            elseif inside(s, q, p)
+                push!(outlist, intersection(q, p, s, vtx))
             end
+            s = vtx
         end
+        q = p
     end
-    results = sort([(p.wins/(p.wins + p.losses), p.strategy) for p in playergroup], rev=true)
-    println("             Strategy                % of wins (N = $N)")
-    println("---------------------------------------------------------")
-    for pair in results
-        println(lpad(pair[2], 34), lpad(pair[1], 18))
-    end
+    outlist
 end
 
-rungames(10000000)
+
+subjectp = [Point(50, 150), Point(200, 50), Point(350, 150), Point(350, 300),
+    Point(250, 300), Point(200, 250), Point(150, 350), Point(100, 250), Point(100, 200)]
+
+clipp = [Point(100, 100), Point(300, 100), Point(300, 300), Point(100, 300)]
+
+println(clipSH(subjectp, clipp))
+
+#=
+Point[Point(100.0, 116.667), Point(125.0, 100.0), Point(275.0, 100.0), Point(300.0, 116.667), 
+Point(300.0, 300.0), Point(250.0, 300.0), Point(200.0, 250.0), Point(175.0, 300.0), 
+Point(125.0, 300.0), Point(100.0, 250.0)]
+
+=#
