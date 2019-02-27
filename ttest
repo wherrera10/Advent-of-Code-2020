@@ -1,7 +1,5 @@
-struct Point
-    x::Float64
-    y::Float64
-end
+using Luxor
+
 
 inside(p, a, b) = (b.x - a.x) * (p.y - a.y) > (b.y - a.y) * (p.x - a.x)
 
@@ -14,7 +12,7 @@ function intersection(a, b, s, f)
     Point((n1 * dp[1] - n2 * dc[1]) * n3, (n1 * dp[2] - n2 * dc[2]) * n3)
 end
 
-function clipSH(spoly::Vector{Point}, cpoly::Vector{Point})
+function clipSH(spoly, cpoly)
     outlist = spoly
     q = cpoly[end]
 
@@ -36,7 +34,7 @@ function clipSH(spoly::Vector{Point}, cpoly::Vector{Point})
         end
         q = p
     end
-    outlist
+    sort(outlist, lt=(p, q) -> p.x == q.x ? p.y < q.y : p.x < q.x)
 end
 
 
@@ -45,11 +43,24 @@ subjectp = [Point(50, 150), Point(200, 50), Point(350, 150), Point(350, 300),
 
 clipp = [Point(100, 100), Point(300, 100), Point(300, 300), Point(100, 300)]
 
-println(clipSH(subjectp, clipp))
+    Drawing(725, 600, "intersecting-polygons.png")
+    background("white")
+    origin()
+    sethue("red")
+    poly(subjectp, :stroke, close=true)
+    sethue("blue")
+    poly(clipp, :stroke, close=true)
+    clipped = clipSH(subjectp, clipp)
+    sethue("gold")
+    poly(clipped, :fill, close=true)
+    finish()
+    preview()
+    println(clipped)
 
 #=
-Point[Point(100.0, 116.667), Point(125.0, 100.0), Point(275.0, 100.0), Point(300.0, 116.667), 
-Point(300.0, 300.0), Point(250.0, 300.0), Point(200.0, 250.0), Point(175.0, 300.0), 
-Point(125.0, 300.0), Point(100.0, 250.0)]
+Point[Point(100.0, 116.667), Point(100.0, 250.0), Point(125.0, 300.0), Point(125.0, 100.0), 
+Point(175.0, 300.0), Point(200.0, 250.0), Point(250.0, 300.0), Point(275.0, 100.0), 
+Point(300.0, 116.667), Point(300.0, 300.0)]
+=#
 
 =#
