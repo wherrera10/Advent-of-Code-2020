@@ -1,66 +1,58 @@
-using Luxor
+using LinearAlgebra
 
+coords(d) = collect(Base.product([collect(1:x) for x in reverse(d)]...))
 
-inside(p, a, b) = (b.x - a.x) * (p.y - a.y) > (b.y - a.y) * (p.x - a.x)
-
-function intersection(a, b, s, f)
-    dc = [a.x - b.x, a.y - b.y]
-    dp = [s.x - f.x, s.y - f.y]
-    n1 = a.x * b.y - a.y * b.x
-    n2 = s.x * f.y - s.y * f.x
-    n3 = 1.0 / (dc[1] * dp[2] - dc[2] * dp[1])
-    Point((n1 * dp[1] - n2 * dc[1]) * n3, (n1 * dp[2] - n2 * dc[2]) * n3)
-end
-
-function clipSH(spoly, cpoly)
-    outlist = spoly
-    q = cpoly[end]
-
-    for p in cpoly
-        inlist = outlist
-        outlist = Point[]
-        s = inlist[end]
-
-        for vtx in inlist
-            if inside(vtx, q, p)
-                if !inside(s, q, p)
-                    push!(outlist, intersection(q, p, s, vtx))
-                end
-                push!(outlist, vtx)
-            elseif inside(s, q, p)
-                push!(outlist, intersection(q, p, s, vtx))
+# Construct a row for each value in g to be sent to the simultaneous equation solver
+function row(g, f, gcoord, hsize)
+    retrow = similar(g, 0)
+    gcoord = gcoord[(1:x for x in size(f))...]; # clip extraneous values
+    for hc in coords(hsize)
+        fcoord = similar(g, 0)
+        for i in hc
+            window = gcoord[i] - hc[i]
+            if window < 0 || window >= size(f)[i]
+                break
             end
-            s = vtx
+            push!(fcoord, window)
         end
-        q = p
+        push!(retrow, fcoord == hc ? f[fcoord] : 0)
     end
-    sort(outlist, lt=(p, q) -> p.x == q.x ? p.y < q.y : p.x < q.x)
+    append!(retrow, g[gcoord])
+    retrow
+end
+
+function rref(m)
+    s = size(m)
+    x = view(m, 1:s[1], 1:s[2]-1) \ view(m, 1:s[1], s[2])
+    n = length(x)
+    ret, ident = fill(zero(m[1,1]), n, n + 1), one(m[1,1])
+    for i in 1:n
+        ret[i, i] = ident
+    end
+    ret[:, n + 1] .= x
+    ret
+end
+
+function deconvolveN(g, f)
+    gsize = size(g)
+    hsize = gsize .- size(f) .+ 1
+    idx = coords(gsize)
+    tosolve = fill(zero(g[1]), gsize...)
+    for i in 1:gsize[1], x in coords(gsize)
+        tosolve[i, 1:end] .= row(g, f, x, hsize)
+    end
+    solved = rref(tosolve)
+    h = similar(g, 0)
+    for (c, v) in zip(coords(hsize), solved())
+        h[c] = v
+    end
+    h
 end
 
 
-subjectp = [Point(50, 150), Point(200, 50), Point(350, 150), Point(350, 300),
-    Point(250, 300), Point(200, 250), Point(150, 350), Point(100, 250), Point(100, 200)]
 
-clipp = [Point(100, 100), Point(300, 100), Point(300, 300), Point(100, 300)]
 
-    Drawing(725, 600, "intersecting-polygons.png")
-    background("white")
-    origin()
-    sethue("red")
-    poly(subjectp, :stroke, close=true)
-    sethue("blue")
-    poly(clipp, :stroke, close=true)
-    clipped = clipSH(subjectp, clipp)
-    sethue("gold")
-    poly(clipped, :fill, close=true)
-    finish()
-    preview()
-    println(clipped)
 
-#=
-Point[Point(100.0, 116.667), Point(100.0, 250.0), Point(125.0, 300.0), Point(125.0, 100.0), 
-Point(175.0, 300.0), Point(200.0, 250.0), Point(250.0, 300.0), Point(275.0, 100.0), 
-Point(300.0, 116.667), Point(300.0, 300.0)]
-=#
 
-=#
+
+
