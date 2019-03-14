@@ -1,5 +1,4 @@
-using Gtk
-import Base.==
+using Gtk, Base
 
 const whitepawn = UInt8('w')
 const blackpawn = UInt8('b')
@@ -14,23 +13,20 @@ mutable struct HState
     HState(arr, iswhite) = new(reshape(UInt8.(arr), 3, 3), iswhite)
 end
 
-==(h1::HState, h2::HState) = h1.board == h2.board && h1.whitetomove == h2.whitetomove
+tostring(h::HState) = join([Char(c) for c in h.board], "") * "|" * (h.whitetomove ? "t" : "f")
+toHState(s) = begin b = [UInt8(s[i]) for i in 1:length(s)-1]; HState(b, s[end] == 't') end
 
-const positionmoves = Dict{HState,Vector{Int}}(
+const positionmoves = Dict(
     # white is computer, moves middle first
-    HState(b"w w b  bb", true) => [1, 1, 1, 2], HState(b"w w b bb ", true) => [1, 3, 2, 3],
-    HState(b"w   bbb  ", true) => [1, 1, 2, 2], HState(b"  wbb   b", true) => [1, 3, 2, 2],
-    HState(b"w  bbw b ", true) => [2, 3, 3, 3],
+    "w w b  bb|t" => [1, 1, 1, 2], "w w b bb |t" => [1, 3, 2, 3],"w   bbb  |t" => [1, 1, 2, 2], 
+    "  wbb   b|t" => [1, 3, 2, 2], "w  bbw b |t" => [2, 3, 3, 3],
     # white is computer, moves left first
-    HState(b" wwb  b b", true) => [1, 2, 2, 2], HState(b"  wbb   b", true) => [1, 3, 2, 2],
-    HState(b"  wbb b  ", true) => [1, 3, 2, 2],
+    " wwb  b b|t" => [1, 2, 2, 2], "  wbb   b|t" => [1, 3, 2, 2], "  wbb b  |t" => [1, 3, 2, 2],
     # white is computer, moves right first
-    HState(b"ww   bb b", true) => [1, 2, 2, 2], HState(b"w   b   b", true) => [1, 1, 2, 2],
-    HState(b"w    bb  ", true) => [1, 1, 1, 2],
+    "ww   bb b|t" => [1, 2, 2, 2], "w   b   b|t" => [1, 1, 2, 2], "w    bb  |t" => [1, 1, 1, 2],
     # black is computer
-    HState(b" www  bbb", false) => [3, 2, 2, 1], HState(b"ww   wbbb", false) => [3, 2, 2, 3],
-    HState(b"w w w bbb", false) => [3, 1, 2, 2],
-    HState(b"  ww  b b", false) => [3, 3, 2, 3], HState(b"w   w  bb", false) => [3, 3, 2, 3])
+    " www  bbb|f" => [3, 2, 2, 1], "ww   wbbb|f" => [3, 2, 2, 3], "w w w bbb|f" => [3, 1, 2, 2],
+    "  ww  b b|f" => [3, 3, 2, 3], "w   w  bb|f" => [3, 3, 2, 3])
 
 function legalmoves(board, px, py)
     moves = Vector{Pair{Int, Int}}()
@@ -173,14 +169,20 @@ function hexapawnapp()
             if won == "" && ctomove
                 cmove = [0, 0, 0, 0]
                 update!()
-    println(state)
-      println("cplay: got here ", haskey(positionmoves, state))
-      println(positionmoves)
+    println(tostring(state))
+    for(k, v) in positionmoves
+        if k == tostring(state)
+        k1 = deepcopy(k)
+        println("$state, $k1 : $v,  $(positionmoves[k1])")
+        end
+    end
+    
+        
                 if state == HState(b"www   bbb", true)  # starting
                     cmove = rand([[1, 1, 2, 1], [1, 2, 2, 2], [1, 3, 2, 3]])
-                elseif haskey(positionmoves, state)
+                elseif haskey(positionmoves, tostring(state))
     println("state found: move is found")
-                    cmove = positionmoves[state]
+                    cmove = positionmoves[tostring(state)]
                 else
                     for p in allavailablemoves(state.board, state.whitetomove), m in p[2]
                         b = deepcopy(state.board)
