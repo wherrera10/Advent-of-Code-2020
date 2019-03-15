@@ -12,9 +12,8 @@ mutable struct HState
     whitetomove::Bool
     HState(arr, iswhite) = new(reshape(UInt8.(arr), 3, 3), iswhite)
 end
-
-tostring(h::HState) = join([Char(c) for c in h.board], "") * "|" * (h.whitetomove ? "t" : "f")
-toHState(s) = begin b = [UInt8(s[i]) for i in 1:length(s)-1]; HState(b, s[end] == 't') end
+HState(s) = begin b = [UInt8(s[i]) for i in 1:length(s)-1]; HState(b, s[end] == 't') end
+string(h::HState) = join([Char(c) for c in h.board], "") * "|" * (h.whitetomove ? "t" : "f")
 
 const positionmoves = Dict(
     # white is computer, moves middle first
@@ -177,10 +176,10 @@ function hexapawnapp()
             if won == "" && ctomove
                 cmove = [0, 0, 0, 0]
                 update!()
-                if tostring(state) == "www   bbb|t"
+                if string(state) == "www   bbb|t"
                     cmove = rand([[1, 1, 2, 1], [1, 2, 2, 2], [1, 3, 2, 3]])
-                elseif haskey(positionmoves, tostring(state))
-                    cmove = positionmoves[tostring(state)]
+                elseif haskey(positionmoves, string(state))
+                    cmove = positionmoves[string(state)]
                 else
                     for p in allavailablemoves(state.board, state.whitetomove), m in p[2]
                         b = deepcopy(state.board)
