@@ -12,8 +12,8 @@ mutable struct HState
     whitetomove::Bool
     HState(arr, iswhite) = new(reshape(UInt8.(arr), 3, 3), iswhite)
 end
-HState(s) = begin b = [UInt8(s[i]) for i in 1:length(s)-1]; HState(b, s[end] == 't') end
-string(h::HState) = join([Char(c) for c in h.board], "") * "|" * (h.whitetomove ? "t" : "f")
+HState(s) = begin b = [UInt8(s[i]) for i in 1:9]; HState(b, s[end] == 't') end
+string(h::HState) = join([Char(c) for c in h.board], "") * (h.whitetomove ? "|t" : "|f")
 
 const positionmoves = Dict(
     # white is computer, moves middle first
