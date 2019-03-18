@@ -8,8 +8,14 @@
  noncolinear(a, b) = (a.x != b.x && a.y != 0 && b.y != 0 && a.x/a.y != b.x/b.y)
  noncolinear(a, b, c) = noncolinear(a, b) && noncolinear(a, c) && noncolinear(b, c)
 
-# set up problem matrix 
- line(p) = [p.x^2, p.x, -p.y, 0]
- mat = vcat([line(p) for p in (p1, p2, p3)]
+# set up problem matrix
+m = zeros(Int, 3, 4)
+for i in 1:3, j in 1:4
+    m[i, j] = 
+    
+    
+ line(p) = [p.x^2 p.x -p.y 0]
+ mat = reshape([line(p) for p in (p1, p2, p3)], 3, 4)
  
+println(view(mat, 1:3, 1:3) \ view(mat, 1:3, 4))
  
