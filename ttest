@@ -1,14 +1,11 @@
-using Luxor
+using Makie
 
+struct Point; x::Float64; y::Float64; end
 # Find a circle passing through the 3 points
 const p1 = Point(10, 10)
 const p2 = Point(100, 200)
 const p3 = Point(200, 10)
 const allp = [p1, p2, p3]
-
-# Tests for potentially collinear points. These are NOT needed for the points above.
-noncolinear(a, b) = (a.y != 0 && b.y != 0 && a.x/a.y != b.x/b.y)
-noncolinear(a, b, c) = noncolinear(a, b) && noncolinear(a, c) && noncolinear(b, c)
 
 # set up problem matrix and solve.
 # if (x - a)^2 + (y - b)^2 = r^2 then for some D, E, F, x^2 + y^2 + Dx + Ey + F = 0
@@ -24,12 +21,11 @@ a, b, r = -q[1] / 2, -q[2] / 2, sqrt((q[1]^2/4) + q[2]^2/4 - q[3])
 
 println("The circle with center at x = $a, y = $b and radius $r.")
 
-# draw it (produces a PNG file by default).
-Drawing()
-origin()
-circle(Point(a, b), r, :stroke)
-finish()
-
+x = a-r:0.1:a+r
+y0 = sqrt.(r^2 .- (x .- a).^2)
+lines(x, y0 .+ b)
+lines!(x, b .- y0)
+scatter!(p1, p2, p3, :circle)
 
 
 
