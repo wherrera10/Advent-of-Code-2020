@@ -23,8 +23,8 @@ println("The circle with center at x = $a, y = $b and radius $r.")
 
 x = a-r:0.25:a+r
 y0 = sqrt.(r^2 .- (x .- a).^2)
-scene = lines(x, y0 .+ b)
-lines!(scene, x, b .- y0)
-scatter!(scene, [p.x for p in allp], [p.y for p in allp])
+scene = lines(x, y0 .+ b, color=:red)
+lines!(scene, x, b .- y0, color=:red)
+scatter!(scene, [p.x for p in allp], [p.y for p in allp], color=:black)
 
 
