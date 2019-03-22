@@ -1,58 +1,61 @@
-using LinearAlgebra
+h1 = [-8 2 -9 -2 9 -8 -2]
+f1 = [ 6 -9 -7 -5]
+g1 = [-48 84 -16 95 125 -70 7 29 54 10]
 
-shape(a) = ((x, r) = (a, Int[]); while x isa Array push!(r, length(x)); x = x[1] end; r)
-coords(d) = reshape(collect(Base.product([collect(1:x) for x in reverse(d)]...)), prod(d))
+h2 = [8 1 -7 -2 -9 4; 
+      4 5 -5 2 7 -1;
+     -6 -3 -3 -6 9 5]
+     
+f2 = [
+     -5 2 -2 -6 -7;
+      9 7 -6 5 -7;
+      1 -1 9 2 -7; 
+      5 9 -9 2 -5; 
+     -8 5 -2 8 5]
+g2 = [
+      40 -21 53 42 105 1 87 60 39 -28;
+     -92 -64 19 -167 -71 -47 128 -109 40 -21;
+      58  85  -93 37 101 -14 5 37 -76 -56;
+     -90 -135 60 -125 68 53 223 4 -36 -48;
+      78 16 7 -199 156 -162 29 28 -103 -10; 
+     -62 -89 69 -61 66 193 -61 71 -8 -30; 
+      48 -6 21 -9 -150 -22 -56 32 85 25]
 
-# Construct a row for each value in g to be sent to the simultaneous equation solver
-function row(g, f, hsize, gcoord)
-    retrow = similar(g, 0)
-println("gcoord $gcoord")
-    gcoord = gcoord[(1:x for x in shape(f))...]; # clip extraneous values
-    for hc in coords(hsize)
-        fcoord = similar(g, 0)
-        for i in 1:length(hc)
-            window = gcoord[i] .- hc[i]
-            if window[1] < 0 || window[1] >= shape(f)[i]
-                break
-            end
-            push!(fcoord, window[1])
-        end
-        push!(retrow, fcoord .== hc ? f[fcoord] : 0)
-    end
-    append!(retrow, g[gcoord])
-    retrow
+h3 = zeros(Int, 2,3,4)
+h3a = [-6, -8, -5, 9, -7, 9, -6, -8, 2, -7, 9, 8, 7, 4, 4, -6, 9, 9, 4, -4, -3, 7, -2, -3]
+for i in 0:1, j in 0:2, k in 1:4
+    h3[i+1, j+1, k] = h3a[i * 12 + j * 4 + k]
 end
 
-function rref(m)
-    if length(m) == 0
-        return m
-    end
-    s = shape(m)
-    x = view(m, 1:s[1], 1:s[2]-1) \ view(m, 1:s[1], s[2])
-    n = length(x)
-    ret, ident = fill(zero(m[1,1]), n, n + 1), one(m[1,1])
-    for i in 1:n
-        ret[i, i] = ident
-    end
-    ret[:, n + 1] .= x
-    ret
-end
+#=
+f3 = [
+      [[-9 5 -8] [3 5 1]] 
+      [[-1 -7 2] [-5 -6 6]] 
+      [[8 5 8][-2 -6 -4]]]
+g3 = [
+      [
+         [54 42 53 -42 85 -72] 
+         [45 -170 94 -36 48 73] 
+         [-39 65 -112 -16 -78 -72] 
+         [6 -11 -6 62 49 8]] 
+      [
+         [-57 49 -23 52 -135 66] 
+         [-23 127 -58 -5 -118 64] 
+         [87 -16 121 23 -41 -12] 
+         [-19 29 35 -148 -11 45]] 
+      [
+         [-55 -147 -146 -31 55 60] 
+         [-88 -45 -28 46 -26 -144] 
+         [-12 -107 -34 150 249 66] 
+         [11 -15 -34 27 -78 -50]] 
+      [
+         [56 67 108 4 2 -48] 
+         [58 67 89 32 32 -8] 
+         [-42 -31 -103 -30 -23 -8]
+         [6 4 -26 -10 26 12]]]
 
-function deconvolveN(g, f)
-    gsize = shape(g)
-    hsize = gsize .- shape(f) .+ 1
-    tosolve = map(x -> [row(g, f, hsize, x)], coords(gsize))
-    solved = rref(tosolve)
-    h = similar(g, length(solved()))
-    for (c, v) in zip(coords(hsize), solved())
-        h[c] = v
-    end
-    h
-end
+=#
 
-const h =  [-8, 2, -9, -2, 9, -8, -2]
-const f = [ 6, -9, -7, -5]
-const g = [-48, 84, -16, 95, 125, -70, 7, 29, 54, 10]
-
-println(deconvolveN(g, f))
+println(size(h3), "\n", h3, "\n")
+foreach(i -> println(h3[i, :, :]), 1:2)
 
