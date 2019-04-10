@@ -1,4 +1,3 @@
-
 using DataFrames
 
 tnum(s) = begin m = match(r"\d{10,60}", s); (m == nothing) ? "0" : m.match end
@@ -9,13 +8,15 @@ df = DataFrame()
 
 df[:OriginalDescription] = ["blah 21 GOOGLE blah 538739870428975687965789658709 blah",
                             "blah GOOGLE blah 98985387398767098670985789658709 555 blah",
-                            "blah 21 ude GOOGLE blah 538739870428975687965789658709 blah"]
-
-println("size ", size(df))                           
+                            "blah 21 ude GOOGLE blah 538739870428975687965789658709 blah"]                  
 
 df[:Amount] = [-0.99, -9.99, 0.99]
 
 df[:TransactionNumber] = tnum.(df[:OriginalDescription])
+
+sort!(df, [order(:TransactionNumber)])
+
+println(df)
 
 dfgroups = groupby(df, :TransactionNumber)
 
@@ -32,7 +33,6 @@ end
 
 println("unreim:")
 println(dfunreimbursed)
-
 
 println(sum(dfunreimbursed[:Amount]))
 
