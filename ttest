@@ -33,3 +33,6 @@ end
 println("unreim:")
 println(dfunreimbursed)
 
+
+println(sum(dfunreimbursed[:Amount]))
+
