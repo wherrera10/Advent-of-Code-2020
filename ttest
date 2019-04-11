@@ -24,10 +24,13 @@ println(dfgroups)
 
 dfunreimbursed = deepcopy(df)
 deleterows!(dfunreimbursed, 1:3)
+dfreimbursed = deepcopy(dfunreimbursed)
 
 for dfg in dfgroups
     if size(dfg)[1] == 1
         push!(dfunreimbursed, dfg[1, :])
+    else
+        append!(dfreimbursed, dfg[1:end, :])
     end
 end
 
@@ -36,3 +39,5 @@ println(dfunreimbursed)
 
 println(sum(dfunreimbursed[:Amount]))
 
+println(dfreimbursed)
+println(sum(dfreimbursed[:Amount]))
