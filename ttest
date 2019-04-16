@@ -1,43 +1,107 @@
-using DataFrames
+using Formatting
 
-tnum(s) = begin m = match(r"\d{10,60}", s); (m == nothing) ? "0" : m.match end
+partialsuffixes = Dict("PAIR" => "PAIRS", "SCO" => "SCORES", "DOZ" => "DOZENS",
+                    "GR" => "GROSS", "GREATGR" => "GREATGROSS", "GOOGOL" => "GOOGOLS")
+partials = sort(collect(keys(partialsuffixes)), lt=(a,b)->length(a)<length(b), rev=true)
 
-df = DataFrame()
+multicharsuffixes = Dict("PAIRS" => 2, "SCORES" => 20, "DOZENS" => 12, "GROSS" => 144,
+                         "GREATGROSS" => 1728, "GOOGOLS" => BigInt(10)^100)
 
+twocharsuffixes = Dict("Ki" => 2^10, "Mi" => 2^20, "Gi" => 2^30, "Ti" => 2^40,
+                       "Pi" => 2^50, "Ei" => 2^60, "Zi" => BigInt(2)^70, "Yi" => BigInt(2)^80,
+                       "Xi" => BigInt(2)^90, "Wi" => BigInt(2)^100, "Vi" => BigInt(2)^110,
+                       "Ui" => BigInt(2)^120)
+twosuff = collect(keys(twocharsuffixes))
 
+onecharsuffixes = Dict("K" => 10^3, "M" => 10^6, "G" => 10^9, "T" => 10^12, "P" => 10^15,
+                       "E" => 10^18, "Z" => 10^21, "Y" => BigInt(10)^24,
+                       "X" => BigInt(10)^27, "W" => BigInt(10)^30,
+                       "V" => BigInt(10)^33, "U" => BigInt(10)^36)
+onesuff = collect(keys(onecharsuffixes))
 
-df[:OriginalDescription] = ["blah 21 GOOGLE blah 538739870428975687965789658709 blah",
-                            "blah GOOGLE blah 98985387398767098670985789658709 555 blah",
-                            "blah 21 ude GOOGLE blah 538739870428975687965789658709 blah"]                  
+function firstsuffix(s, x)
+    str = uppercase(s)
+    if str[1] == '!'
+        lastbang = something(findfirst(x -> x != '!', str), length(str))
+        return prod(x:-lastbang:1) / x, length(str)
+    end
+    for pstr in partials
+        if match(Regex("^" * pstr), str) != nothing
+            fullsuffix = partialsuffixes[pstr]
+            n = length(pstr)
+            while n < length(fullsuffix) && n < length(str) && fullsuffix[n+1] == str[n+1]
+                n += 1
+            end
+            return BigInt(multicharsuffixes[fullsuffix]), n
+        end
+    end
+    for i in 1:length(str)
+        if str[1:i] in twosuff
+            return BigInt(twocharsuffixes[str[1:i]]), i
+        elseif str[1:i] in onesuff
+            return BigInt(onecharsuffixes[str[1:i]]), i
+        end
+    end
+    return 1, length(s)
+end
 
-df[:Amount] = [-0.99, -9.99, 0.99]
+function parsesuffix(s, x)
+    str = s
+    mult = BigInt(1)
+    n = 1
+    while n <= length(str)
+        multiplier, n = firstsuffix(str, x)
+        mult *= multiplier
+        str = str[n+1:end]
+    end
+    mult
+end
 
-df[:TransactionNumber] = tnum.(df[:OriginalDescription])
+function suffixednumber(s)
+    if (endnum = findlast(isdigit, s)) == nothing
+        return NaN
+    end
+    x = BigFloat(replace(s[1:endnum], "," => ""))
+    return BigFloat(x * (endnum < length(s) ? parsesuffix(s[endnum + 1:end], x) : 1), 10)
+end
 
-sort!(df, [order(:TransactionNumber)])
+const testcases =
+["2greatGRo   24Gros  288Doz  1,728pairs  172.8SCOre",
+ "1,567      +1.567k    0.1567e-2m",
+ "25.123kK    25.123m   2.5123e-00002G",
+ "25.123kiKI  25.123Mi  2.5123e-00002Gi  +.25123E-7Ei",
+ "-.25123e-34Vikki      2e-77gooGols",
+ "9!   9!!   9!!!   9!!!!   9!!!!!   9!!!!!!   9!!!!!!!   9!!!!!!!!   9!!!!!!!!!"]
 
-println(df)
-
-dfgroups = groupby(df, :TransactionNumber)
-
-println(dfgroups)
-
-dfunreimbursed = deepcopy(df)
-deleterows!(dfunreimbursed, 1:3)
-dfreimbursed = deepcopy(dfunreimbursed)
-
-for dfg in dfgroups
-    if size(dfg)[1] == 1
-        push!(dfunreimbursed, dfg[1, :])
-    else
-        append!(dfreimbursed, dfg[1:end, :])
+function testsuffixes()
+    for line in testcases
+        cases = split(line)
+        println("Testing: ", string.(cases))
+        println("Results: ", join(map(x -> format(suffixednumber(x), commas=true), cases), "  "), "\n")
     end
 end
 
-println("unreim:")
-println(dfunreimbursed)
+testsuffixes()
 
-println(sum(dfunreimbursed[:Amount]))
+#=
+numbers =  2greatGRo  24Gros  288Doz  1,728pairs  172.8SCOre  
+results =  3,456  3,456  3,456  3,456  3,456  
 
-println(dfreimbursed)
-println(sum(dfreimbursed[:Amount]))
+numbers =  1,567  +1.567k  0.1567e-2m  
+results =  1,567  1,567  1,567  
+
+numbers =  25.123kK  25.123m  2.5123e-00002G  
+results =  25,123,000  25,123,000  25,123,000  
+
+numbers =  25.123kiKI  25.123Mi  2.5123e-00002Gi  +.25123E-7Ei  
+results =  26,343,374.848  26,343,374.848  26,975,615.844352  28,964,846,960.237816578048  
+
+numbers =  -.25123e-34Vikki  2e-77gooGols  
+results =  -33,394.194938104441474962344775423096782848  200,000,000,000,000,000,000,000  
+
+numbers =  9!  9!!  9!!!  9!!!!  9!!!!!  9!!!!!!  9!!!!!!!  9!!!!!!!!  9!!!!!!!!!  
+results =  362,880  945  162  45  36  27  18  9  9 
+=#
+
+
+
