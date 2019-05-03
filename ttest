@@ -1,29 +1,31 @@
 
 function pell(n)
-    tmp, a, b = BigInt(0), BigInt(0), BigInt(0)
-    func(arr, c) = (tmp = arr[1]; arr[1] = arr[2]; arr[2] = arr[2] * c + tmp)
-
     x = BigInt(floor(sqrt(n)))
-    y, z, r = x, 1, div(x, 2)
+println("x is $x")
+    y, z, r = x, BigInt(1), div(x, 2)
     e1, e2, f1, f2 = BigInt(1), BigInt(0), BigInt(0), BigInt(1)
+    loops = 0
     while true
+    loops += 1
         y = r * z - y
         z = div(n - y * y, z)
         r = div(x + y, z)
-        func([e1, e2], r)
-        func([f1, f2], r)
+        e1, e2 = e2, e2 * r + e1
+        f1, f2 = f2, f2 * r + f1
         a, b = f2, e2
-        func([b, a], x)
-        if a * a - n * b * b == 1
+        b, a = a, a * x + b
+        if (a * a - n * b * b) == BigInt(1)
+    println("loops $loops")
             return x, y
         end
     end
 end
 
-for target in [61, 109, 181, 277]
+for target in BigInt[61, 109, 181, 277]
     x, y = pell(target)
     println("x^2 - $target", "y^2 = 1 for x = $x and y = $y")
 end
+
 
 
 
