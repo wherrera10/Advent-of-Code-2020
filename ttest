@@ -1,30 +1,11 @@
+using Combinatorics
 
-function pell(n)
-    x = BigInt(floor(sqrt(n)))
-println("x is $x")
-    y, z, r = x, BigInt(1), div(x, 2)
-    e1, e2, f1, f2 = BigInt(1), BigInt(0), BigInt(0), BigInt(1)
-    loops = 0
-    while true
-    loops += 1
-        y = r * z - y
-        z = div(n - y * y, z)
-        r = div(x + y, z)
-        e1, e2 = e2, e2 * r + e1
-        f1, f2 = f2, f2 * r + f1
-        a, b = f2, e2
-        b, a = a, a * x + b
-        if (a * a - n * b * b) == BigInt(1)
-    println("loops $loops")
-            return x, y
-        end
-    end
-end
+const numerals = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
-for target in BigInt[61, 109, 181, 277]
-    x, y = pell(target)
-    println("x^2 - $target", "y^2 = 1 for x = $x and y = $y")
-end
+issquare(charvec, b) = (n = parse(Int, join(charvec, ""), base=b); (round(sqrt(n)))^2 == n)
+
+squaresinbase(base) = [join(v, "") for v in permutations(numerals[1:base]) 
+    if v[1] != 0 && issquare(v)]
 
 
 
