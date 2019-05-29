@@ -1,11 +1,11 @@
 # Input/Output for Pairs of Numbers
 
-parseints(n) = (a = split(strip(readline()), "\s"); map(x -> parse(Int, x), a)) 
+parseints(n) = (a = split(strip(readline()), r"\s"); map(x -> parse(Int, x), a)) 
 
 function sumfrominput()
     lines = parseints(1)
-    for _ in 1:lines
-        print sum(parseints(2))
+    for _ in 1:lines[1]
+        println(sum(parseints(2)))
     end
 end
 
