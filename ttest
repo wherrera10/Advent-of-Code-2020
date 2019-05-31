@@ -8,7 +8,7 @@ function stream_process(io)
     ffcount, lfcount, tabcount, charcount = 0, 0, 0, 0
     while true
         if state == ABORT || eof(io)
-            return
+            return msg
         end
         ch = read(io, Char)
         if state == GET_FF && ch = '\f'
@@ -36,7 +36,6 @@ function stream_process(io)
                     state = ABORT
                 else
                     state = GET_FF
-                    ffcount = 0
                 end
             end
         end
