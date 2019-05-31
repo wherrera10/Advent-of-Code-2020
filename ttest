@@ -1,20 +1,47 @@
-# Input/Output for Pairs of Numbers
+# jit
 
-parseints(n) = (a = split(strip(readline()), r"\s"); map(x -> parse(Int, x), a)) 
+@enum streamstate GET_FF GET_LF GET_TAB GET_CHAR ABORT
 
-function sumfrominput()
-    lines = parseints(1)
-    for _ in 1:lines[1]
-        println(sum(parseints(2)))
+function stream_process(io)
+    msg = ""
+    state = GET_FF
+    ffcount, lfcount, tabcount, charcount = 0, 0, 0, 0
+    while true
+        if state == ABORT || eof(io)
+            return
+        end
+        ch = read(io, Char)
+        if state == GET_FF && ch = '\f'
+            ffcount += 1
+            state == GET_LF
+            lfcount = 0
+        elseif state == GET_LF && ch == '\n'
+            lfcount += 1
+            if lfcount == ffcount
+                state = GET_TAB
+                tabcount = 0
+            end
+        elseif state == GET_TAB && ch == '\t'
+            tabcount += 1
+            if tabcount == ffcount
+                state = GET_CHAR
+                charcount = 0
+            end
+        elseif state == GET_CHAR
+            charcount += 1
+            if charcount == ffcount
+                print(ch)
+                msg *= ch
+                if ch == '!'
+                    state = ABORT
+                else
+                    state = GET_FF
+                    ffcount = 0
+                end
+            end
+        end
     end
+    return msg
 end
-
-sumfrominput()
-
-
-
-
-
-
 
 
