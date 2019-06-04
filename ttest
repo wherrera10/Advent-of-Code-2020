@@ -1,46 +1,40 @@
-# jit
+using Combinatorics
 
-@enum streamstate GET_FF GET_LF GET_TAB GET_CHAR ABORT
+l =  [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+println("List: ", l, "\nCombinations:")
+for c in with_replacement_combinations(l, length(l))
+    #println(c)
+end
+ 
+@show length(with_replacement_combinations(1:10, 10))
 
-function stream_process(io)
-    msg = ""
-    state = GET_FF
-    ffcount, lfcount, tabcount, charcount = 0, 0, 0, 0
-    while true
-        if state == ABORT || eof(io)
-            return msg
+
+function itercountcombos(ndigits::Integer)
+    cnt = 0
+    f = factorial(ndigits)
+    # loop over all combinations of ndigits decimal digits:
+    for comb in combinations(1:(10+ndigits-1), ndigits)
+        s = 0
+        perms = 1
+        prevd = -1
+        rep = 1
+        for k = eachindex(comb) # sum digits ^ 2 and count permutations
+            d = comb[k] - k
+            s += d ^ 2
+            # accumulate number of permutations of repeated digits
+            if d == prevd
+                rep += 1
+                perms *= rep
+            else
+                prevd = d
+                rep = 1
+            end
         end
-        ch = read(io, Char)
-        if state == GET_FF && ch = '\f'
-            ffcount += 1
-            state == GET_LF
-            lfcount = 0
-        elseif state == GET_LF && ch == '\n'
-            lfcount += 1
-            if lfcount == ffcount
-                state = GET_TAB
-                tabcount = 0
-            end
-        elseif state == GET_TAB && ch == '\t'
-            tabcount += 1
-            if tabcount == ffcount
-                state = GET_CHAR
-                charcount = 0
-            end
-        elseif state == GET_CHAR
-            charcount += 1
-            if charcount == ffcount
-                print(ch)
-                msg *= ch
-                if ch == '!'
-                    state = ABORT
-                else
-                    state = GET_FF
-                end
-            end
+        if s > 0 && iterate(s) == 89
+            cnt += f ÷ perms # numbers we can get from digits
         end
     end
-    return msg
+    return cnt
 end
 
 
