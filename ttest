@@ -1,88 +1,20 @@
-using Gtk.ShortNames, Colors, Cairo, Graphics
+
  
-#============== GUI CODE ===================#
- 
-const fontpointsize = 10
-const mapwidth = 1000
-const mapheight = 500
-const logheight = 100
-const leveldim = div(mapwidth, fontpointsize)
-const windowmaxx = div(mapheight, fontpointsize)
-const windowmaxy = leveldim
-const basebuffer = fill('=', windowmaxx, windowmaxy)
- 
-win = Window("Dungeon Game", mapwidth, mapheight + logheight) |> (Frame() |> (vbox = Box(:v)))
-set_gtk_property!(vbox, :expand, true)
-can = Canvas(div(mapwidth, 3), mapheight)
-push!(vbox, can)
-textdisplay = ScrolledWindow()
-logtxt = TextBuffer()
-logtxt.text[String] = "===  ** DUNGEON GAME ** ===\n"
-tview = TextView(logtxt)
-push!(textdisplay, tview)
-push!(vbox, textdisplay)
- 
-mainchoices = ["N", "S", "E", "W", "Up", "Down", "Inven", "inFo", "Take", "Remove", "eQuip", "Attack", "aLiases", "Help"]
-aliases = Dict{String, String}()
-directionchoices = ["N", "S", "E", "W", "U", "D"]
-yesnochoices = ["Yes", "No"]
-yesnoquitchoices = ["Yes", "No", "Quit"]
-aliases = Dict{String, String}()
- 
-struct DisplayUpdate
-    x::Int # location in basebuffer of data
-    y::Int # location in basebuffer of data
-    playerx::Int
-    playery::Int
-    data::Matrix{Char}
-end
- 
-inputchan = Channel{String}(1000)
-kbinput(w, event) = (push!(inputchan, string(Char(event.keyval))); 1)
-inputhid = signal_connect(kbinput, win, "key-press-event")
- 
-dchan = Channel{DisplayUpdate}(100)
-lchan = Channel{String}(20)
-mchan = Channel{String}(20)
-const playerchar = ['p']
-const itemcolors = Dict{Char, Colorant}('p' => colorant"white", ' ' => colorant"black", 'g' => colorant"gold",
-                                      's' => colorant"skyblue", 'l' => colorant"green", '_' => colorant"red",
-                                      '^' => colorant"blue", '~' => colorant"navy",
-                                      '\u2592' => colorant"ivory", '\u2593' => colorant"silver")
- 
-@guarded draw(can) do widget
-    ctx = getgc(can)
-    select_font_face(ctx, "Courier", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD)
-    set_font_size(ctx, fontpointsize)
-    workcolor = colorant"black"
-    set_source_rgb(ctx, 0.2, 0.2, 0.2)
-    rectangle(ctx, 0, 0, mapwidth, mapheight)
-    fill(ctx)
-    color = colorant"white"
-    set_source(ctx, color)
-    linelen = size(basebuffer)[2]
-    workbuf = Char[]
-    for i in 1:size(basebuffer)[1]
-        move_to(ctx, 0, i * fontpointsize)
-        lastcharprinted = '\x01'
-        for j in 1:linelen
-            ch = basebuffer[i, j]
-            if j == 1
-                lastcharprinted = ch
-            elseif ch != lastcharprinted
-                show_text(ctx, String(workbuf))
-                empty!(workbuf)
-            end
-            if haskey(itemcolors, ch) && itemcolors[ch] != color
-                color = itemcolors[ch]
-                set_source(ctx, color)
-            end
-            push!(workbuf, ch)
-            if j == linelen
-                show_text(ctx, String(workbuf))
-                empty!(workbuf)
-            end
-        end
+    isobstacle(x, y, environ) = (environ[x, y] == '\u' || )
+nextobstaclex(pos, e) = (x = pos.x + 1; while(!isobstacle(x, pos.y, e) x += 1 end; x)
+
+nearobs(b, e, delt=8) = any(x -> isobstacle(b.pos.x + x, b.pos.y, e), 1:delt)
+
+function nearbyopen(b, e, opendist = 24)
+    opendepths = [nextobstaclex(Point(b.pos.x, y) for y in 1:e.height]
+    for dist in 0:e.height
+        ydown, yup = b.pos.y - dist, b.pos.y + dist
+        if opendist[ydown] == e.width || ydown > 0 && opendepths[ydown] > opendist
+            return ydown
+        elseif opendist[yup] == e.width || yup <= e.height && opendepths[ydown] > opendist
+            return yup
     end
+    dist, y = findmax(opendepths)
+    return y
 end
 
