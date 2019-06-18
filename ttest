@@ -7,13 +7,12 @@ Poly(v::Vector{Point}) = begin pointsort!(unique(v)); new(v) end
 Poly(poly::Poly) = Poly(poly.vp)
 Poly(poly::Poly, v::Vector{Point}) = Poly(vcat(poly.vp, v))
 
-concat_map(f, iter) = reduce(vcat, map(f, iter))
+xyminima(poly) = Point(minimum(p -> p.x, poly.vp), minimum(p -> p.y, poly.vp))
 
-minima(poly) = Point(minimum(p -> p.x, poly), minimum(p -> p.y, poly))
+pointsort!(pv) = sort!(pv, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
 
-pointsort!(poly) = sort!(poly, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
-
-polysort!(polyvec) = sort!(map(pointsort!, polyvec), lt = (a, b) -> string(a) < string(b))
+pvsort!(parr) = Point.(sort!(map(pointsort!, map(p->p.vp, parr)), 
+    lt = (a, b) -> string(a) < string(b)))
 
 translate_to_origin(poly) = begin m = minima(poly);
     [Point(p.x - m.x, p.y - m.y) for p in poly] end
@@ -64,4 +63,6 @@ function testpolys(N = 5)
 end
 
 testpolys()
+
+
 
