@@ -1,42 +1,67 @@
-const queries = ["Printer is unrecognised", 
-                 "A red light is flashing", 
-                 "Printer does not print"]
+import Base.show
 
-const answers = Dict(0b00100000 => 'Check the power cable',
-                     0b10100000 => 'Check the printer-computer cable',
-                     0b10101010 => 'Ensure printer software is installed',
-                     0b11001100 => 'Check/replace ink',
-                     0b01010000 => 'Check for paper jam')
+struct Point x::Float64; y::Float64 end
 
-const default = "Let me call you back after I research this."
+mutable struct Poly vp::Vector{Point} end
+Poly(v::Vector{Point}) = begin pointsort!(unique(v)); new(v) end
+Poly(poly::Poly) = Poly(poly.vp)
+Poly(poly::Poly, v::Vector{Point}) = Poly(vcat(poly.vp, v))
 
-function ynprompt(prompt)
-    while true
-        print(prompt, "?: ")
-        ans = uppercase(trim(readline()))[1]
-        if ans == 'Y' || ans == 'N'
-            return ans
-        end
+concat_map(f, iter) = reduce(vcat, map(f, iter))
+
+minima(poly) = Point(minimum(p -> p.x, poly), minimum(p -> p.y, poly))
+
+pointsort!(poly) = sort!(poly, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
+
+polysort!(polyvec) = sort!(map(pointsort!, polyvec), lt = (a, b) -> string(a) < string(b))
+
+translate_to_origin(poly) = begin m = minima(poly);
+    [Point(p.x - m.x, p.y - m.y) for p in poly] end
+
+rotate90(poly) = map(p -> Point(p.y, -p.x), poly)
+rotate180(poly) = map(p -> Point(-p.x, -p.y), poly)
+rotate270(poly) = map(p -> Point(-p.y, p.x), poly)
+reflect(poly) = map(p -> Point(-p.x,  p.y), poly)
+
+rotations_and_reflections(poly) = [poly, rotate90(poly), rotate180(poly),
+    rotate270(poly), reflect(poly), reflect(rotate90(poly)),
+    reflect(rotate180(poly)), reflect(rotate270(poly))]
+
+canonical(poly) = polysort!(map(translate_to_origin, rotations_and_reflections(poly)))
+
+contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y), Point(p.x, p.y - 1), Point(p.x, p.y + 1)]
+
+new_points(poly) = unique(filter(p -> !(p in poly), reduce(vcat, [contiguous(p) for p in poly])))
+
+new_polys(poly) = unique(reduce(vcat, canonical.([push!(deepcopy(poly), p) for p in new_points(poly)])))
+
+const monomino = [Point(0, 0)]
+const monominoes = Poly([monomino])
+
+"""Generates polyominoes of rank n recursively."""
+rank(n) = @assert n >= 0 && return n == 0 ? Poly([]) : n == 1 ? monominoes :
+                            unique(reduce(vcat, map(new_polys, rank(n - 1))))
+
+"""Generates a textual representation of a Polyomino."""
+function Base.show(io::IO, ::MIME"text/plain", poly::Vector{Point})
+    min_pt = minima(poly)
+    max_pt = Point(maximum([p.x for p in poly]), maximum([p.y for p in poly]))
+    table = [" " ^ (max_pt.y - min_pt.y + 1) * "\n" for _ in 1:max_pt.x-min_pt.x]
+    for p in poly
+        table[p.x - min_pt.x + 1][p.y - min_pt.y + 1] = '#'
+    end
+    print(join(table, ""))
+end
+
+function testpolys(N = 5)
+    println([length(rank(n)) for n in 1:7])
+
+    println("\nAll free polyominoes of rank $N:")
+
+    for poly in rank(2)
+        println(poly)
     end
 end
 
-function decide(queries, answers, default)
-    our(@q,%a);
-    bit = 0
-    cnt = 1
-    for prompt in queries
-        ans = ynprompt(prompt)
-        if ans == 'Y'
-            bit += cnt
-        end
-        cnt *= 2
-    end
-    bit = 2^bit
- 
-    while (bitpat, diagnosis) in answers
-        if bit & bitpat
-            println(diagnosis) 
-        end
-    end
-end
+testpolys()
 
