@@ -2,51 +2,56 @@ import Base.show
 
 struct Point x::Float64; y::Float64 end
 
-mutable struct Poly vp::Vector{Point} end
-Poly(v::Vector{Point}) = begin pointsort!(unique(v)); new(v) end
+pvsort!(pv) = sort!(pv, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
+
+mutable struct Poly
+    vp::Vector{Point}
+    Poly(v::Vector{Point}) = new(pvsort!(unique(v)))    
+end
+
 Poly(poly::Poly) = Poly(poly.vp)
 Poly(poly::Poly, v::Vector{Point}) = Poly(vcat(poly.vp, v))
 
-xyminima(poly) = Point(minimum(p -> p.x, poly.vp), minimum(p -> p.y, poly.vp))
+mutatepoly!(poly, f) = begin poly.vp = pvsort!(map(p -> f(p), poly.vp)) end
 
-pointsort!(pv) = sort!(pv, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
+polysort!(polyarr) = sort!(polyarr, lt = (a, b) -> string(a.v) < string(b.v))
 
-pvsort!(parr) = Point.(sort!(map(pointsort!, map(p->p.vp, parr)), 
-    lt = (a, b) -> string(a) < string(b)))
+translate_to_origin!(poly) = mutatepoly!(poly, p -> Point(p.x - minimum(p -> p.x, poly.vp), 
+    p.y - minimum(p -> p.y, poly.vp)))
 
-translate_to_origin(poly) = begin m = minima(poly);
-    [Point(p.x - m.x, p.y - m.y) for p in poly] end
-
-rotate90(poly) = map(p -> Point(p.y, -p.x), poly)
-rotate180(poly) = map(p -> Point(-p.x, -p.y), poly)
-rotate270(poly) = map(p -> Point(-p.y, p.x), poly)
-reflect(poly) = map(p -> Point(-p.x,  p.y), poly)
+rotate90(poly) = mutatepoly!(poly, p -> Point(p.y, -p.x))
+rotate180(poly) = mutatepoly!(poly, p -> Point(-p.x, -p.y))
+rotate270(poly) = mutatepoly!(poly, p -> Point(-p.y, p.x))
+reflect(poly) = mutatepoly!(poly, p -> Point(-p.x,  p.y))
 
 rotations_and_reflections(poly) = [poly, rotate90(poly), rotate180(poly),
     rotate270(poly), reflect(poly), reflect(rotate90(poly)),
     reflect(rotate180(poly)), reflect(rotate270(poly))]
 
-canonical(poly) = polysort!(map(translate_to_origin, rotations_and_reflections(poly)))
+canonical(poly) = polysort!(map(translate_to_origin!, rotations_and_reflections(poly)))
 
-contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y), Point(p.x, p.y - 1), Point(p.x, p.y + 1)]
+contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y), 
+    Point(p.x, p.y - 1), Point(p.x, p.y + 1)]
 
-new_points(poly) = unique(filter(p -> !(p in poly), reduce(vcat, [contiguous(p) for p in poly])))
+new_points(poly) = unique(filter(p -> !(p in poly.vp), 
+    reduce(vcat, [contiguous(p) for p in poly.vp])))
 
-new_polys(poly) = unique(reduce(vcat, canonical.([push!(deepcopy(poly), p) for p in new_points(poly)])))
+new_polys(poly) = unique(reduce(vcat, canonical.
+    ([Poly(poly, [p]) for p in new_points(poly)])))
 
-const monomino = [Point(0, 0)]
-const monominoes = Poly([monomino])
+const nullmino = Poly[]
+const monomino = Poly([Point(0, 0)])
 
 """Generates polyominoes of rank n recursively."""
-rank(n) = @assert n >= 0 && return n == 0 ? Poly([]) : n == 1 ? monominoes :
+rank(n) = @assert n >= 0 && return n == 0 ? nullmino : n == 1 ? [monomino] :
                             unique(reduce(vcat, map(new_polys, rank(n - 1))))
 
 """Generates a textual representation of a Polyomino."""
-function Base.show(io::IO, ::MIME"text/plain", poly::Vector{Point})
+function Base.show(io::IO, poly::Poly)
     min_pt = minima(poly)
-    max_pt = Point(maximum([p.x for p in poly]), maximum([p.y for p in poly]))
+    max_pt = Point(maximum([p.x for p in poly.vp]), maximum([p.y for p in poly.vp]))
     table = [" " ^ (max_pt.y - min_pt.y + 1) * "\n" for _ in 1:max_pt.x-min_pt.x]
-    for p in poly
+    for p in poly.vp
         table[p.x - min_pt.x + 1][p.y - min_pt.y + 1] = '#'
     end
     print(join(table, ""))
@@ -63,6 +68,4 @@ function testpolys(N = 5)
 end
 
 testpolys()
-
-
 
