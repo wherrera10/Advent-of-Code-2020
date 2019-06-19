@@ -20,11 +20,9 @@ translate_to_origin(poly) = Poly(poly, p -> Point(p.x - minimum(p -> p.x, poly.v
 
 function asciimatrix(poly)
     if length(poly.vp) == 0
-        return Matrix{Char}(undef, 0, 0)
+        return reshape(Char[], 0, 0)
     elseif length(poly.vp) == 1
-        m = Matrix{Char}(undef, 0, 0)
-        m[1, 1] = '#'
-        return m
+        return reshape([' '], 1, 1)
     end
     vp = translate_to_origin(poly).vp
     sz = Int.((maximum(p -> p.x, vp), maximum(p -> p.y, vp))) .+ 1
