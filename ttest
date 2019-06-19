@@ -6,38 +6,57 @@ pvsort!(pv) = sort!(pv, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
 
 mutable struct Poly
     vp::Vector{Point}
-    Poly(v::Vector{Point}) = new(pvsort!(unique(v)))    
+    Poly(v::Vector{Point}) = new(pvsort!(unique(v)))
 end
 
 Poly(poly::Poly) = Poly(poly.vp)
 Poly(poly::Poly, v::Vector{Point}) = Poly(vcat(poly.vp, v))
+Poly(poly, f::Function) = Poly(pvsort!(map(p -> f(p), deepcopy(poly.vp))))
 
-mutatepoly!(poly, f) = begin poly.vp = pvsort!(map(p -> f(p), poly.vp)) end
+polysort!(polyarr) = sort!(polyarr, lt = (a, b) -> string(a.vp) < string(b.vp))
 
-polysort!(polyarr) = sort!(polyarr, lt = (a, b) -> string(a.v) < string(b.v))
-
-translate_to_origin!(poly) = mutatepoly!(poly, p -> Point(p.x - minimum(p -> p.x, poly.vp), 
+translate_to_origin(poly) = Poly(poly, p -> Point(p.x - minimum(p -> p.x, poly.vp),
     p.y - minimum(p -> p.y, poly.vp)))
 
-rotate90(poly) = mutatepoly!(poly, p -> Point(p.y, -p.x))
-rotate180(poly) = mutatepoly!(poly, p -> Point(-p.x, -p.y))
-rotate270(poly) = mutatepoly!(poly, p -> Point(-p.y, p.x))
-reflect(poly) = mutatepoly!(poly, p -> Point(-p.x,  p.y))
+function asciimatrix(poly)
+    if length(poly.vp) == 0
+        return " "
+    elseif length(poly.vp) == 1
+        return " # "
+    end
+    vp = translate_to_origin(poly).vp
+    sz = (maximum(p -> p.x, vp), maximum(p -> p.y, vp))
+    txtmat = fill(' ', sz)
+    for i in 1:sz[1], j in 1:sz[2]
+        if Point(i, j) in vp
+            txtmat[i, j] = '#'
+        end
+    end
+    txtmat
+end
+
+rotate90(poly) = Poly(poly, p -> Point(p.y, -p.x))
+rotate180(poly) = Poly(poly, p -> Point(-p.x, -p.y))
+rotate270(poly) = Poly(poly, p -> Point(-p.y, p.x))
+reflect(poly) = Poly(poly, p -> Point(-p.x, p.y))
 
 rotations_and_reflections(poly) = [poly, rotate90(poly), rotate180(poly),
     rotate270(poly), reflect(poly), reflect(rotate90(poly)),
     reflect(rotate180(poly)), reflect(rotate270(poly))]
 
-canonical(poly) = polysort!(map(translate_to_origin!, rotations_and_reflections(poly)))
+canonical(poly) = polysort!(map(translate_to_origin, rotations_and_reflections(poly)))
 
-contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y), 
+# adds pv (a canonical vector of poly) to pvvec if different from any in pvvec already
+merge_canonical(pvvec, pv) = all(pvec -> !(pv[1] in pvec), pvvec) && push!(pvvec, pv)
+
+contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y),
     Point(p.x, p.y - 1), Point(p.x, p.y + 1)]
 
-new_points(poly) = unique(filter(p -> !(p in poly.vp), 
+new_points(poly) = unique(filter(p -> !(p in poly.vp),
     reduce(vcat, [contiguous(p) for p in poly.vp])))
 
-new_polys(poly) = unique(reduce(vcat, canonical.
-    ([Poly(poly, [p]) for p in new_points(poly)])))
+new_polys(poly) = map(pv -> pv[1], reduce(merge_canonical, canonical.([Poly(poly, [p]) 
+    for p in new_points(poly)]), init=Vector{Vector{Poly}}()))
 
 const nullmino = Poly[]
 const monomino = Poly([Point(0, 0)])
@@ -48,17 +67,17 @@ rank(n) = @assert n >= 0 && return n == 0 ? nullmino : n == 1 ? [monomino] :
 
 """Generates a textual representation of a Polyomino."""
 function Base.show(io::IO, poly::Poly)
-    min_pt = minima(poly)
-    max_pt = Point(maximum([p.x for p in poly.vp]), maximum([p.y for p in poly.vp]))
-    table = [" " ^ (max_pt.y - min_pt.y + 1) * "\n" for _ in 1:max_pt.x-min_pt.x]
-    for p in poly.vp
-        table[p.x - min_pt.x + 1][p.y - min_pt.y + 1] = '#'
+    txtmat = asciimatrix(poly)
+    w, h = size(txtmat)
+    for i in 1:h
+        for j in 1:w
+            print(txtmat[i, j])
+        end
+        println()
     end
-    print(join(table, ""))
-end
 
 function testpolys(N = 5)
-    println([length(rank(n)) for n in 1:7])
+    println([length(rank(n)) for n in 1:4])
 
     println("\nAll free polyominoes of rank $N:")
 
@@ -68,4 +87,5 @@ function testpolys(N = 5)
 end
 
 testpolys()
+
 
