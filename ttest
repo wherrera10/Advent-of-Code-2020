@@ -68,9 +68,9 @@ rank(n) = @assert n >= 0 && return n == 0 ? nullmino : n == 1 ? [monomino] :
 """Generates a textual representation of a Polyomino."""
 function Base.show(io::IO, poly::Poly)
     txtmat = asciimatrix(poly)
-    w, h = size(txtmat)
-    for i in 1:h
-        for j in 1:w
+    h, w = size(txtmat)
+    for i in 1:w
+        for j in 1:h
             print(txtmat[i, j])
         end
         println()
