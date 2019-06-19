@@ -20,15 +20,17 @@ translate_to_origin(poly) = Poly(poly, p -> Point(p.x - minimum(p -> p.x, poly.v
 
 function asciimatrix(poly)
     if length(poly.vp) == 0
-        return " "
+        return Matrix{Char}(undef, 0, 0)
     elseif length(poly.vp) == 1
-        return " # "
+        m = Matrix{Char}(undef, 0, 0)
+        m[1, 1] = '#'
+        return m
     end
     vp = translate_to_origin(poly).vp
-    sz = (maximum(p -> p.x, vp), maximum(p -> p.y, vp))
+    sz = Int.((maximum(p -> p.x, vp), maximum(p -> p.y, vp))) .+ 1
     txtmat = fill(' ', sz)
     for i in 1:sz[1], j in 1:sz[2]
-        if Point(i, j) in vp
+        if Point(i-1, j-1) in vp
             txtmat[i, j] = '#'
         end
     end
@@ -75,6 +77,7 @@ function Base.show(io::IO, poly::Poly)
         end
         println()
     end
+end
 
 function testpolys(N = 5)
     println([length(rank(n)) for n in 1:4])
@@ -87,5 +90,3 @@ function testpolys(N = 5)
 end
 
 testpolys()
-
-
