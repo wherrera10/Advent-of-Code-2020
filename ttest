@@ -6,31 +6,58 @@ One-time pad uses internet random source with rand() backup
 using HTTP
 
 function getrandom()
+    bytes, ret = UInt8[], Char[]
     try
-        txt = HTTP.get("https://www.random.org/cgi-bin/randbyte?nbytes=1024&format=hex").body
-        bytes = map(s -> parse(UInt8, s), split(strip(txt), r"\s+"))
-        if length(bytes) < 3100
+        hx = HTTP.get("https://www.random.org/cgi-bin/randbyte?nbytes=1024&format=hex").body
+        if length(hx) < 2000
             throw("not enough bytes gotten from internet")
         end
+        bytes = map(s -> parse(UInt8, s, base=16), split(strip(String(hx)), r"\s+"))
     catch y
-        warn("internet source failure: $y")
-        bytes = rand(UInt8, 3136)
+        @warn("internet source failure: $y")
+        bytes = rand(UInt8, 1568)
     end
-    x = rand(collect(1:25, 4))
-    start, finish = x[1] + x[4], x[2] + x[3]
-    bytes[start:finish]
+    for b in bytes
+        ch = "ABCDEFGHIJKLMNOPQRSTUVWXYZ***"[div(b, 9) + 1]
+        if ch != '*'
+            push!(ret, ch)
+        end
+    end
+    ret
 end
 
-function onetimepadfile(filename, nbytes)
-    fp, needed = open(filename, "w"), nbytes
-    while needed > 0
-        data = getrandom()
+function createOTPfile(filename, n)
+    fp = open(filename, "w")
+    needed = n + (n % 40 == 0 ? 0 : 40 - n % 40)
+    data = Char[]
+    while true
+        data = vcat(data, getrandom())
         if length(data) >= needed
             data = data[1:needed]
+            break
         end
-        needed -= write(fp, data)
     end
+    s = ""
+    for (i, ch) in enumerate(data)
+        s *= (i % 40 == 0) ? ch * "\n" :
+            (i % 5 == 1) ? " " * ch : ch
+    end
+    write(fp, s)
+    close(fp)
 end
 
+function readOTPfile(filename, n)
+    ret, linesneeded, fp = "", div(n, 40) + 1, open(filename, "r")
+    while length(ret) < n
+        line = readline(fp)
+        if line[1] != '-' && line[1] != '#'
+            ret *= replace(line, r"[^A-Z]" => "")
+        end
+    end
+    ret[1:n]
+end
 
+createOTPfile("temp.tmp", 3990)
+
+println(readOTPfile("temp.tmp", 200))
 
