@@ -1,90 +1,36 @@
-import Base.show
+#=
+=={{header|Julia}}==
+<lang julia>
+One-time pad uses internet random source with rand() backup
+=#
+using HTTP
 
-struct Point x::Float64; y::Float64 end
-
-pvsort!(pv) = sort!(pv, lt = (a, b) -> a.x == b.x ? a.y < b.y : a.x < b.x)
-
-mutable struct Poly
-    vp::Vector{Point}
-    Poly(v::Vector{Point}) = new(pvsort!(unique(v)))
-end
-
-Poly(poly::Poly) = Poly(poly.vp)
-Poly(poly::Poly, v::Vector{Point}) = Poly(vcat(poly.vp, v))
-Poly(poly, f::Function) = Poly(pvsort!(map(p -> f(p), deepcopy(poly.vp))))
-
-polysort!(polyarr) = sort!(polyarr, lt = (a, b) -> string(a.vp) < string(b.vp))
-
-translate_to_origin(poly) = Poly(poly, p -> Point(p.x - minimum(p -> p.x, poly.vp),
-    p.y - minimum(p -> p.y, poly.vp)))
-
-function asciimatrix(poly)
-    if length(poly.vp) == 0
-        return reshape(Char[], 0, 0)
-    elseif length(poly.vp) == 1
-        return reshape([' '], 1, 1)
-    end
-    vp = translate_to_origin(poly).vp
-    sz = Int.((maximum(p -> p.x, vp), maximum(p -> p.y, vp))) .+ 1
-    txtmat = fill(' ', sz)
-    for i in 1:sz[1], j in 1:sz[2]
-        if Point(i-1, j-1) in vp
-            txtmat[i, j] = '#'
+function getrandom()
+    try
+        txt = HTTP.get("https://www.random.org/cgi-bin/randbyte?nbytes=1024&format=hex").body
+        bytes = map(s -> parse(UInt8, s), split(strip(txt), r"\s+"))
+        if length(bytes) < 3100
+            throw("not enough bytes gotten from internet")
         end
+    catch y
+        warn("internet source failure: $y")
+        bytes = rand(UInt8, 3136)
     end
-    txtmat
+    x = rand(collect(1:25, 4))
+    start, finish = x[1] + x[4], x[2] + x[3]
+    bytes[start:finish]
 end
 
-rotate90(poly) = Poly(poly, p -> Point(p.y, -p.x))
-rotate180(poly) = Poly(poly, p -> Point(-p.x, -p.y))
-rotate270(poly) = Poly(poly, p -> Point(-p.y, p.x))
-reflect(poly) = Poly(poly, p -> Point(-p.x, p.y))
-
-rotations_and_reflections(poly) = [poly, rotate90(poly), rotate180(poly),
-    rotate270(poly), reflect(poly), reflect(rotate90(poly)),
-    reflect(rotate180(poly)), reflect(rotate270(poly))]
-
-canonical(poly) = polysort!(map(translate_to_origin, rotations_and_reflections(poly)))
-
-# adds pv (a canonical vector of poly) to pvvec if different from any in pvvec already
-merge_canonical(pvvec, pv) = all(pvec -> !(pv[1] in pvec), pvvec) && push!(pvvec, pv)
-
-contiguous(p) = [Point(p.x - 1, p.y), Point(p.x + 1, p.y),
-    Point(p.x, p.y - 1), Point(p.x, p.y + 1)]
-
-new_points(poly) = unique(filter(p -> !(p in poly.vp),
-    reduce(vcat, [contiguous(p) for p in poly.vp])))
-
-new_polys(poly) = map(pv -> pv[1], reduce(merge_canonical, canonical.([Poly(poly, [p]) 
-    for p in new_points(poly)]), init=Vector{Vector{Poly}}()))
-
-const nullmino = Poly[]
-const monomino = Poly([Point(0, 0)])
-
-"""Generates polyominoes of rank n recursively."""
-rank(n) = @assert n >= 0 && return n == 0 ? nullmino : n == 1 ? [monomino] :
-                            unique(reduce(vcat, map(new_polys, rank(n - 1))))
-
-"""Generates a textual representation of a Polyomino."""
-function Base.show(io::IO, poly::Poly)
-    txtmat = asciimatrix(poly)
-    h, w = size(txtmat)
-    for i in 1:w
-        for j in 1:h
-            print(txtmat[i, j])
+function onetimepadfile(filename, nbytes)
+    fp, needed = open(filename, "w"), nbytes
+    while needed > 0
+        data = getrandom()
+        if length(data) >= needed
+            data = data[1:needed]
         end
-        println()
+        needed -= write(fp, data)
     end
 end
 
-function testpolys(N = 5)
-    println([length(rank(n)) for n in 1:4])
 
-    println("\nAll free polyominoes of rank $N:")
 
-    for poly in rank(2)
-        println(poly)
-    end
-end
-
-testpolys()
