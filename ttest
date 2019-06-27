@@ -1,63 +1,27 @@
-#=
-=={{header|Julia}}==
-<lang julia>
-One-time pad uses internet random source with rand() backup
-=#
-using HTTP
 
-function getrandom()
-    bytes, ret = UInt8[], Char[]
-    try
-        hx = HTTP.get("https://www.random.org/cgi-bin/randbyte?nbytes=1024&format=hex").body
-        if length(hx) < 2000
-            throw("not enough bytes gotten from internet")
-        end
-        bytes = map(s -> parse(UInt8, s, base=16), split(strip(String(hx)), r"\s+"))
-    catch y
-        @warn("internet source failure: $y")
-        bytes = rand(UInt8, 1568)
-    end
-    for b in bytes
-        ch = "ABCDEFGHIJKLMNOPQRSTUVWXYZ***"[div(b, 9) + 1]
-        if ch != '*'
-            push!(ret, ch)
+Sector() = Sector(configs["sectorchar"], configs["noballcolor"], configs["noballcolor"])
+
+const colors = [colorant"red", colorant"green", colorant"blue", colorant"yellow"]
+const nocolor = colorant"transparent"
+
+function makegrid(height, width)
+    grid = Matrix{Sector}(undef, height, width)
+    grid[1, :] .= Sector(Char(configs["wallchar"]), nocolor, nocolor)
+    grid[end, :] .= Sector(Char(configs["wallchar"]), nocolor, nocolor)
+    grid[:, 1] .= Sector(Char(configs["wallchar"]), nocolor, nocolor)
+    grid[:, end] .= Sector(Char(configs["wallchar"]), nocolor, nocolor)
+    probinteriorwall = configs["percentwall"] / 100
+    for i in 2:height-1, j in 2:width-1
+        if rand() > probinteriorwall
+            sector[i, j] = Sector(Char(configs["sectorchar"]), rand(colors, 2)...)
+        else
+            sector[i, j] = Sector(Char(configs["wallchar"]), nocolor, nocolor)
         end
     end
-    ret
-end
-
-function createOTPfile(filename, n)
-    fp = open(filename, "w")
-    needed = n + (n % 40 == 0 ? 0 : 40 - n % 40)
-    data = Char[]
-    while true
-        data = vcat(data, getrandom())
-        if length(data) >= needed
-            data = data[1:needed]
-            break
+    for i in 2:height-1, j in 2:width-1 # once walls up, check for isolated sectors
+         if badwall(grid, i, j)
+            sector[i, j] = Sector(Char(configs["sectorchar"]), rand(colors, 2)...)
         end
     end
-    s = ""
-    for (i, ch) in enumerate(data)
-        s *= (i % 40 == 0) ? ch * "\n" :
-            (i % 5 == 1) ? " " * ch : ch
-    end
-    write(fp, s)
-    close(fp)
-end
-
-function readOTPfile(filename, n)
-    ret, linesneeded, fp = "", div(n, 40) + 1, open(filename, "r")
-    while length(ret) < n
-        line = readline(fp)
-        if line[1] != '-' && line[1] != '#'
-            ret *= replace(line, r"[^A-Z]" => "")
-        end
-    end
-    ret[1:n]
-end
-
-createOTPfile("temp.tmp", 3990)
-
-println(readOTPfile("temp.tmp", 200))
+end    
 
