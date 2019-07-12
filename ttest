@@ -13,7 +13,7 @@ leftpermute(s, n) = rotate(rotate(s, n), 1, 1, 13)
 
 function chacocoding(text, mode, showsteps=false)
     len = length(text)
-    left, right = Vector{Char}(leftalphabet), Vector{Char}(rightalphabet)
+    left, right = deepcopy(leftalphabet), deepcopy(rightalphabet)
     etext = fill(' ', len)
     for i in 1:len
         showsteps && println(String(left), " ", String(right))
