@@ -1,38 +1,102 @@
-def dec2bin(dec, precision=16)    # String => String
-  int, df = dec.split(".")
-  minus = int.delete!("-")
-  bin = (minus ? "-" : "") + int.to_i.to_s(2) + "."
-  if df and df.to_i>0
-    fp = ("."+df).to_f
-    digit = 1
-    until fp.zero? or digit>precision
-      fp *= 2
-      n = fp.to_i
-      bin << n.to_s
-      fp -= n
-      digit += 1
+# chacocipher
+
+sub encode {
+    my($letter) = @_;
+    my $index = index join('', @right), $letter;
+    my $enc   = $left[$index];
+    left_permute($index);
+    right_permute($index);
+    $enc
+}
+
+sub decode {
+    my($letter) = @_;
+    my $index = index join('', @left), $letter;
+    my $dec   = $right[$index];
+    left_permute($index);
+    right_permute($index);
+    $dec
+}
+
+sub right_permute {
+    my($index) = @_;
+    rotate(\@right, $index + 1);
+    rotate(\@right, 1, 2, 13);
+}
+
+sub left_permute {
+    my($index) = @_;
+    rotate(\@left, $index);
+    rotate(\@left, 1, 1, 13);
+}
+
+
+init; $e_msg .= encode($_) for split '', 'WELLDONEISBETTERTHANWELLSAID';
+init; $d_msg .= decode($_) for split '', $e_msg;
+
+print "$e_msg\n";
+print "$d_msg\n";
+
+@enum Mode ENCRYPT DECRYPT
+const leftalphabet = Vector{Char}("HXUCZVAMDSLKPEFJRIGTWOBNYQ")
+const rightalphabet = Vector{Char}("PTLNBQDEOYSFAVZKGJRIHWXUMC")
+
+rotate(s, n, start=0, finish=0) =
+    start == 0 ? join(circshift(split(s, ""), -n), "") :
+        s[1:start] * join(circshift(split(s[start+1:finish], ""), -n), "") *
+        s[finish+1:end]
+
+rightpermute!(s, n) = rotate!(rotate!(s, n + 1), 1, 2, 13)
+leftpermute!(s, n) = rotate!(rotate!(s, n), 1, 1, 13)
+
+function chacocoding(text, mode, showsteps=false)
+    len = length(text)
+    left, right = Vector{Char}(leftalphabet), Vector{Char}(rightalphabet)
+    charr, etext, temp = Vector{Char}(text), fill(' ', len), fill(' ', 26)
+    for i in 1:len
+        showsteps && println(left, " ", right)
+        if mode == ENCRYPT
+            idx = indexin(text[i], right)
+            etext[i] = left[idx]
+        else
+            idx = indexin(text[i], left)
+            etext[i] = right[idx]
+        end
+        if i < len
+            # permute left
+            for j in idx:26; temp[j - idx] = left[j] end
+            for j in 1:idx; temp[26 - idx + j] = left[j] end
+            tmp = temp[1]
+            for j in 3:14; temp[j - 1] = temp[j] end
+            temp[14] = tmp
+            left = String(temp)
+
+            # permute right
+            for j in idx:26; temp[j - index] = right[j] end
+            for j in 1:idx; temp[26 - index + j] = right[j] end
+            tmp = temp[0]
+            for j in 2:26; temp[j - 1] = temp[j] end
+            temp[26] = tmp
+            tmp = temp[2]
+            for j in 4:14; temp[j - 1] = temp[j] end
+            temp[14] = tmp
+            right = String(temp)
+        end
     end
-  else
-    bin << "0"
-  end
-  bin
+    String(etext)
 end
- 
-def bin2dec(bin)              # String => String
-  int, df = bin.split(".")
-  minus = int.delete!("-")
-  dec = (minus ? "-" : "") + int.to_i(2).to_s
-  if df
-    dec << (df.to_i(2) / 2.0**(df.size)).to_s[1..-1]
-  else
-    dec << ".0"
-  end
+
+function testchacocipher()
+    plaintext = "WELLDONEISBETTERTHANWELLSAID"
+    println("The original plaintext is : $plaintext")
+    println("\nThe left and right alphabets after each permutation",
+             " during encryption are :\n")
+    ciphertext = chacocoding(plaintext, ENCRYPT, true)
+    println("\nThe ciphertext is : $ciphertext")
+    plaintext2 = Chao.exec(cipherText, DECRYPT)
+    println("\nThe recovered plaintext is : plaintext2")
 end
- 
-data = %w[23.34375 11.90625 -23.34375 -11.90625]
-data.each do |dec|
-  bin  = dec2bin(dec)
-  dec2 = bin2dec(bin)
-  puts "%10s => %12s =>%10s" % [dec, bin, dec2]
-end
+
+testchacocipher()
+
 
