@@ -1,8 +1,8 @@
 # chacocipher
 
 @enum Mode ENCRYPT DECRYPT
-const leftalphabet = Vector{Char}("HXUCZVAMDSLKPEFJRIGTWOBNYQ")
-const rightalphabet = Vector{Char}("PTLNBQDEOYSFAVZKGJRIHWXUMC")
+const leftalphabet = "HXUCZVAMDSLKPEFJRIGTWOBNYQ"
+const rightalphabet = "PTLNBQDEOYSFAVZKGJRIHWXUMC"
 
 rotate(s, n, start=0, finish=0) =
     start == 0 ? circshift(s, -n) :
@@ -12,9 +12,8 @@ rightpermute(s, n) = rotate(rotate(s, n + 1), 1, 2, 13)
 leftpermute(s, n) = rotate(rotate(s, n), 1, 1, 13)
 
 function chacocoding(text, mode, showsteps=false)
-    len = length(text)
-    left, right = deepcopy(leftalphabet), deepcopy(rightalphabet)
-    etext = fill(' ', len)
+    left, right = Vector{Char}(leftalphabet), Vector{Char}(rightalphabet)
+    len, etext = length(text), Vector{Char}(text)
     for i in 1:len
         showsteps && println(String(left), " ", String(right))
         if mode == ENCRYPT
@@ -44,6 +43,7 @@ function testchacocipher()
 end
 
 testchacocipher()
+
 
 The original plaintext is : WELLDONEISBETTERTHANWELLSAID
 
