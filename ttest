@@ -1,86 +1,32 @@
 # chacocipher
 
-sub encode {
-    my($letter) = @_;
-    my $index = index join('', @right), $letter;
-    my $enc   = $left[$index];
-    left_permute($index);
-    right_permute($index);
-    $enc
-}
-
-sub decode {
-    my($letter) = @_;
-    my $index = index join('', @left), $letter;
-    my $dec   = $right[$index];
-    left_permute($index);
-    right_permute($index);
-    $dec
-}
-
-sub right_permute {
-    my($index) = @_;
-    rotate(\@right, $index + 1);
-    rotate(\@right, 1, 2, 13);
-}
-
-sub left_permute {
-    my($index) = @_;
-    rotate(\@left, $index);
-    rotate(\@left, 1, 1, 13);
-}
-
-
-init; $e_msg .= encode($_) for split '', 'WELLDONEISBETTERTHANWELLSAID';
-init; $d_msg .= decode($_) for split '', $e_msg;
-
-print "$e_msg\n";
-print "$d_msg\n";
-
 @enum Mode ENCRYPT DECRYPT
 const leftalphabet = Vector{Char}("HXUCZVAMDSLKPEFJRIGTWOBNYQ")
 const rightalphabet = Vector{Char}("PTLNBQDEOYSFAVZKGJRIHWXUMC")
 
 rotate(s, n, start=0, finish=0) =
-    start == 0 ? join(circshift(split(s, ""), -n), "") :
-        s[1:start] * join(circshift(split(s[start+1:finish], ""), -n), "") *
-        s[finish+1:end]
+    start == 0 ? circshift(s, -n) :
+        vcat(s[1:start], circshift(s[start+1:finish], -n), s[finish+1:end])
 
-rightpermute!(s, n) = rotate!(rotate!(s, n + 1), 1, 2, 13)
-leftpermute!(s, n) = rotate!(rotate!(s, n), 1, 1, 13)
+rightpermute(s, n) = rotate(rotate(s, n + 1), 1, 2, 13)
+leftpermute(s, n) = rotate(rotate(s, n), 1, 1, 13)
 
 function chacocoding(text, mode, showsteps=false)
     len = length(text)
     left, right = Vector{Char}(leftalphabet), Vector{Char}(rightalphabet)
-    charr, etext, temp = Vector{Char}(text), fill(' ', len), fill(' ', 26)
+    etext = fill(' ', len)
     for i in 1:len
-        showsteps && println(left, " ", right)
+        showsteps && println(String(left), " ", String(right))
         if mode == ENCRYPT
-            idx = indexin(text[i], right)
+            idx = indexin(text[i], right)[1]
             etext[i] = left[idx]
         else
-            idx = indexin(text[i], left)
+            idx = indexin(text[i], left)[1]
             etext[i] = right[idx]
         end
         if i < len
-            # permute left
-            for j in idx:26; temp[j - idx] = left[j] end
-            for j in 1:idx; temp[26 - idx + j] = left[j] end
-            tmp = temp[1]
-            for j in 3:14; temp[j - 1] = temp[j] end
-            temp[14] = tmp
-            left = String(temp)
-
-            # permute right
-            for j in idx:26; temp[j - index] = right[j] end
-            for j in 1:idx; temp[26 - index + j] = right[j] end
-            tmp = temp[0]
-            for j in 2:26; temp[j - 1] = temp[j] end
-            temp[26] = tmp
-            tmp = temp[2]
-            for j in 4:14; temp[j - 1] = temp[j] end
-            temp[14] = tmp
-            right = String(temp)
+            left = leftpermute(left, idx)
+            right = rightpermute(right, idx)
         end
     end
     String(etext)
@@ -93,10 +39,47 @@ function testchacocipher()
              " during encryption are :\n")
     ciphertext = chacocoding(plaintext, ENCRYPT, true)
     println("\nThe ciphertext is : $ciphertext")
-    plaintext2 = Chao.exec(cipherText, DECRYPT)
-    println("\nThe recovered plaintext is : plaintext2")
+    plaintext2 = chacocoding(ciphertext, DECRYPT)
+    println("\nThe recovered plaintext is : $plaintext2")
 end
 
 testchacocipher()
 
+The original plaintext is : WELLDONEISBETTERTHANWELLSAID
 
+The left and right alphabets after each permutation during encryption are :
+
+HXUCZVAMDSLKPEFJRIGTWOBNYQ PTLNBQDEOYSFAVZKGJRIHWXUMC
+BYQHXUCZVAMDNSLKPEFJRIGTWO UMPTLNBQDEOYCSFAVZKGJRIHWX
+MNSLKPEFJRIGDTWOBYQHXUCZVA YCFAVZKGJRIHSWXUMPTLNBQDEO
+XCZVAMNSLKPEUFJRIGDTWOBYQH BQEOYCFAVZKGDJRIHSWXUMPTLN
+HCZVAMNSLKPEXUFJRIGDTWOBYQ BQOYCFAVZKGDEJRIHSWXUMPTLN
+XFJRIGDTWOBYUQHCZVAMNSLKPE JRHSWXUMPTLNIBQOYCFAVZKGDE
+ZAMNSLKPEXFJVRIGDTWOBYUQHC CFVZKGDEJRHSAWXUMPTLNIBQOY
+YQHCZAMNSLKPUEXFJVRIGDTWOB BQYCFVZKGDEJORHSAWXUMPTLNI
+PEXFJVRIGDTWUOBYQHCZAMNSLK ORSAWXUMPTLNHIBQYCFVZKGDEJ
+BQHCZAMNSLKPYEXFJVRIGDTWUO QYFVZKGDEJORCSAWXUMPTLNHIB
+XJVRIGDTWUOBFQHCZAMNSLKPYE WXMPTLNHIBQYUFVZKGDEJORCSA
+OFQHCZAMNSLKBPYEXJVRIGDTWU YUVZKGDEJORCFSAWXMPTLNHIBQ
+NLKBPYEXJVRISGDTWUOFQHCZAM ORFSAWXMPTLNCHIBQYUVZKGDEJ
+RSGDTWUOFQHCIZAMNLKBPYEXJV NCIBQYUVZKGDHEJORFSAWXMPTL
+VSGDTWUOFQHCRIZAMNLKBPYEXJ NCBQYUVZKGDHIEJORFSAWXMPTL
+ZMNLKBPYEXJVASGDTWUOFQHCRI ORSAWXMPTLNCFBQYUVZKGDHIEJ
+NKBPYEXJVASGLDTWUOFQHCRIZM AWMPTLNCFBQYXUVZKGDHIEJORS
+EJVASGLDTWUOXFQHCRIZMNKBPY NCBQYXUVZKGDFHIEJORSAWMPTL
+QCRIZMNKBPYEHJVASGLDTWUOXF EJRSAWMPTLNCOBQYXUVZKGDFHI
+MKBPYEHJVASGNLDTWUOXFQCRIZ MPLNCOBQYXUVTZKGDFHIEJRSAW
+YHJVASGNLDTWEUOXFQCRIZMKBP OBYXUVTZKGDFQHIEJRSAWMPLNC
+ZKBPYHJVASGNMLDTWEUOXFQCRI PLCOBYXUVTZKNGDFQHIEJRSAWM
+XQCRIZKBPYHJFVASGNMLDTWEUO RSWMPLCOBYXUAVTZKNGDFQHIEJ
+KPYHJFVASGNMBLDTWEUOXQCRIZ OBXUAVTZKNGDYFQHIEJRSWMPLC
+ZPYHJFVASGNMKBLDTWEUOXQCRI OBUAVTZKNGDYXFQHIEJRSWMPLC
+XCRIZPYHJFVAQSGNMKBLDTWEUO MPCOBUAVTZKNLGDYXFQHIEJRSW
+HFVAQSGNMKBLJDTWEUOXCRIZPY TZNLGDYXFQHIKEJRSWMPCOBUAV
+JTWEUOXCRIZPDYHFVAQSGNMKBL EJSWMPCOBUAVRTZNLGDYXFQHIK
+
+The ciphertext is : OAHQECBKOEUMVJIMYFZPIOZIOYLQ
+
+The recovered plaintext is : WELLDONEISBETTERTHANWELLSAID
+
+  
