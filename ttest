@@ -19,10 +19,8 @@ function puzzle16app(bsize)
     inorder = string.(reshape(1:bsize*bsize, bsize, bsize))
     shufflepuzzle(puzz) = shuffle(puzz)
     puzzle = shufflepuzzle(inorder)
-    idx(siz, row) = siz * (row - 1) + 1 : siz * row
-    rotatecol(puzzle, col, n) = puzzle[idx(bsize, col)] .=
-        circshift(puzzle[idx(bsize, col)], n)
-    rotaterow(puzzle, row, n) = rotl90(rotatecol(rotr90(puzzle), row, n))
+    rotatecol(puzzle, col, n) = puzzle[:, col] .= circshift(puzzle[:, col], n)
+    rotaterow(puzzle, row, n) = puzzle[row, :] .= circshift(puzzle[row, :], n)
     iswon() = puzzle == inorder
     won = false
 
@@ -35,10 +33,9 @@ function puzzle16app(bsize)
         return 0, 0
     end
 
-      function playerclicked(button)
+    function playerclicked(button)
         if !won
         i, j = findrowcol(button)
-println("i $i  j $j")
             if i == 1
                 rotatecol(puzzle, j - 1, 1)
             elseif i == bsize + 2
@@ -112,4 +109,3 @@ println("i $i  j $j")
 end
 
 puzzle16app(4)
-  
