@@ -87,7 +87,7 @@ function puzzle16app(bsize)
         end
         if iswon()
             won = true
-            info_dialog("Game over.\nScore: $score")
+            info_dialog("Game over.\nScore: $score", win)
         end
         showall(win)
     end
