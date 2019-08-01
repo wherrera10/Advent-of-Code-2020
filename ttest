@@ -1,111 +1,30 @@
-using Gtk, Colors, Random
+available, processes = open("input.txt") do f
+    raw = [line for line in eachline(f)]
+    parseable = map(x -> replace(x, " " => ", "), raw)
+    available = eval(Meta.parse(parseable[1]))
+    processes = map(x -> eval(Meta.parse(x)), parseable[2:end])
+    available, collect(enumerate(processes))
+end
+# processes = [(PID, [alloc, max]), ...]
 
-function puzzle16app(bsize)
-    aclock, clock = "\u27f2", "\u27f3"
-    win = GtkWindow("16 Game", 300, 300) |> (GtkFrame() |> (box = GtkBox(:v)))
-    toolbar = GtkToolbar()
-    newgame = GtkToolButton("New Game")
-    set_gtk_property!(newgame, :label, "New Game")
-    set_gtk_property!(newgame, :is_important, true)
-    push!(toolbar, newgame)
-    grid = GtkGrid()
-    map(w -> push!(box, w),[toolbar, grid])
-    buttons = Array{Gtk.GtkButtonLeaf,2}(undef, bsize + 2, bsize + 2)
-    for i in 1:bsize+2, j in 1:bsize+2
-        grid[i,j] = buttons[i,j] = GtkButton()
-        set_gtk_property!(buttons[i,j], :expand, true)
-    end
+println(processes)
 
-    inorder = string.(reshape(1:bsize*bsize, bsize, bsize))
-    shufflepuzzle(puzz) = shuffle(puzz)
-    puzzle = shufflepuzzle(inorder)
-    rotatecol(puzzle, col, n) = puzzle[:, col] .= circshift(puzzle[:, col], n)
-    rotaterow(puzzle, row, n) = puzzle[row, :] .= circshift(puzzle[row, :], n)
-    iswon() = puzzle == inorder
-    won = false
+output = Int64[]
+work_to_do = true
+while work_to_do
+    work_to_do = false
 
-    function findrowcol(button)
-        for i in 1:bsize+2, j in 1:bsize+2
-            if buttons[i, j] == button
-                return i, j
-            end
-        end
-        return 0, 0
-    end
-
-    function playerclicked(button)
-        if !won
-        i, j = findrowcol(button)
-            if i == 1
-                rotatecol(puzzle, j - 1, 1)
-            elseif i == bsize + 2
-                rotatecol(puzzle, j - 1, -1)
-            elseif j == 1
-                rotaterow(puzzle, i - 1, 1)
-            elseif j == bsize + 2
-                rotaterow(puzzle, i - 1, -1)
-            end
-        end
-        update!()
-    end
-
-    function setup!()
-        for i in 1:bsize+2, j in 1:bsize+2
-            if 1 < j < bsize + 2
-                if i == 1
-                    signal_connect(playerclicked, buttons[i, j], "clicked")
-                elseif i == bsize + 2
-                    signal_connect(playerclicked, buttons[i, j], "clicked")
-                end
-            elseif 1 < i < bsize + 2
-                if j == 1
-                    signal_connect(playerclicked, buttons[i, j], "clicked")
-                elseif j == bsize + 2
-                    signal_connect(playerclicked, buttons[i, j], "clicked")
-                end
-            end
+    for p in processes
+        if all((p[2][4:end] - p[2][1:3]) .<= available)
+            push!(output, p[1])
+            available += p[2][1:3]
+            p[2][4:end] .= typemax(Int)
+            work_to_do = true
         end
     end
-
-    function update!()
-        for i in 1:bsize+2, j in 1:bsize+2
-            if 1 < j < bsize + 2
-                if i == 1
-                    set_gtk_property!(buttons[i, j], :label, clock)
-                elseif i == bsize + 2
-                    set_gtk_property!(buttons[i, j], :label, aclock)
-                else
-                    set_gtk_property!(buttons[i, j], :label, puzzle[i-1, j-1])
-                end
-            elseif 1 < i < bsize + 2
-                if j == 1
-                    set_gtk_property!(buttons[i, j], :label, clock)
-                elseif j == bsize + 2
-                    set_gtk_property!(buttons[i, j], :label, aclock)
-                end
-            end
-        end
-        if iswon()
-            won = true
-            info_dialog("Game over.\nScore: $score", win)
-        end
-        showall(win)
-    end
-
-    function initialize!(w)
-        puzzle = shufflepuzzle(inorder)
-        won = false
-        update!()
-    end
-    
-    setup!()
-    condition = Condition()
-    endit(w) = notify(condition)
-    signal_connect(initialize!, newgame, :clicked)
-    signal_connect(endit, win, :destroy)
-    initialize!(win)
-    showall(win)
-    wait(condition)
 end
 
-puzzle16app(4)
+if length(output) != length(processes)
+    println("Failed to complete the Algorithm.")
+end
+println(mapreduce(x -> "P" * string(x-1), (l, r) -> l * ", " * r, output))
