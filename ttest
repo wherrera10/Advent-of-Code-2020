@@ -1,85 +1,102 @@
-# chacocipher
+using Gtk, Colors, Random
 
-@enum Mode ENCRYPT DECRYPT
-const leftalphabet = "HXUCZVAMDSLKPEFJRIGTWOBNYQ"
-const rightalphabet = "PTLNBQDEOYSFAVZKGJRIHWXUMC"
+function puzzle16app(bsize)
+    win = GtkWindow("16 Game", 300, 300) |> (GtkFrame() |> (box = GtkBox(:v)))
+    toolbar = GtkToolbar()
+    newgame = GtkToolButton("New Game")
+    set_gtk_property!(newgame, :label, "New Game")
+    set_gtk_property!(newgame, :is_important, true)
+    push!(toolbar, newgame)
+    grid = GtkGrid()
+    map(w -> push!(box, w),[toolbar, grid])
+    buttons = Array{Gtk.GtkButtonLeaf,2}(undef, bsize + 2, bsize + 2)
+    for i in 1:bsize+2, j in 1:bsize+2
+        grid[i,j] = buttons[i,j] = GtkButton()
+        set_gtk_property!(buttons[i,j], :expand, true)
+    end
 
-rotate(s, n, start=0, finish=0) =
-    start == 0 ? circshift(s, -n) :
-        vcat(s[1:start], circshift(s[start+1:finish], -n), s[finish+1:end])
+    inorder = string.(reshape(1:bsize*bsize, bsize, bsize))
+    shufflepuzzle(puzz) = shuffle(puzz)
+    puzzle = shufflepuzzle(inorder)
+    idx(siz, row) = siz * (row - 1) + 1 : siz * row
+    rotatecol(puzzle, col, n) = puzzle[idx(bsize, col)] .=
+        circshift(puzzle[idx(bsize, col)], n)
+    rotaterow(puzzle, row, n) = rotl90(rotatecol(rotr90(puzzle), row, n))
+    iswon() = puzzle == inorder
+    won = false
 
-rightpermute(s, n) = rotate(rotate(s, n + 1), 1, 2, 13)
-leftpermute(s, n) = rotate(rotate(s, n), 1, 1, 13)
-
-function chacocoding(text, mode, showsteps=false)
-    left, right = Vector{Char}(leftalphabet), Vector{Char}(rightalphabet)
-    len, etext = length(text), Vector{Char}(text)
-    for i in 1:len
-        showsteps && println(String(left), " ", String(right))
-        if mode == ENCRYPT
-            idx = indexin(text[i], right)[1]
-            etext[i] = left[idx]
-        else
-            idx = indexin(text[i], left)[1]
-            etext[i] = right[idx]
+    function update!()
+        aclock, clock = "\u27f2", "\u27f3"
+        for i in 1:bsize+2, j in 1:bsize+2
+            if 1 < j < bsize + 2
+                if i == 1
+                    set_gtk_property!(buttons[i, j], :label, clock)
+                    signal_connect(playerclicked, buttons[i, j], "clicked")
+                elseif i == bsize + 2
+                    set_gtk_property!(buttons[i, j], :label, aclock)
+                    signal_connect(playerclicked, buttons[i, j], "clicked")
+                else
+                    set_gtk_property!(buttons[i, j], :label, puzzle[i-1, j-1])
+                end
+            elseif 1 < i < bsize + 2
+                if j == 1
+                    set_gtk_property!(buttons[i, j], :label, clock)
+                    signal_connect(playerclicked, buttons[i, j], "clicked")
+                elseif j == bsize + 2
+                    set_gtk_property!(buttons[i, j], :label, aclock)
+                    signal_connect(playerclicked, buttons[i, j], "clicked")
+                end
+            end
         end
-        if i < len
-            left = leftpermute(left, idx)
-            right = rightpermute(right, idx)
+        if iswon()
+            won = true
+            info_dialog("Game over.\nScore: $score")
         end
     end
-    String(etext)
+
+    function initialize!(w)
+        puzzle = shufflepuzzle(inorder)
+        won = false
+        update!()
+    end
+
+    function findrowcol(button)
+        for i in 1:bsize+2, j in 1:bsize+2
+            if buttons[i, j] == button
+                return i, j
+            end
+        end
+        return 0, 0
+    end
+
+    function playerclicked(button)
+        if !won
+            i, j = findrowcol(button)
+                if i == 1
+                    rotatecol(puzzle, j - 1, 1)
+                elseif i == bsize + 2
+                    rotatecol(puzzle, j - 1, -1)
+                elseif j == 1
+                    rotaterow(puzzle, i - 1, 1)
+                elseif j == bsize + 2
+                    rotatecol(puzzle, j - 1, -1)
+                end
+            end
+        end
+        update!()
+    end
+
+    condition = Condition()
+    endit(w) = notify(condition)
+    initialize!(win)
+    signal_connect(initialize!, newgame, :clicked)
+    signal_connect(endit, win, :destroy)
+    showall(win)
+    wait(condition)
 end
 
-function testchacocipher()
-    plaintext = "WELLDONEISBETTERTHANWELLSAID"
-    println("The original plaintext is : $plaintext")
-    println("\nThe left and right alphabets after each permutation",
-             " during encryption are :\n")
-    ciphertext = chacocoding(plaintext, ENCRYPT, true)
-    println("\nThe ciphertext is : $ciphertext")
-    plaintext2 = chacocoding(ciphertext, DECRYPT)
-    println("\nThe recovered plaintext is : $plaintext2")
-end
 
-testchacocipher()
+puzzle16app(4)
 
-
-The original plaintext is : WELLDONEISBETTERTHANWELLSAID
-
-The left and right alphabets after each permutation during encryption are :
-
-HXUCZVAMDSLKPEFJRIGTWOBNYQ PTLNBQDEOYSFAVZKGJRIHWXUMC
-BYQHXUCZVAMDNSLKPEFJRIGTWO UMPTLNBQDEOYCSFAVZKGJRIHWX
-MNSLKPEFJRIGDTWOBYQHXUCZVA YCFAVZKGJRIHSWXUMPTLNBQDEO
-XCZVAMNSLKPEUFJRIGDTWOBYQH BQEOYCFAVZKGDJRIHSWXUMPTLN
-HCZVAMNSLKPEXUFJRIGDTWOBYQ BQOYCFAVZKGDEJRIHSWXUMPTLN
-XFJRIGDTWOBYUQHCZVAMNSLKPE JRHSWXUMPTLNIBQOYCFAVZKGDE
-ZAMNSLKPEXFJVRIGDTWOBYUQHC CFVZKGDEJRHSAWXUMPTLNIBQOY
-YQHCZAMNSLKPUEXFJVRIGDTWOB BQYCFVZKGDEJORHSAWXUMPTLNI
-PEXFJVRIGDTWUOBYQHCZAMNSLK ORSAWXUMPTLNHIBQYCFVZKGDEJ
-BQHCZAMNSLKPYEXFJVRIGDTWUO QYFVZKGDEJORCSAWXUMPTLNHIB
-XJVRIGDTWUOBFQHCZAMNSLKPYE WXMPTLNHIBQYUFVZKGDEJORCSA
-OFQHCZAMNSLKBPYEXJVRIGDTWU YUVZKGDEJORCFSAWXMPTLNHIBQ
-NLKBPYEXJVRISGDTWUOFQHCZAM ORFSAWXMPTLNCHIBQYUVZKGDEJ
-RSGDTWUOFQHCIZAMNLKBPYEXJV NCIBQYUVZKGDHEJORFSAWXMPTL
-VSGDTWUOFQHCRIZAMNLKBPYEXJ NCBQYUVZKGDHIEJORFSAWXMPTL
-ZMNLKBPYEXJVASGDTWUOFQHCRI ORSAWXMPTLNCFBQYUVZKGDHIEJ
-NKBPYEXJVASGLDTWUOFQHCRIZM AWMPTLNCFBQYXUVZKGDHIEJORS
-EJVASGLDTWUOXFQHCRIZMNKBPY NCBQYXUVZKGDFHIEJORSAWMPTL
-QCRIZMNKBPYEHJVASGLDTWUOXF EJRSAWMPTLNCOBQYXUVZKGDFHI
-MKBPYEHJVASGNLDTWUOXFQCRIZ MPLNCOBQYXUVTZKGDFHIEJRSAW
-YHJVASGNLDTWEUOXFQCRIZMKBP OBYXUVTZKGDFQHIEJRSAWMPLNC
-ZKBPYHJVASGNMLDTWEUOXFQCRI PLCOBYXUVTZKNGDFQHIEJRSAWM
-XQCRIZKBPYHJFVASGNMLDTWEUO RSWMPLCOBYXUAVTZKNGDFQHIEJ
-KPYHJFVASGNMBLDTWEUOXQCRIZ OBXUAVTZKNGDYFQHIEJRSWMPLC
-ZPYHJFVASGNMKBLDTWEUOXQCRI OBUAVTZKNGDYXFQHIEJRSWMPLC
-XCRIZPYHJFVAQSGNMKBLDTWEUO MPCOBUAVTZKNLGDYXFQHIEJRSW
-HFVAQSGNMKBLJDTWEUOXCRIZPY TZNLGDYXFQHIKEJRSWMPCOBUAV
-JTWEUOXCRIZPDYHFVAQSGNMKBL EJSWMPCOBUAVRTZNLGDYXFQHIK
-
-The ciphertext is : OAHQECBKOEUMVJIMYFZPIOZIOYLQ
-
-The recovered plaintext is : WELLDONEISBETTERTHANWELLSAID
 
   
