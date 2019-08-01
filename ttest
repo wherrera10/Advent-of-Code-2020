@@ -35,9 +35,10 @@ function puzzle16app(bsize)
         return 0, 0
     end
 
-    function playerclicked(button)
+      function playerclicked(button)
         if !won
         i, j = findrowcol(button)
+println("i $i  j $j")
             if i == 1
                 rotatecol(puzzle, j - 1, 1)
             elseif i == bsize + 2
@@ -45,7 +46,7 @@ function puzzle16app(bsize)
             elseif j == 1
                 rotaterow(puzzle, i - 1, 1)
             elseif j == bsize + 2
-                rotatecol(puzzle, j - 1, -1)
+                rotaterow(puzzle, i - 1, -1)
             end
         end
         update!()
