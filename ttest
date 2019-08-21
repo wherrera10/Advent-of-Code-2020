@@ -1,48 +1,24 @@
-using Primes
+using Combinatorics
 
-function pierponts(N, firstkind = true)
-    ret, incdec = BigInt[], firstkind ? 1 : -1
-    for k2 in 0:10000, k3 in 0:k2, switch in false:true
-        i, j = switch ? (k3, k2) : (k2, k3)
-        n = BigInt(2)^i * BigInt(3)^j + incdec
-        if isprime(n) && !(n in ret)
-            push!(ret, n)
-            if length(ret) == N * 3
-                return sort(ret)[1:N]
-            end
-        end
-    end
-    throw("Failed to find $N primes")
+clash(row2, row1::Vector{Int}) = any(i -> row1[i] == row2[i], 1:length(row2))
+
+clash(row, rows::Vector{Vector{int}}) = any(r -> clash(row, r), rows)
+
+permute_onefixed(i, n) = map(vec -> vcat(i, vec), permutations(filter(x -> x != i, 1:n)))
+
+filter_permuted(rows, i, n) = filter(v -> !clash(v, rows), permute_onefixed(i, n))
+
+firstmat(n) = reshape(collect(1:n), 1, n)
+
+function permute_addrowbelow(mat)
+    i, n = size(mat)
+    i += 1
+    newrows = filter_permuted(collect(eachrow(mat)), i, n)
+    returm map(r -> vcat(mat, r), newrows)
 end
 
-        
-println("The first 50 Pierpont primes (first kind) are: ", pierponts(50))
-
-println("\nThe first 50 Pierpont primes (second kind) are: ", pierponts(50, false))
-
-println("\nThe 250th Pierpont prime (first kind) is: ", pierponts(250)[250])
-
-println("\nThe 250th Pierpont prime (second kind) is: ", pierponts(250, false)[250])
-
-println("\nThe 1000th Pierpont prime (first kind) is: ", pierponts(1000)[1000])
-
-println("\nThe 1000th Pierpont prime (second kind) is: ", pierponts(1000, false)[1000])
-
-println("\nThe 2000th Pierpont prime (first kind) is: ", pierponts(2000)[2000])
-
-println("\nThe 2000th Pierpont prime (second kind) is: ", pierponts(2000, false)[2000])
-
-#=
-The method chosen is fast but does not guarantee the primes are generated in order. Therefore we generate three times the primes needed and then sort and return the bottom third.
-The first 50 Pierpont primes (first kind) are: BigInt[2, 3, 5, 7, 13, 17, 19, 37, 73, 97, 109, 163, 193, 257, 433, 487, 577, 769, 1153, 1297, 1459, 2593, 2917, 3457, 3889, 10369, 12289, 17497, 18433, 39367, 52489, 65537, 139969, 147457, 209953, 331777, 472393, 629857, 746497, 786433, 839809, 995329, 1179649, 1492993, 1769473, 1990657, 2654209, 5038849, 5308417, 8503057]
-
-The first 50 Pierpont primes (second kind) are: BigInt[2, 3, 5, 7, 11, 17, 23, 31, 47, 53, 71, 107, 127, 191, 383, 431, 647, 863, 971, 1151, 2591, 4373, 6143, 6911, 8191, 8747, 13121, 15551, 23327, 27647, 62207, 73727, 131071, 139967, 165887, 294911, 314927, 442367, 472391, 497663, 524287, 786431, 995327, 1062881, 2519423, 10616831, 17915903, 18874367, 25509167, 30233087]
-
-The 250th Pierpont prime (first kind) is: 62518864539857068333550694039553
-
-The 250th Pierpont prime (second kind) is: 4111131172000956525894875083702271
-
-The 2000th Pierpont prime (first kind) is: 23647056334818750458979408107288138983957799805326855934519920502493109431728722178351835778368596067773810122477389192659352731519830867553659739507195398662712180250483714053474639899675114018023738461139103130959712720686117399642823861502738433
+function makereducedlatinsquares(n)
 
 
-=#
+end
+
