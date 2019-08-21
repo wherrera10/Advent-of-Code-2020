@@ -2,7 +2,7 @@ using Combinatorics
 
 clash(row2, row1::Vector{Int}) = any(i -> row1[i] == row2[i], 1:length(row2))
 
-clash(row, rows::Vector{Vector{int}}) = any(r -> clash(row, r), rows)
+clash(row, rows::Vector{Vector{Int}}) = any(r -> clash(row, r), rows)
 
 permute_onefixed(i, n) = map(vec -> vcat(i, vec), permutations(filter(x -> x != i, 1:n)))
 
@@ -14,11 +14,15 @@ function permute_addrowbelow(mat)
     i, n = size(mat)
     i += 1
     newrows = filter_permuted(collect(eachrow(mat)), i, n)
-    returm map(r -> vcat(mat, r), newrows)
+    return map(r -> vcat(mat, r), newrows)
 end
 
 function makereducedlatinsquares(n)
-
-
+    allsquares = Vector{Matrix{Int}}()
+    push!(allsquares, firstmat(n))
+    for i in 2:n
+        allsquares = map(permute_addrowbelow, vcat, allsquares)
+    end
+    allsquares
 end
 
