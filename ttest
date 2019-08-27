@@ -1,4 +1,5 @@
 
+
 function hammingsequence(N::Int)
     if N < 1
         throw("Hamming sequence index must be a positive integer")
@@ -16,9 +17,9 @@ function hammingsequence(N::Int)
     ham
 end
 
-function counthumbledigits(maxdigits, returnsequence=50)
-    n, count  = BigInt(1), 0
-    humble = Vector{BigInt}([1])
+function counthumbledigits(maxdigits, returnsequencelength=50)
+    n, count, adjustindex  = BigInt(1), 0, BigInt(0)
+    humble, savesequence = Vector{BigInt}([1]), Vector{BigInt}()
     base2, base3, base5, base7 = 1, 1, 1, 1
     next2, next3, next5, next7 = BigInt(2), BigInt(3), BigInt(5), BigInt(7)
     digitcounts= Dict{Int, Int}(1 => 1)
@@ -26,23 +27,29 @@ function counthumbledigits(maxdigits, returnsequence=50)
         n = min(next2, next3, next5, next7)
         push!(humble, n)
         count += 1
+        if count == returnsequencelength
+            savesequence = deepcopy(humble)
+        elseif count > 1000000
+            popfirst!(humble)
+            adjustindex += 1
+        end
         placesbase10 = length(string(n))
         if haskey(digitcounts, placesbase10)
             digitcounts[placesbase10] += 1
         else
             digitcounts[placesbase10] = 1
         end
-        next2 <= n && (base2 += 1; next2 = 2 * humble[base2])
-        next3 <= n && (base3 += 1; next3 = 3 * humble[base3])
-        next5 <= n && (base5 += 1; next5 = 5 * humble[base5])
-        next7 <= n && (base7 += 1; next7 = 7 * humble[base7])
+        next2 <= n && (base2 += 1; next2 = 2 * humble[base2 - adjustindex])
+        next3 <= n && (base3 += 1; next3 = 3 * humble[base3 - adjustindex])
+        next5 <= n && (base5 += 1; next5 = 5 * humble[base5 - adjustindex])
+        next7 <= n && (base7 += 1; next7 = 7 * humble[base7 - adjustindex])
     end
-    humble[1:returnsequence], digitcounts
+    savesequence, digitcounts
 end
 
 counthumbledigits(3)
 
-@time first120, digitcounts = counthumbledigits(100)
+@time first120, digitcounts = counthumbledigits(60)
 
 println("The first 50 humble numbers are: $first120\n\nDigit counts of humble numbers:")
 for ndigits in sort(collect(keys(digitcounts)))[1:end-1]
