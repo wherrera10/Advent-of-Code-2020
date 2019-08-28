@@ -1,48 +1,51 @@
-function counthumbledigits(maxdigits, returnsequencelength=50)
-    n, count, adjustindex  = BigInt(1), 0, BigInt(0)
-    humble, savesequence = Vector{BigInt}([1]), Vector{BigInt}()
-    base2, base3, base5, base7 = 1, 1, 1, 1
-    next2, next3, next5, next7 = BigInt(2), BigInt(3), BigInt(5), BigInt(7)
-    digitcounts= Dict{Int, Int}(1 => 1)
-    while n < BigInt(10)^(maxdigits+1)
-        n = min(next2, next3, next5, next7)
-        push!(humble, n)
-        count += 1
-        if count == returnsequencelength
-            savesequence = deepcopy(humble)
-        elseif count > 2000000
-            popfirst!(humble)
-            adjustindex += 1
-        end
-        placesbase10 = length(string(n))
-        if haskey(digitcounts, placesbase10)
-            digitcounts[placesbase10] += 1
-        else
-            digitcounts[placesbase10] = 1
-        end
-        (next2 <= n) && (next2 = 2 * humble[(base2 += 1) - adjustindex])
-        (next3 <= n) && (next3 = 3 * humble[(base3 += 1) - adjustindex])
-        (next5 <= n) && (next5 = 5 * humble[(base5 += 1) - adjustindex])
-        (next7 <= n) && (next7 = 7 * humble[(base7 += 1) - adjustindex])
+abstract struct AbstractColoredNode end
+
+struct RedNode <: AbstractColoredNode end; const R = RedNode()
+struct BlackNode <: AbstractColoredNode end; const B = BlackNode()
+
+checkvec(v) = if length(v) != 4 throw(DomainError(v, "vector arg length != 4")) end
+
+balance(B, v::Vector, z, d) = balance(v, z, d)
+
+balance(v::Vector, z, d) = (checkvec(v); balance(v[1], v[2], v[3], v[4], z, d))
+
+balance(v1::RedNode, v2::Vector, y, c, z, d) =
+    (checkvec(v2); [R, [B, v2[2], v2[3], v2[4]], y, [B, c, z, d]])
+
+balance(v1::RedNode, a, x, v2::Vector, z, d) =
+    (checkvec(v2); [R, [B, a, x, v2[2]], v2[3], [B, v2[4], z, d]])
+
+balance(b::BlackNode, a, x, v::Vector) = balance(a, x, v)
+
+balance(a, x, v::Vector) = (checkvec(v); balance(a, x, v[1], v[2], v[3], v[4]))
+
+balance(a, x, v1::RedNode, v2::Vector, z, d) =
+    (checkvec(v2); [R, [B, a, x, v2[2]], v2[3], [B, v2[4], z, d]])
+
+balance(a, x, v1::RedNode, b, y, v2::Vector) =
+    (checkvec(v2); [R, [B, a, x, b], y, [B, v2[2], v2[3], v2[4]]])
+
+balance(col, a, x, b) = [col, a, x, b]
+
+function ins(x, s::Vector)
+#function ins(x, s = [col, a, y, b])
+    if x < y
+        balance(col, ins(x, a), y, b)
+    elseif x > y
+        balance(col, a, y, ins(x, b))
+    else
+        [col, ins(x, a), y, b] #???
     end
-    savesequence, digitcounts, count
 end
 
-counthumbledigits(3)
+ins(x, U) = [R, U, x, U]  # ???
 
-@time first120, digitcounts, count = counthumbledigits(90)
+insert(x, s) = vcat(B, ins(x,s)[1:3])
 
-println("The first 50 humble numbers are: $first120\n\nDigit counts of humble numbers:")
-for ndigits in sort(collect(keys(digitcounts)))[1:end-1]
-    println(lpad(digitcounts[ndigits], 10), " have ", lpad(ndigits, 3), " digits.")
+function testRB()
+    t = Any()
+    for i in 1:10
+        insert(i, t)
+    end
+    println(t)
 end
-println("Total humble numbers counted: $count")
-
-
-
-println("The first 50 humble numbers are: $first120\n\nDigit counts of humble numbers:")
-for ndigits in sort(collect(keys(digitcounts)))[1:end-1]
-    println(lpad(digitcounts[ndigits], 10), " have ", lpad(ndigits, 3), " digits.")
-end
-
-
