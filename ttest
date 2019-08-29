@@ -1,86 +1,62 @@
-using Primes
-
-function nsmooth(N, needed)
-    nexts, smooths = [BigInt(i) for i in 2:N if isprime(i)], [BigInt(1)]
-    prim, count = deepcopy(nexts), 1
-    indices = ones(Int, length(nexts))
-    while count < needed
-        x = minimum(nexts)
-        push!(smooths, x)
-        count += 1
-        for j in 1:length(nexts)
-            (nexts[j] <= x) && (nexts[j] = prim[j] * smooths[(indices[j] += 1)])
-        end
-    end
-    return (smooths[end] > typemax(Int)) ? smooths : Int.(smooths)
-end
-
-function testnsmoothfilters()
-    for i in filter(isprime, 1:29)
-        println("The first 25 n-smooth numbers for n = $i are: ", nsmooth(i, 25))
-    end
-    for i in filter(isprime, 3:29)
-        println("The 3000th through 3002nd ($i)-smooth numbers are: ", nsmooth(i, 3002)[3000:3002])
-    end
-    for i in filter(isprime, 503:521)
-        println("The 30000th through 30019th ($i)-smooth numbers >= 30000 are: ", nsmooth(i, 30019)[30000:30019])
-    end
-end
-
-testnsmoothfilters()
-
-
-
-
-
-abstract struct AbstractColoredNode end
+abstract type AbstractColoredNode end
 
 struct RedNode <: AbstractColoredNode end; const R = RedNode()
 struct BlackNode <: AbstractColoredNode end; const B = BlackNode()
+struct EmptyNode end; const E = EmptyNode()
 
-checkvec(v) = if length(v) != 4 throw(DomainError(v, "vector arg length != 4")) end
-
-balance(B, v::Vector, z, d) = balance(v, z, d)
-
-balance(v::Vector, z, d) = (checkvec(v); balance(v[1], v[2], v[3], v[4], z, d))
-
-balance(v1::RedNode, v2::Vector, y, c, z, d) =
-    (checkvec(v2); [R, [B, v2[2], v2[3], v2[4]], y, [B, c, z, d]])
-
-balance(v1::RedNode, a, x, v2::Vector, z, d) =
-    (checkvec(v2); [R, [B, a, x, v2[2]], v2[3], [B, v2[4], z, d]])
-
-balance(b::BlackNode, a, x, v::Vector) = balance(a, x, v)
-
-balance(a, x, v::Vector) = (checkvec(v); balance(a, x, v[1], v[2], v[3], v[4]))
-
-balance(a, x, v1::RedNode, v2::Vector, z, d) =
-    (checkvec(v2); [R, [B, a, x, v2[2]], v2[3], [B, v2[4], z, d]])
-
-balance(a, x, v1::RedNode, b, y, v2::Vector) =
-    (checkvec(v2); [R, [B, a, x, b], y, [B, v2[2], v2[3], v2[4]]])
-
-balance(col, a, x, b) = [col, a, x, b]
-
-function ins(x, s::Vector)
-#function ins(x, s = [col, a, y, b])
-    if x < y
-        balance(col, ins(x, a), y, b)
-    elseif x > y
-        balance(col, a, y, ins(x, b))
-    else
-        [col, ins(x, a), y, b] #???
+function balance(b::BlackNode, v::Vector, z, d)
+    if v[1] == R
+        if length(v[2]) == 4 && v[2][1] == R
+            return [R, [B, v[2][2][2], v[2][2][3], v[2][2][4]], v[2][3], [B, v[2][4], z, d]]
+        elseif length(v[4]) == 4 && v[4][1] == R
+            return [R, [B, v[2][2], v[2][3], v[2][4]], v[3], [B, v[4], z, d]]
+        end
     end
+    [b, v, z, d]
 end
 
-ins(x, U) = [R, U, x, U]  # ???
+function balance(b::BlackNode, a, x, v::Vector)
+    if v[1] == R
+        if length(v[2]) == 4 && v[2][1] == R
+            return [R, [B, a, x, v[2][2]], v[2][3], [B, v[3], v[4]]]
+        elseif length(v[4]) == 4 && v[4][1] == R
+            return [R, [B, a, x, v[2]], v[3], [B, v[4][2], v[4][3], V[4][4]]]
+        end
+    end
+    [b, a, x, v]
+end
 
-insert(x, s) = vcat(B, ins(x,s)[1:3])
+function ins(v::Vector, x::Number)
+    checkvec(v)
+    if x < v[3]
+        return balance(v[1], ins(v[2], x), v[3], v[4])
+    elseif x > v[3]
+        return balance(v[1], v[2], v[3], ins(v[4], x))
+    end
+    return v
+end
+
+ins(v::EmptyNode, a) = [R, E, a, E]
+
+function ins(v::Vector, a)
+    if length(v) == 4 && typeof(v[1]) <: AbstractColoredNode
+        if a < v[3]
+            return balance([v[1], ins(v, a), v[3], v[4]])
+        elseif a > v[3]
+            return balance([v[1], v[2], v[3], ins(v, a)])
+        end
+    end
+    v
+end
+
+insert(v, a) = (t = ins(v, a); t[1] = B; t)
 
 function testRB()
-    t = Any()
-    for i in 1:10
-        insert(i, t)
+    t = E
+    for i in rand(collect(1:20), 10)
+        t = insert(t, i)
     end
     println(t)
 end
+
+testRB()
