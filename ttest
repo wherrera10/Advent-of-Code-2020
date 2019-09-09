@@ -1,62 +1,92 @@
-abstract type AbstractColoredNode end
+using LightGraphs, SimpleWeightedGraphs
 
-struct RedNode <: AbstractColoredNode end; const R = RedNode()
-struct BlackNode <: AbstractColoredNode end; const B = BlackNode()
-struct EmptyNode end; const E = EmptyNode()
+const grid = reshape(Vector{UInt8}(replace("""
+         00000         
+      00003130000      
+    000321322221000    
+   00231222432132200   
+  0041433223233211100  
+  0232231612142618530  
+ 003152122326114121200 
+ 031252235216111132210 
+ 022211246332311115210 
+00113232262121317213200
+03152118212313211411110
+03231234121132221411410
+03513213411311414112320
+00427534125412213211400
+ 013322444412122123210 
+ 015132331312411123120 
+ 003333612214233913300 
+  0219126511415312570  
+  0021321524341325100  
+   00211415413523200   
+    000122111322000    
+      00001120000      
+         00000         """, "\n" => "")), 23, 23)
+         
 
-function balance(b::BlackNode, v::Vector, z, d)
-    if v[1] == R
-        if length(v[2]) == 4 && v[2][1] == R
-            return [R, [B, v[2][2][2], v[2][2][3], v[2][2][4]], v[2][3], [B, v[2][4], z, d]]
-        elseif length(v[4]) == 4 && v[4][1] == R
-            return [R, [B, v[2][2], v[2][3], v[2][4]], v[3], [B, v[4], z, d]]
+const board = map(c -> c == UInt8(' ') ? -1 : c - UInt8('0'), grid)
+const safety = [i for i in 1:529 if board[i] == 0]
+
+function adjacent(i)
+    k, itr, carr = board[i], Tuple(CartesianIndices(board)[i]), Vector{Int}[]
+    itr[1] > k && push!(carr, itr .- [k, 0])
+    itr[1] <= 23 - k && push!(carr, itr .+ [k, 0])
+    itr[2] > k && push!(carr, itr .- [0, k])
+    itr[2] <= 23 - k && push!(carr, itr .+ [0, k])
+    itr[1] > k && itr[2] > k && push!(carr, itr .- [k, k])
+    itr[1] <= 23 - k && itr[2] <= 23 - k && push!(carr, itr .+ [k, k])
+    filter(x -> x > 1 && x <= 529, map(x -> 23 * (x[1] - 1) + x[2], carr))
+end
+
+const graph = SimpleWeightedDiGraph(529)
+
+for i in 1:529
+    if board[i] > 0
+        for p in adjacent(i)
+            if board[p] >= 0
+                add_edge!(graph, i, p, 1)
+            end
         end
     end
-    [b, v, z, d]
 end
 
-function balance(b::BlackNode, a, x, v::Vector)
-    if v[1] == R
-        if length(v[2]) == 4 && v[2][1] == R
-            return [R, [B, a, x, v[2][2]], v[2][3], [B, v[3], v[4]]]
-        elseif length(v[4]) == 4 && v[4][1] == R
-            return [R, [B, a, x, v[2]], v[3], [B, v[4][2], v[4][3], V[4][4]]]
-        end
+shortest(start, finish) = enumerate_paths(dijkstra_shortest_paths(graph, start), finish)
+
+function printpaths(paths)
+    for path in paths, (i, node) in enumerate(path)
+        c = CartesianIndices(board)[node]
+        print("($(c[1]-1), $(c[2]-1))", i == length(path) ? "\n" : " ")
     end
-    [b, a, x, v]
 end
 
-function ins(v::Vector, x::Number)
-    checkvec(v)
-    if x < v[3]
-        return balance(v[1], ins(v[2], x), v[3], v[4])
-    elseif x > v[3]
-        return balance(v[1], v[2], v[3], ins(v[4], x))
+function printpathandgraph(path)
+    println("Path: ")
+    printpaths([path])
+    bd = deepcopy(board)
+    for (i, node) in enumerate(path)
+        bd[node] = UInt8('A') - UInt8('0') + i - 1
     end
-    return v
-end
-
-ins(v::EmptyNode, a) = [R, E, a, E]
-
-function ins(v::Vector, a)
-    if length(v) == 4 && typeof(v[1]) <: AbstractColoredNode
-        if a < v[3]
-            return balance([v[1], ins(v, a), v[3], v[4]])
-        elseif a > v[3]
-            return balance([v[1], v[2], v[3], ins(v, a)])
-        end
+    for n in 0:22
+        println(String(map(i -> begin x = bd[n * 23 + i]; (x == -1) ? ' ' : Char(x + '0') end, 1:23)))
     end
-    v
 end
 
-insert(v, a) = (t = ins(v, a); t[1] = B; t)
+println("Part 1:")
+pathsfromcenter = dijkstra_shortest_paths(graph, 23 * 11 + 12)
+printpaths([enumerate_paths(pathsfromcenter, p) for p in safety])
+println("\nPart 2:\nShortest route from (21, 11) to (1, 11)\n")
+printpath(minimum([enumerate_paths(dijkstra_shortest_paths(graph, 21 * 23 + 11start)pathsfromcenter, p) for p in safety]))shortest(23 * 21 + 11, 11))
+println("\nShortest route from (1, 11) to (21, 11)\n")
+printpath(shortest(11, 23 * 21 + 11))
 
-function testRB()
-    t = E
-    for i in rand(collect(1:20), 10)
-        t = insert(t, i)
-    end
-    println(t)
-end
+twopoints = [(i, j) for i in 1:529 for j in 1:529 if i != j && board[i] >= 0 && board[j] >= 0]
+(_, i) = findmax([sum([board[k] for k in [shortest(i, j); 11]]) for (i, j) in twopoints])
+print("\nLongest Shortest Route is between points: ")
+printpath(shortest(twopoints[i]...))
 
-testRB()
+
+println("\nExtra Credit Part 1:")
+println("\nExtra Credit Part 2:")
+
