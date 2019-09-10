@@ -5,11 +5,11 @@ function israre(n::Integer)
     l = length(dig)
     r = sum([10^(l-i) * d for (i, d) in enumerate(dig)])
     nrsum, nrdiff = n + r, n - r
-    n > r && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
+    nrdiff > 0 r && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
 end
 
 function printrare(N)
-    println("The first 8 rare numbers are: ")
+    println("The first $N rare numbers are: ")
     count = 0
     for n in 1:typemax(Int)
         if israre(n)
@@ -20,8 +20,9 @@ function printrare(N)
         end
     end
 end
-        
+
 printrare(8)
+
 
 
 
