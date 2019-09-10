@@ -1,3 +1,32 @@
+isperfectsquare(i::Integer) = (round(sqrt(i)))^2 == i
+
+function israre(n::Integer)
+    dig = digits(n)
+    l = length(dig)
+    r = sum([10^(l-i) * d for (i, d) in enumerate(dig)])
+    nrsum, nrdiff = n + r, n - r
+    n > r && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
+end
+
+function printrare(N)
+    println("The first 8 rare numbers are: ")
+    count = 0
+    for n in 1:typemax(Int)
+        if israre(n)
+            println(n)
+            if (count += 1) >= N
+                break
+            end
+        end
+    end
+end
+        
+printrare(8)
+
+
+
+
+
 using LightGraphs, SimpleWeightedGraphs
 
 const grid = reshape(Vector{UInt8}(replace("""
