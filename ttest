@@ -1,21 +1,27 @@
-isperfectsquare(i::Integer) = (round(sqrt(i)))^2 == i
-
-function israre(n::Integer)
-    dig = digits(n)
-    l = length(dig)
-    r = sum([10^(l-i) * d for (i, d) in enumerate(dig)])
-    nrsum, nrdiff = n + r, n - r
-    nrdiff > 0 r && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
-end
 
 function printrare(N)
-    println("The first $N rare numbers are: ")
+    println("The first $N rare numbers are:")
     count = 0
-    for n in 1:typemax(Int)
-        if israre(n)
-            println(n)
-            if (count += 1) >= N
-                break
+    squares = Dict([i * i => 1 for i in 1:1500000])
+    isperfectsquare(i::Integer) = haskey(squares, i)
+    
+    for i in 1:typemax(Int)
+        basedigits = digits(i)
+        if basedigits[1] in [1, 4, 6, 9]
+            continue
+        end
+        len = length(basedigits) + 1
+        for j in [2,4,6,8]
+            dig = [basedigits; j]
+            n = i + j * 10^(len-1)
+            r = sum([10^(len-i) * k for (i, k) in enumerate(dig)])
+            nrsum, nrdiff = n + r, n - r
+            if nrdiff > 0 && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
+                println(n)
+                count += 1
+                if count >= N
+                    break
+                end
             end
         end
     end
@@ -23,100 +29,4 @@ end
 
 printrare(8)
 
-
-
-
-
-
-using LightGraphs, SimpleWeightedGraphs
-
-const grid = reshape(Vector{UInt8}(replace("""
-         00000         
-      00003130000      
-    000321322221000    
-   00231222432132200   
-  0041433223233211100  
-  0232231612142618530  
- 003152122326114121200 
- 031252235216111132210 
- 022211246332311115210 
-00113232262121317213200
-03152118212313211411110
-03231234121132221411410
-03513213411311414112320
-00427534125412213211400
- 013322444412122123210 
- 015132331312411123120 
- 003333612214233913300 
-  0219126511415312570  
-  0021321524341325100  
-   00211415413523200   
-    000122111322000    
-      00001120000      
-         00000         """, "\n" => "")), 23, 23)
-         
-
-const board = map(c -> c == UInt8(' ') ? -1 : c - UInt8('0'), grid)
-const safety = [i for i in 1:529 if board[i] == 0]
-
-function adjacent(i)
-    k, itr, carr = board[i], Tuple(CartesianIndices(board)[i]), Vector{Int}[]
-    itr[1] > k && push!(carr, itr .- [k, 0])
-    itr[1] <= 23 - k && push!(carr, itr .+ [k, 0])
-    itr[2] > k && push!(carr, itr .- [0, k])
-    itr[2] <= 23 - k && push!(carr, itr .+ [0, k])
-    itr[1] > k && itr[2] > k && push!(carr, itr .- [k, k])
-    itr[1] <= 23 - k && itr[2] <= 23 - k && push!(carr, itr .+ [k, k])
-    filter(x -> x > 1 && x <= 529, map(x -> 23 * (x[1] - 1) + x[2], carr))
-end
-
-const graph = SimpleWeightedDiGraph(529)
-
-for i in 1:529
-    if board[i] > 0
-        for p in adjacent(i)
-            if board[p] >= 0
-                add_edge!(graph, i, p, 1)
-            end
-        end
-    end
-end
-
-shortest(start, finish) = enumerate_paths(dijkstra_shortest_paths(graph, start), finish)
-
-function printpaths(paths)
-    for path in paths, (i, node) in enumerate(path)
-        c = CartesianIndices(board)[node]
-        print("($(c[1]-1), $(c[2]-1))", i == length(path) ? "\n" : " ")
-    end
-end
-
-function printpathandgraph(path)
-    println("Path: ")
-    printpaths([path])
-    bd = deepcopy(board)
-    for (i, node) in enumerate(path)
-        bd[node] = UInt8('A') - UInt8('0') + i - 1
-    end
-    for n in 0:22
-        println(String(map(i -> begin x = bd[n * 23 + i]; (x == -1) ? ' ' : Char(x + '0') end, 1:23)))
-    end
-end
-
-println("Part 1:")
-pathsfromcenter = dijkstra_shortest_paths(graph, 23 * 11 + 12)
-printpaths([enumerate_paths(pathsfromcenter, p) for p in safety])
-println("\nPart 2:\nShortest route from (21, 11) to (1, 11)\n")
-printpath(minimum([enumerate_paths(dijkstra_shortest_paths(graph, 21 * 23 + 11start)pathsfromcenter, p) for p in safety]))shortest(23 * 21 + 11, 11))
-println("\nShortest route from (1, 11) to (21, 11)\n")
-printpath(shortest(11, 23 * 21 + 11))
-
-twopoints = [(i, j) for i in 1:529 for j in 1:529 if i != j && board[i] >= 0 && board[j] >= 0]
-(_, i) = findmax([sum([board[k] for k in [shortest(i, j); 11]]) for (i, j) in twopoints])
-print("\nLongest Shortest Route is between points: ")
-printpath(shortest(twopoints[i]...))
-
-
-println("\nExtra Credit Part 1:")
-println("\nExtra Credit Part 2:")
 
