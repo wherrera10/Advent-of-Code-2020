@@ -1,32 +1,36 @@
 
-allfora2 = [[i, i, 2] for i = 0:9]
-allfora4 = [[b, p, 0] for b in 0:9, p in 0:0 if iseven(b-p)]
-allfora6 = [[b, p, q] for q in [0, 5], b in 0:9, p in 0:9 if isodd(b-p)]
-allfora8q2 = [[b, 9-b, 2] for b in 0:9]
-allfora8q3 = [[b, p, 3] for b in 0:9, p in 0:0 if b - p == 7 || p - b == 3]
-allfora8q7 = [[b, p, 7] for b in 0:9, p in 0:9 if b + p == 11 || b + p == 1]
-allfora8q8 = [[b, b, 8] for b in 0:9]
-allfora8 = [allfora8q2; allfora8q3; allfora8q7; allfora8q8]
-
-fixeddigits = Dict{Int, Vector{Vector{Int}}}(2 => allfora2, 4 => allfora4,
-    6 => allfora6, 8 => allfora8)
-
+fixeddigits = Dict(2 => [[0, 0, 2], [8, 8, 2]], 4 => [[0, 0, 0]],
+    6 => [[2, 7, 0], [9, 8, 5]], 8 => [[6, 5, 7],[7, 7, 8]])
 squares = Dict([i * i => 1 for i in 1:1500000])
-isperfectsquare(i::Integer) = haskey(squares, i)
+
+i2dig(i) = (d = Int[]; while i > 0 i, r = divrem(i, 10); push!(d, r) end; d)
+dig2i(d) = (n = 0; for i in d n = 10 * n + i end; n)
+
+function simplegetrare(upto)
+    ret = Int[]
+    for i in 0:upto
+        dig = i2dig(i)
+        r = dig2i(dig)
+        n = dig2i(reverse(dig))
+        nrsum, nrdiff = n + r, n - r
+        if nrdiff > 0 && haskey(squares, nrsum) && haskey(squares, nrdiff)
+            push!(ret, n)
+        end
+    end
+    ret
+end
+
 
 function getrare(N)
-    ret = [65]
-        
+    ret = simplegetrare(20000)
     for i in 0:typemax(Int)
-        basedigits = digits(i)
-        len = length(basedigits) + 4
+        basedigits = i2dig(i)
         for a in [2,4,6,8], (b, p, q) in fixeddigits[a]
             dig = [[q, p]; basedigits; [b, a]]
-            r = sum([10^(len-i) * k for (i, k) in enumerate(dig)])
-            n = sum([10^(len-i) * k for (i, k) in enumerate(reverse(dig))])
+            r = dig2i(dig)
+            n = dig2i(reverse(dig))
             nrsum, nrdiff = n + r, n - r
-            if nrdiff > 0 && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
-                println(n)
+            if nrdiff > 0 && haskey(squares, nrsum) && haskey(squares, nrdiff)
                 push!(ret, n)
                 if length(ret) >= N
                     return ret
@@ -36,8 +40,6 @@ function getrare(N)
     end
 end
 
-getrare(8)
-@time println("The first 8 rare numbers are:\n65", getrare(8))
-
-
+getrare(3)
+@time println("The first 8 rare numbers are: ", getrare(8))
 
