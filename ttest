@@ -1,32 +1,43 @@
 
-function printrare(N)
-    println("The first $N rare numbers are:")
-    count = 0
-    squares = Dict([i * i => 1 for i in 1:1500000])
-    isperfectsquare(i::Integer) = haskey(squares, i)
-    
-    for i in 1:typemax(Int)
+allfora2 = [[i, i, 2] for i = 0:9]
+allfora4 = [[b, p, 0] for b in 0:9, p in 0:0 if iseven(b-p)]
+allfora6 = [[b, p, q] for q in [0, 5], b in 0:9, p in 0:9 if isodd(b-p)]
+allfora8q2 = [[b, 9-b, 2] for b in 0:9]
+allfora8q3 = [[b, p, 3] for b in 0:9, p in 0:0 if b - p == 7 || p - b == 3]
+allfora8q7 = [[b, p, 7] for b in 0:9, p in 0:9 if b + p == 11 || b + p == 1]
+allfora8q8 = [[b, b, 8] for b in 0:9]
+allfora8 = [allfora8q2; allfora8q3; allfora8q7; allfora8q8]
+
+fixeddigits = Dict{Int, Vector{Vector{Int}}}(2 => allfora2, 4 => allfora4,
+    6 => allfora6, 8 => allfora8)
+
+squares = Dict([i * i => 1 for i in 1:1500000])
+isperfectsquare(i::Integer) = haskey(squares, i)
+
+function getrare(N)
+    ret = [65]
+        
+    for i in 0:typemax(Int)
         basedigits = digits(i)
-        if basedigits[1] in [1, 4, 6, 9]
-            continue
-        end
-        len = length(basedigits) + 1
-        for j in [2,4,6,8]
-            dig = [basedigits; j]
-            n = i + j * 10^(len-1)
+        len = length(basedigits) + 4
+        for a in [2,4,6,8], (b, p, q) in fixeddigits[a]
+            dig = [[q, p]; basedigits; [b, a]]
             r = sum([10^(len-i) * k for (i, k) in enumerate(dig)])
+            n = sum([10^(len-i) * k for (i, k) in enumerate(reverse(dig))])
             nrsum, nrdiff = n + r, n - r
             if nrdiff > 0 && isperfectsquare(nrsum) && isperfectsquare(nrdiff)
                 println(n)
-                count += 1
-                if count >= N
-                    break
+                push!(ret, n)
+                if length(ret) >= N
+                    return ret
                 end
             end
         end
     end
 end
 
-printrare(8)
+getrare(8)
+@time println("The first 8 rare numbers are:\n65", getrare(8))
+
 
 
