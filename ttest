@@ -43,3 +43,8 @@ end
 getrare(3)
 @time println("The first 8 rare numbers are: ", getrare(8))
 
+#=
+The first 8 rare numbers are: [65, 621770, 281089082, 2022652202, 2042832002, 872546974178, 872568754178, 868591084757]
+809.997884 seconds (7.56 G allocations: 437.637 GiB, 3.81% gc time)
+=#
+
