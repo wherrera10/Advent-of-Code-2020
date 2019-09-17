@@ -1,50 +1,144 @@
+using LightGraphs, SimpleWeightedGraphs
 
-fixeddigits = Dict(2 => [[0, 0, 2], [8, 8, 2]], 4 => [[0, 0, 0]],
-    6 => [[2, 7, 0], [9, 8, 5]], 8 => [[6, 5, 7],[7, 7, 8]])
-squares = Dict([i * i => 1 for i in 1:1500000])
+const grid = reshape(Vector{UInt8}(replace("""
+         00000         
+      00003130000      
+    000321322221000    
+   00231222432132200   
+  0041433223233211100  
+  0232231612142618530  
+ 003152122326114121200 
+ 031252235216111132210 
+ 022211246332311115210 
+00113232262121317213200
+03152118212313211411110
+03231234121132221411410
+03513213411311414112320
+00427534125412213211400
+ 013322444412122123210 
+ 015132331312411123120 
+ 003333612214233913300 
+  0219126511415312570  
+  0021321524341325100  
+   00211415413523200   
+    000122111322000    
+      00001120000      
+         00000         """, "\n" => "")), 23, 23)
+         
 
-i2dig(i) = (d = Int[]; while i > 0 i, r = divrem(i, 10); push!(d, r) end; d)
-dig2i(d) = (n = 0; for i in d n = 10 * n + i end; n)
+const board = map(c -> c == UInt8(' ') ? -1 : c - UInt8('0'), grid)
+const startingpoints = [i for i in 1:529 if board[i] > 0]
+const safety = [i for i in 1:529 if board[i] == 0]
+const legalendpoints = [i for i in 1:529 if board[i] >= 0]
 
-function simplegetrare(upto)
-    ret = Int[]
-    for i in 0:upto
-        dig = i2dig(i)
-        r = dig2i(dig)
-        n = dig2i(reverse(dig))
-        nrsum, nrdiff = n + r, n - r
-        if nrdiff > 0 && haskey(squares, nrsum) && haskey(squares, nrdiff)
-            push!(ret, n)
-        end
-    end
+function adjacent(i)
+    k, ret = board[i], Int[]
+    row, col = divrem(i - 1, 23) .+ 1
+    col > k && push!(ret, i - k)
+    23 - col >= k && push!(ret, i + k)
+    row > k && push!(ret, i - 23 * k)
+    row + k <= 23 && push!(ret, i + 23 * k)
+    row > k && col > k && push!(ret, i - 24 * k)
+    row + k <= 23 && (23 - col >= k) && push!(ret, i + 24 * k)
+    row > k && (23 - col >= k) && push!(ret, i - 22 * k)
+    row + k <= 23 && col > k && push!(ret, i + 22 * k)
     ret
 end
 
+const graph = SimpleDiGraph(529)
 
-function getrare(N)
-    ret = simplegetrare(20000)
-    for i in 0:typemax(Int)
-        basedigits = i2dig(i)
-        for a in [2,4,6,8], (b, p, q) in fixeddigits[a]
-            dig = [[q, p]; basedigits; [b, a]]
-            r = dig2i(dig)
-            n = dig2i(reverse(dig))
-            nrsum, nrdiff = n + r, n - r
-            if nrdiff > 0 && haskey(squares, nrsum) && haskey(squares, nrdiff)
-                push!(ret, n)
-                if length(ret) >= N
-                    return ret
-                end
+for i in 1:529
+    if board[i] > 0
+        for p in adjacent(i)
+            if board[p] >= 0
+                add_edge!(graph, i, p)
             end
         end
     end
 end
 
-getrare(3)
-@time println("The first 8 rare numbers are: ", getrare(8))
+"""
+    allnpaths(graph, a, b, len)
+    
+Return a vector of int vectors, each of which is a path from a to b, where 
+len is the length of each path, and the nodes in a path do not repeat.
+"""
+function allnpaths(graph, a, vec, n)
+    ret = [[a]]
+    for j in 2:n
+        nextret = Vector{Vector{Int}}()
+        for path in ret, x in neighbors(graph, path[end])
+            if !(x in path) && (j < n || x in vec)
+                push!(nextret, [path; x])
+            end
+        end
+        ret = nextret
+    end
+    return (ret == [[a]] && a != b) ? [] : ret
+end
 
-#=
-The first 8 rare numbers are: [65, 621770, 281089082, 2022652202, 2042832002, 872546974178, 872568754178, 868591084757]
-809.997884 seconds (7.56 G allocations: 437.637 GiB, 3.81% gc time)
-=#
+function pathtostring(path)
+    ret = ""
+    for node in path
+        c = CartesianIndices(board)[node]
+        ret *= "($(c[2]-1), $(c[1]-1)) "
+    end
+    ret
+end
+
+function pathlisting(paths)
+    join([pathtostring(p) for p in paths], "\n")
+end
+
+function printpathandgraph(path)
+    println("Path: ")
+    println(pathtostring(path))
+    bd = deepcopy(board)
+    for (i, node) in enumerate(path)
+        bd[node] = UInt8('A') - UInt8('0') + i - 1
+    end
+    for n in 0:22
+        println(String(map(i -> begin x = bd[n * 23 + i]; (x == -1) ? ' ' : Char(x + '0') end, 1:23)))
+    end
+end
+
+println("Part 1:")
+let
+    start = 23 * 11 + 12
+    pathsfromcenter = dijkstra_shortest_paths(graph, start)
+    safepaths = filter(p -> length(p) > 1, enumerate_paths(pathsfromcenter, safety))
+    safelen = mapreduce(length, min, safepaths)
+    paths = unique(allnpaths(graph, start, safety, safelen))
+    println("The $(length(paths)) shortest paths to safety are:\n",
+        pathlisting(paths))
+end
+
+println("\nPart 2:")
+let 
+    p = enumerate_paths(bellman_ford_shortest_paths(graph, 21 * 23 + 12), 23 + 12)
+    println("One shortest route from (21, 11) to (1, 11): ", pathtostring(p))
+
+    p = enumerate_paths(bellman_ford_shortest_paths(graph, 23 + 12), 21 * 23 + 12)
+    println("\nOne shortest route from (1, 11) to (21, 11): ", pathtostring(p))
+
+    allshortpaths = [enumerate_paths(bellman_ford_shortest_paths(graph, 23 + 12), p) for p in startingpoints]
+    maxlen, idx = findmax(map(length, allshortpaths))
+    println("\nLongest Shortest Route (length $maxlen) is: ", pathtostring(allshortpaths[idx]))
+end
+
+println("\nExtra Credit Questions:")
+let
+    println("\nIs there any cell in the country that can not be reached from HQ?")
+    frombase = bellman_ford_shortest_paths(graph, 21 * 23 + 12)
+    p = [enumerate_paths(frombase, x) for x in legalendpoints]
+    unreached = findall(x -> length(x) == 0, p)
+    println(pathtostring(unreached))
+
+    println("\nWhich cells will it take longest to send reinforcements to from HQ?")
+    maxlen = mapreduce(length, max, p)
+    allmax = [path for path in p if length(path) == maxlen]
+    println(pathlisting(allmax))
+
+end
+
 
