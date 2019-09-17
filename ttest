@@ -1,4 +1,4 @@
-using LightGraphs, SimpleWeightedGraphs
+using LightGraphs
 
 const grid = reshape(Vector{UInt8}(replace("""
          00000         
@@ -24,7 +24,6 @@ const grid = reshape(Vector{UInt8}(replace("""
     000122111322000    
       00001120000      
          00000         """, "\n" => "")), 23, 23)
-         
 
 const board = map(c -> c == UInt8(' ') ? -1 : c - UInt8('0'), grid)
 const startingpoints = [i for i in 1:529 if board[i] > 0]
@@ -59,8 +58,8 @@ end
 
 """
     allnpaths(graph, a, b, len)
-    
-Return a vector of int vectors, each of which is a path from a to b, where 
+
+Return a vector of int vectors, each of which is a path from a to b, where
 len is the length of each path, and the nodes in a path do not repeat.
 """
 function allnpaths(graph, a, vec, n)
@@ -114,7 +113,7 @@ let
 end
 
 println("\nPart 2:")
-let 
+let
     p = enumerate_paths(bellman_ford_shortest_paths(graph, 21 * 23 + 12), 23 + 12)
     println("One shortest route from (21, 11) to (1, 11): ", pathtostring(p))
 
@@ -123,22 +122,118 @@ let
 
     allshortpaths = [enumerate_paths(bellman_ford_shortest_paths(graph, 23 + 12), p) for p in startingpoints]
     maxlen, idx = findmax(map(length, allshortpaths))
-    println("\nLongest Shortest Route (length $maxlen) is: ", pathtostring(allshortpaths[idx]))
+    println("\nLongest Shortest Route (length $(maxlen - 1)) is: ", pathtostring(allshortpaths[idx]))
 end
 
 println("\nExtra Credit Questions:")
 let
-    println("\nIs there any cell in the country that can not be reached from HQ?")
-    frombase = bellman_ford_shortest_paths(graph, 21 * 23 + 12)
+    println("\nIs there any cell in the country that can not be reached from HQ (11, 11)?")
+    frombase = bellman_ford_shortest_paths(graph, 11 * 23 + 12)
     p = [enumerate_paths(frombase, x) for x in legalendpoints]
     unreached = findall(x -> length(x) == 0, p)
+    print("There are $(length(unreached)): ")
     println(pathtostring(unreached))
 
-    println("\nWhich cells will it take longest to send reinforcements to from HQ?")
+    println("\nWhich cells will it take longest to send reinforcements to from HQ (11, 11)?")
     maxlen = mapreduce(length, max, p)
     allmax = [path for path in p if length(path) == maxlen]
+    println("There are $(length(allmax)) of length $(maxlen - 1):")
     println(pathlisting(allmax))
 
 end
 
+#=
+Part 1:
+The 71 shortest paths to safety are:
+(11, 11) (10, 10) (8, 8) (4, 8) (1, 8)
+(11, 11) (10, 10) (8, 8) (8, 4) (6, 2)
+(11, 11) (10, 10) (8, 8) (12, 4) (9, 1)
+(11, 11) (10, 10) (8, 8) (12, 4) (15, 1)
+(11, 11) (10, 10) (8, 10) (5, 7) (2, 4)
+(11, 11) (10, 10) (8, 10) (5, 13) (1, 9)
+(11, 11) (10, 10) (8, 10) (5, 13) (1, 13)
+(11, 11) (10, 10) (8, 12) (6, 12) (0, 12)
+(11, 11) (10, 10) (12, 8) (8, 4) (6, 2)
+(11, 11) (10, 10) (12, 8) (12, 4) (9, 1)
+(11, 11) (10, 10) (12, 8) (12, 4) (15, 1)
+(11, 11) (10, 10) (12, 8) (16, 4) (13, 1)
+(11, 11) (10, 10) (12, 8) (16, 4) (16, 1)
+(11, 11) (10, 10) (12, 8) (16, 4) (19, 4)
+(11, 11) (10, 10) (12, 8) (16, 12) (20, 16)
+(11, 11) (10, 11) (7, 8) (4, 5) (3, 4)
+(11, 11) (10, 11) (7, 8) (4, 8) (1, 8)
+(11, 11) (10, 11) (7, 8) (4, 11) (1, 8)
+(11, 11) (10, 11) (7, 8) (4, 11) (1, 14)
+(11, 11) (10, 11) (7, 8) (7, 5) (2, 5)
+(11, 11) (10, 11) (7, 8) (7, 5) (12, 0)
+(11, 11) (10, 11) (7, 11) (6, 12) (0, 12)
+(11, 11) (10, 11) (7, 11) (7, 12) (1, 6)
+(11, 11) (10, 11) (10, 14) (12, 16) (16, 20)
+(11, 11) (10, 11) (13, 8) (14, 7) (18, 3)
+(11, 11) (10, 11) (13, 11) (17, 15) (20, 18)
+(11, 11) (10, 12) (9, 12) (7, 12) (1, 6)
+(11, 11) (11, 10) (10, 9) (9, 9) (3, 3)
+(11, 11) (11, 10) (11, 9) (9, 9) (3, 3)
+(11, 11) (11, 12) (8, 9) (2, 9) (1, 8)
+(11, 11) (11, 12) (8, 9) (2, 9) (1, 9)
+(11, 11) (11, 12) (8, 9) (2, 15) (1, 14)
+(11, 11) (11, 12) (8, 9) (2, 15) (1, 15)
+(11, 11) (11, 12) (8, 9) (2, 15) (1, 16)
+(11, 11) (11, 12) (8, 9) (2, 15) (2, 16)
+(11, 11) (11, 12) (8, 9) (8, 3) (6, 1)
+(11, 11) (11, 12) (8, 9) (8, 3) (8, 1)
+(11, 11) (11, 12) (8, 9) (14, 3) (11, 0)
+(11, 11) (11, 12) (8, 12) (6, 12) (0, 12)
+(11, 11) (11, 12) (8, 15) (9, 16) (2, 16)
+(11, 11) (11, 12) (11, 9) (9, 9) (3, 3)
+(11, 11) (11, 12) (11, 15) (11, 17) (7, 21)
+(11, 11) (11, 12) (11, 15) (11, 17) (15, 21)
+(11, 11) (11, 12) (14, 9) (18, 5) (19, 4)
+(11, 11) (11, 12) (14, 9) (18, 13) (22, 9)
+(11, 11) (11, 12) (14, 9) (18, 13) (22, 13)
+(11, 11) (11, 12) (14, 12) (16, 12) (20, 16)
+(11, 11) (11, 12) (14, 15) (16, 15) (19, 18)
+(11, 11) (12, 10) (11, 9) (9, 9) (3, 3)
+(11, 11) (12, 10) (13, 10) (13, 5) (13, 0)
+(11, 11) (12, 10) (13, 10) (18, 5) (19, 4)
+(11, 11) (12, 10) (13, 10) (18, 15) (21, 15)
+(11, 11) (12, 10) (13, 11) (17, 15) (20, 18)
+(11, 11) (12, 11) (9, 14) (6, 17) (4, 19)
+(11, 11) (12, 11) (12, 8) (8, 4) (6, 2)
+(11, 11) (12, 11) (12, 8) (12, 4) (9, 1)
+(11, 11) (12, 11) (12, 8) (12, 4) (15, 1)
+(11, 11) (12, 11) (12, 8) (16, 4) (13, 1)
+(11, 11) (12, 11) (12, 8) (16, 4) (16, 1)
+(11, 11) (12, 11) (12, 8) (16, 4) (19, 4)
+(11, 11) (12, 11) (12, 8) (16, 12) (20, 16)
+(11, 11) (12, 11) (12, 14) (8, 18) (3, 18)
+(11, 11) (12, 11) (12, 14) (16, 18) (13, 21)
+(11, 11) (12, 11) (12, 14) (16, 18) (16, 21)
+(11, 11) (12, 11) (12, 14) (16, 18) (19, 18)
+(11, 11) (12, 11) (15, 8) (15, 5) (18, 2)
+(11, 11) (12, 11) (15, 8) (18, 5) (19, 4)
+(11, 11) (12, 11) (15, 8) (18, 11) (22, 11)
+(11, 11) (12, 11) (15, 11) (16, 12) (20, 16)
+(11, 11) (12, 11) (15, 14) (16, 15) (19, 18)
+(11, 11) (12, 12) (13, 11) (17, 15) (20, 18)
 
+Part 2:
+One shortest route from (21, 11) to (1, 11): (21, 11) (21, 12) (19, 14) (14, 14) (12, 14) (8, 18) (3, 13) (1, 11)
+
+One shortest route from (1, 11) to (21, 11): (1, 11) (2, 10) (5, 13) (9, 9) (15, 3) (20, 8) (20, 10) (21, 11)
+
+Longest Shortest Route (length 9) is: (1, 11) (2, 10) (5, 13) (9, 9) (15, 15) (16, 14) (16, 17) (17, 16) (18, 16) (20, 14)
+
+Extra Credit Questions:
+
+Is there any cell in the country that can not be reached from HQ?
+There are 4: (1, 7) (2, 3) (8, 22) (15, 19)
+
+Which cells will it take longest to send reinforcements to from HQ?
+There are 5 of length 6:
+(11, 11) (12, 11) (9, 14) (6, 17) (4, 17) (4, 18) (3, 19)
+(11, 11) (10, 11) (7, 11) (7, 12) (7, 18) (7, 20) (6, 20)
+(11, 11) (11, 12) (11, 15) (13, 17) (15, 19) (15, 20) (17, 20)
+(11, 11) (11, 12) (14, 15) (16, 17) (17, 16) (18, 16) (20, 14)
+(11, 11) (12, 12) (13, 11) (17, 15) (20, 12) (21, 11) (22, 12)
+=#
