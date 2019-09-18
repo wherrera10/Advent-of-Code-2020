@@ -57,10 +57,10 @@ for i in 1:529
 end
 
 """
-    allnpaths(graph, a, b, len)
+    allnpaths(graph, a, b, vec, n)
 
-Return a vector of int vectors, each of which is a path from a to b, where
-len is the length of each path, and the nodes in a path do not repeat.
+Return a vector of int vectors, each of which is a path from a to a member of
+vec and where n is the length of each path and the nodes in a path do not repeat.
 """
 function allnpaths(graph, a, vec, n)
     ret = [[a]]
@@ -147,5 +147,3 @@ let
     println(pathlisting(allmax))
 
 end
-
-
