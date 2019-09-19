@@ -41,6 +41,24 @@ proc CatmullClark(points, faces)
  
     # Generate the new edge-points and mid-points of edges, and a few more
     # lookup tables.
+    i = length(points) + length(edges)
+    for e in edges
+        if length(fp4e(e) > 1
+            mid = mean(fp4e(e), e[1], e[2])
+        else
+            mid = mean(e)
+            for p in e
+              push!(ep_heavy(p), mid)
+            end
+        end
+        push!(edgepoints, mid)
+        en4e[e] = i
+        for p in e
+            push!(ep4p(p), mid
+        end
+        i = i + 1
+    end
+    
     set i [+ [llength $points] [llength $faces]]
     foreach e $edges {
 	set ep [selectFrom $points $e]
