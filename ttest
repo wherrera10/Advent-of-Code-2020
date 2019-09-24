@@ -1,107 +1,54 @@
-using Makie, Statistics
+using LightGraphs
 
-# Point3f0 is a 3-tuple of 32 bit floats
+const files = ["top1", "des1", "ip1", "ip2", "top2", "ip3", "extra1", "ip1a", "ipcommon",
+    "ip2a", "ip2b", "ip2c", "des1a", "des1b", "des1c", "des1a1", "des1a2", "des1c1"]
 
-# an Edge is a line segment where the points are sorted
-struct Edge
-    p1::Point3f0
-    p2::Point3f0
-    Edge(a, b) = new(min(a, b), max(a, b))
+const numfile = Dict(files[i] => i for i in 1:length(files))
+
+const graph = SimpleDiGraph(length(files))
+
+const dep = Dict(
+    "top1" => ["des1", "ip1", "ip2"],
+    "top2" => ["des1", "ip2", "ip3"],
+    "ip1" => ["extra1", "ip1a", "ipcommon"],
+    "ip2" => ["ip2a", "ip2b", "ip2c", "ipcommon"],
+    "des1" => ["des1a", "des1b", "des1c"],
+    "des1a" => ["des1a1", "des1a2"],
+    "des1c" => ["des1c1", "extra1"])
+
+for (k, v) in dep
+    topnum = numfile[k]
+    for f in v
+        add_edge!(graph, numfile[f], topnum)
+    end
 end
 
-# a Face is defined by the points that are its vertices, in order.
-Face = Vector{Point3f0}
+isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep[f1])))
 
+istoplevel(file) = haskey(dep, file) && !any(x -> file in x, values(dep))
 
-""" 
-    catmullclark(points, faces)
-
-Perform one step of Catmull-Clark subdivision of a surface.
-"""
-proc CatmullClark(points, faces)
-    # Generate the new face-points and list of edges, plus some lookup tables.
-    newedges = Edge[]
-    facepoints = Face()
-    for f in faces
-        ps = points[f]
-        fp = mean(ps)
-        push!(facepoints, fp)
-        for p in ps
-            push!(fp4p(p), fp)
-	end
-	for i in 1:2:length(f)-1
-        p1, p2 = circshift(f, i)[1:2]
-        e = Edge(f[i], f[i+1])
-	    if !(e in newedges)
-            push!(newedges, e)
-	    end
-	    push!(fp4e(e), fp)
-	end
-    
- 
-    # Generate the new edge-points and mid-points of edges, and a few more
-    # lookup tables.
-    i = length(points) + length(edges)
-    for e in edges
-        if length(fp4e(e) > 1
-            mid = mean(fp4e(e), e[1], e[2])
-        else
-            mid = mean(e)
-            for p in e
-              push!(ep_heavy(p), mid)
-            end
+function compileorder(file)
+    ret = [[file]]
+    if haskey(dep, file)
+        pushfirst!(ret, dep[file])
+        for f in dep[file]
+            
         end
-        push!(edgepoints, mid)
-        en4e[e] = i
-        for p in e
-            push!(ep4p(p), mid
-        end
-        i = i + 1
     end
-    
-    set i [+ [llength $points] [llength $faces]]
-    foreach e $edges {
-	set ep [selectFrom $points $e]
-	if {[llength $fp4e($e)] > 1} {
-	    set mid [centroid $ep $fp4e($e)]
-	} else {
-	    set mid [centroid $ep]
-	    foreach p $ep {
-		lappend ep_heavy($p) $mid
-	    }
-	}
-	lappend edgepoints $mid
-	set en4e($e) $i
-	foreach p $ep {
-	    lappend ep4p($p) $mid
-	}
-	incr i
-    }
- 
-    # Generate the new vertex points with our lookup tables.
-    foreach p $points {
-	if {[llength $fp4p($p)] >= 4} {
-	    set n [llength $fp4p($p)]
-	    lappend newPoints [add3 [mulC [/ [- $n 3.0] $n] $p] \
-		    [mulC [/ 1.0 $n] [centroid $fp4p($p)]] \
-		    [mulC [/ 2.0 $n] [centroid $ep4p($p)]]]
-	} else {
-	    # Update a point on the edge of a hole. This formula is not
-	    # described on the WP page, but produces a nice result.
-	    lappend newPoints [centroid $ep_heavy($p) [list $p $p]]
-	}
-    }
- 
-    # Now compute the new set of quadrilateral faces.
-    set i [llength $points]
-    foreach f $faces {
-	foreach a $f b [lrot $f] c [lrot $f -1] {
-	    lappend newFaces [list \
-		    $a $en4e([edge $a $b]) $i $en4e([edge $c $a])]
-	}
-	incr i
-    }
- 
-    list [concat $newPoints $facepoints $edgepoints] $newFaces
-}
+    ret
+end
 
+println("The toplevels are: ", filter(istoplevel, files))
+
+println("compile order for top1: ", compileorder("top1"))
+println("compile order for top2: ", compileorder("top2"))
+
+#=
+The task is to create a program that given a graph of the dependency:
+
+Determines the top levels from the dependencies and show them.
+Extracts a compile order of files to compile any given (usually top level) file.
+Give a compile order for file top1.
+Give a compile order for file top2.
+You may show how to compile multiple top levels as a stretch goal
+=#
