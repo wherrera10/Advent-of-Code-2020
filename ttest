@@ -12,7 +12,7 @@ const dep = Dict(
     "des1a" => ["des1a1", "des1a2"],
     "des1c" => ["des1c1", "extra1"])
 
-isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep[f1])))
+#isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep[f1])))
 
 istoplevel(file) = haskey(dep, file) && !any(x -> file in x, values(dep))
 
@@ -40,40 +40,63 @@ function compileorder(allfiles, deps)
     levels
 end
 
-dependencyordered = compileorder(files, dep)
-
-function alldeps(file)
+function alldeps(file, dep)
     ret = [file]
     if haskey(dep, file)
         deps = dep[file]
         append!(ret, deps)
         for f in deps
-            append!(ret, alldeps(f))
+            append!(ret, alldeps(f, dep))
         end
     end
     return unique(ret)
 end
 
-function compileplan(file)
-    files = alldeps(file)
-    for (i, level) in enumerate(dependencyordered)
+function compileplan(file, dep, deporder)
+    files = alldeps(file, dep)
+    for (i, level) in enumerate(deporder)
         lfiles = filter(x -> x in level, files)
         println("Step $i: compile $lfiles")
     end
 end
-    
 
-println("The toplevels are: ", filter(istoplevel, files))
+const dependencyordered = compileorder(files, dep)
 
-println("Compile order for top1: ", compileplan("top1"))
-println("Compile order for top2: ", compileplan("top2"))
+println("The top level source files are: ", filter(istoplevel, files))
+
+println("\nCompile order for top1:")
+compileplan("top1", dep, dependencyordered)
+println("\nCompile order for top2:")
+compileplan("top2", dep, dependencyordered)
+
+println("\nCompile plan for both:")
+for (i, level) in enumerate(dependencyordered)
+    lfiles = filter(x -> x in level, files)
+    println("Step $i: compile $lfiles")
+end
+
+
 
 #=
-The task is to create a program that given a graph of the dependency:
+The top level source files are: ["top1", "top2"]
 
-Determines the top levels from the dependencies and show them.
-Extracts a compile order of files to compile any given (usually top level) file.
-Give a compile order for file top1.
-Give a compile order for file top2.
-You may show how to compile multiple top levels as a stretch goal
+Compile order for top1:
+Step 1: compile ["des1b", "des1a1", "des1a2", "des1c1", "extra1", "ip1a", "ipcommon", "ip2a", "ip2b", "ip2c"]
+Step 2: compile ["ip1", "ip2", "des1a", "des1c"]
+Step 3: compile ["des1"]
+Step 4: compile ["top1"]
+
+Compile order for top2:
+Step 1: compile ["ip3", "des1b", "des1a1", "des1a2", "des1c1", "extra1", "ip2a", "ip2b", "ip2c", "ipcommon"]
+Step 2: compile ["ip2", "des1a", "des1c"]
+Step 3: compile ["des1"]
+Step 4: compile ["top2"]
+
+Compile plan for both:
+Step 1: compile ["ip3", "extra1", "ip1a", "ipcommon", "ip2a", "ip2b", "ip2c", "des1b", "des1a1", "des1a2", "des1c1"]
+Step 2: compile ["ip1", "ip2", "des1a", "des1c"]
+Step 3: compile ["des1"]
+Step 4: compile ["top1", "top2"]
+
+
 =#
