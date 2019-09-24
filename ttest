@@ -27,15 +27,42 @@ isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep
 
 istoplevel(file) = haskey(dep, file) && !any(x -> file in x, values(dep))
 
-function compileorder(file)
-    ret = [[file]]
-    if haskey(dep, file)
-        pushfirst!(ret, dep[file])
-        for f in dep[file]
-            
+function compileorder(allfiles, deps)
+    files, depens = deepcopy(allfiles), deepcopy(deps)
+    levels = Vector{Vector{String}}()
+    while true
+        files = filter(x -> !haskey(depens, x), files)
+        if isempty(files)
+            break
+        end
+        push!(levels, files)
+        for (k, v) in depens, file in files
+            if file in v
+                depens[k] = filter(x -> x != file, depens[k])
+            end
+        end
+        for k in keys(depens)
+            if isempty(depens[k])
+                delete!(depens, k)
+            end
         end
     end
-    ret
+    levels
+end
+
+dependencyordered = compileorder(files, dep)
+
+function compileorder(file)
+    levels = Vector{Vector{String}}()
+    for (i, filelist) in enumerate(dependencyordered)
+        push!(levels, String[])
+        for f in filelist
+            if file == f || isdep(file, f)
+                push!(levels[end], f)
+            end
+        end
+    end
+    levels
 end
 
 println("The toplevels are: ", filter(istoplevel, files))
