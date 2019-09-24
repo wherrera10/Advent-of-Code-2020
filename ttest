@@ -1,11 +1,7 @@
-using LightGraphs
-
 const files = ["top1", "des1", "ip1", "ip2", "top2", "ip3", "extra1", "ip1a", "ipcommon",
     "ip2a", "ip2b", "ip2c", "des1a", "des1b", "des1c", "des1a1", "des1a2", "des1c1"]
 
 const numfile = Dict(files[i] => i for i in 1:length(files))
-
-const graph = SimpleDiGraph(length(files))
 
 const dep = Dict(
     "top1" => ["des1", "ip1", "ip2"],
@@ -16,13 +12,6 @@ const dep = Dict(
     "des1a" => ["des1a1", "des1a2"],
     "des1c" => ["des1c1", "extra1"])
 
-for (k, v) in dep
-    topnum = numfile[k]
-    for f in v
-        add_edge!(graph, numfile[f], topnum)
-    end
-end
-
 isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep[f1])))
 
 istoplevel(file) = haskey(dep, file) && !any(x -> file in x, values(dep))
@@ -31,12 +20,13 @@ function compileorder(allfiles, deps)
     files, depens = deepcopy(allfiles), deepcopy(deps)
     levels = Vector{Vector{String}}()
     while true
-        files = filter(x -> !haskey(depens, x), files)
-        if isempty(files)
+        basefiles = filter(x -> !haskey(depens, x), files)
+        if isempty(basefiles)
             break
         end
-        push!(levels, files)
-        for (k, v) in depens, file in files
+        push!(levels, basefiles)
+        files = filter(x -> haskey(depens, x), files)
+        for (k, v) in depens, file in basefiles
             if file in v
                 depens[k] = filter(x -> x != file, depens[k])
             end
@@ -52,23 +42,31 @@ end
 
 dependencyordered = compileorder(files, dep)
 
-function compileorder(file)
-    levels = Vector{Vector{String}}()
-    for (i, filelist) in enumerate(dependencyordered)
-        push!(levels, String[])
-        for f in filelist
-            if file == f || isdep(file, f)
-                push!(levels[end], f)
-            end
+function alldeps(file)
+    ret = [file]
+    if haskey(dep, file)
+        deps = dep[file]
+        append!(ret, deps)
+        for f in deps
+            append!(ret, alldeps(f))
         end
     end
-    levels
+    return unique(ret)
 end
+
+function compileplan(file)
+    files = alldeps(file)
+    for (i, level) in enumerate(dependencyordered)
+        lfiles = filter(x -> x in level, files)
+        println("Step $i: compile $lfiles")
+    end
+end
+    
 
 println("The toplevels are: ", filter(istoplevel, files))
 
-println("compile order for top1: ", compileorder("top1"))
-println("compile order for top2: ", compileorder("top2"))
+println("Compile order for top1: ", compileplan("top1"))
+println("Compile order for top2: ", compileplan("top2"))
 
 #=
 The task is to create a program that given a graph of the dependency:
