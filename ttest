@@ -1,12 +1,18 @@
 # black box
 
+using BackedUpImmutable
+
 struct Position x::Int; y::Int; end
+
+const boardsize = 8
+
+const numberballs = 4
 
 const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
 const rebound(d) = -1 .* d
 
-const emptyboard = fill('?', 8, 8)
+const emptyboard = fill('?', boardsize, boardsize)
 
 printboard(brd) = for row in eachrow(brd) for c in row print(c * " ") end; println() end
 
@@ -22,6 +28,21 @@ board[rand(cart, 4)] .= '*'
 
 printboard(board)
 
+isvalidposition(row, col) = (1 <= col <= boardsize) && (1 <= row <= boardsize)
+isvalidposition(p) = isvalidposition(p.y, p.x)
+
+star(x, y, brd) = isvalidposition(y, x) && brd[x, y] == '*'
+
+isatentry(p, brd) = p.x == 
+
+isblocked(p, brd) = brd[p.x, p.y] == '*'
+
+function isreflectedfirst(p, direc, brd)
+    return p.y == 1 && direc[1] == 1 && (star(1, p.x - 1) || star(1, p.x +1, brd))
+           p.y == boardsize && direc[1] == -1 ||
+           p.x == 1 && direc[2] == 1 || 
+           p.x == boardsize && direc[2] == -1
+
 
 function diagonalright(position, direction) 
     if direction[1] == 1 # down
@@ -35,11 +56,8 @@ function diagonalright(position, direction)
     end
 end
 
-isvalidposition(p) = (1 <= p.y <= 8) && (1 <= p.x <= 8)
-
-blocked(p, brd) = brd[p.x, p.y] == '*'
-
-function reflected(position, direc, brd)
+function isreflected(position, direc, brd)
+    if 
     newp = position .+ direc
     if d[1] == 1 || d[1] == -1
         return brd[newp.x, newp.y + 1] == '*' && 
@@ -65,5 +83,3 @@ function pathresult(start, direction, board)
                 
             end
         elseif
-
-
