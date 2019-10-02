@@ -1,102 +1,69 @@
-const files = ["top1", "des1", "ip1", "ip2", "top2", "ip3", "extra1", "ip1a", "ipcommon",
-    "ip2a", "ip2b", "ip2c", "des1a", "des1b", "des1c", "des1a1", "des1a2", "des1c1"]
+# black box
 
-const numfile = Dict(files[i] => i for i in 1:length(files))
+struct Position x::Int; y::Int; end
 
-const dep = Dict(
-    "top1" => ["des1", "ip1", "ip2"],
-    "top2" => ["des1", "ip2", "ip3"],
-    "ip1" => ["extra1", "ip1a", "ipcommon"],
-    "ip2" => ["ip2a", "ip2b", "ip2c", "ipcommon"],
-    "des1" => ["des1a", "des1b", "des1c"],
-    "des1a" => ["des1a1", "des1a2"],
-    "des1c" => ["des1c1", "extra1"])
+const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
-#isdep(f1, f2) = (haskey(dep, f1) && (f2 in dep[f1] || any(x -> isdep(x, f2), dep[f1])))
+const rebound(d) = -1 .* d
 
-istoplevel(file) = haskey(dep, file) && !any(x -> file in x, values(dep))
+const emptyboard = fill('?', 8, 8)
 
-function compileorder(allfiles, deps)
-    files, depens = deepcopy(allfiles), deepcopy(deps)
-    levels = Vector{Vector{String}}()
-    while true
-        basefiles = filter(x -> !haskey(depens, x), files)
-        if isempty(basefiles)
-            break
+printboard(brd) = for row in eachrow(brd) for c in row print(c * " ") end; println() end
+
+printboard(emptyboard)
+
+println()
+
+cart = CartesianIndices(emptyboard)
+
+board = deepcopy(emptyboard)
+
+board[rand(cart, 4)] .= '*'
+
+printboard(board)
+
+
+function diagonalright(position, direction) 
+    if direction[1] == 1 # down
+        return position .+ [1, -1]
+    elseif direction[1] == -1 #up
+        return position .+ [-1, 1]
+    elseif direction[2] == -1 # left
+        return position .+ [-1, -1]
+    else
+        return position .+ [1, 1]
+    end
+end
+
+isvalidposition(p) = (1 <= p.y <= 8) && (1 <= p.x <= 8)
+
+blocked(p, brd) = brd[p.x, p.y] == '*'
+
+function reflected(position, direc, brd)
+    newp = position .+ direc
+    if d[1] == 1 || d[1] == -1
+        return brd[newp.x, newp.y + 1] == '*' && 
+               brd[newp.x, newp.y - 1] == '*'
+    elseif d[2] == 1 || d[2] == -1
+        return brd[newp.x, newp.y + 1] == '*' && 
+               brd[newp.x, newp.y - 1] == '*'
+    
+
+function pathresult(start, direction, board)
+    current = start
+    while isvalidposition(current)
+    
+    for col in 1:8, row in 1:8
+        if board[row, col] == '*'
+            return "0" # nothing out
         end
-        push!(levels, basefiles)
-        files = filter(x -> haskey(depens, x), files)
-        for (k, v) in depens, file in basefiles
-            if file in v
-                depens[k] = filter(x -> x != file, depens[k])
+        rightcorner, leftcorner = start .+ 
+        elseif col > 1 && row < 8 && board[row + 1, col - 1] == '*'
+            if col < 8 && board[row + 1, col + 1] == '*'
+                return pathresult(current, rebound(direction), board)
+            else
+                
             end
-        end
-        for k in keys(depens)
-            if isempty(depens[k])
-                delete!(depens, k)
-            end
-        end
-    end
-    levels
-end
-
-function alldeps(file, dep)
-    ret = [file]
-    if haskey(dep, file)
-        deps = dep[file]
-        append!(ret, deps)
-        for f in deps
-            append!(ret, alldeps(f, dep))
-        end
-    end
-    return unique(ret)
-end
-
-function compileplan(file, dep, deporder)
-    files = alldeps(file, dep)
-    for (i, level) in enumerate(deporder)
-        lfiles = filter(x -> x in level, files)
-        println("Step $i: compile $lfiles")
-    end
-end
-
-const dependencyordered = compileorder(files, dep)
-
-println("The top level source files are: ", filter(istoplevel, files))
-
-println("\nCompile order for top1:")
-compileplan("top1", dep, dependencyordered)
-println("\nCompile order for top2:")
-compileplan("top2", dep, dependencyordered)
-
-println("\nCompile plan for both:")
-for (i, level) in enumerate(dependencyordered)
-    lfiles = filter(x -> x in level, files)
-    println("Step $i: compile $lfiles")
-end
+        elseif
 
 
-
-#=
-The top level source files are: ["top1", "top2"]
-
-Compile order for top1:
-Step 1: compile ["des1b", "des1a1", "des1a2", "des1c1", "extra1", "ip1a", "ipcommon", "ip2a", "ip2b", "ip2c"]
-Step 2: compile ["ip1", "ip2", "des1a", "des1c"]
-Step 3: compile ["des1"]
-Step 4: compile ["top1"]
-
-Compile order for top2:
-Step 1: compile ["ip3", "des1b", "des1a1", "des1a2", "des1c1", "extra1", "ip2a", "ip2b", "ip2c", "ipcommon"]
-Step 2: compile ["ip2", "des1a", "des1c"]
-Step 3: compile ["des1"]
-Step 4: compile ["top2"]
-
-Compile plan for both:
-Step 1: compile ["ip3", "extra1", "ip1a", "ipcommon", "ip2a", "ip2b", "ip2c", "des1b", "des1a1", "des1a2", "des1c1"]
-Step 2: compile ["ip1", "ip2", "des1a", "des1c"]
-Step 3: compile ["des1"]
-Step 4: compile ["top1", "top2"]
-
-
-=#
