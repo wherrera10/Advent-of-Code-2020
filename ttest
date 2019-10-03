@@ -2,84 +2,94 @@
 
 using BackedUpImmutable
 
-struct Position x::Int; y::Int; end
+struct BoardPosition row::Int; col::Int; end
 
-const boardsize = 8
-
-const numberballs = 4
+const config = BackedUpImmutableDict{String,Int64}(["boardsize" => 8, "numberballs" => 4])
 
 const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
 const rebound(d) = -1 .* d
 
-const emptyboard = fill('?', boardsize, boardsize)
-
-printboard(brd) = for row in eachrow(brd) for c in row print(c * " ") end; println() end
-
-printboard(emptyboard)
-
-println()
-
-cart = CartesianIndices(emptyboard)
-
-board = deepcopy(emptyboard)
-
-board[rand(cart, 4)] .= '*'
-
-printboard(board)
+printboard(brd) = for r in eachrow(brd) for c in r print(c * " ") end; println() end
 
 isvalidposition(row, col) = (1 <= col <= boardsize) && (1 <= row <= boardsize)
-isvalidposition(p) = isvalidposition(p.y, p.x)
+isvalidposition(p) = isvalidposition(p.row, p.col)
 
-star(x, y, brd) = isvalidposition(y, x) && brd[x, y] == '*'
+star(x, y, brd) = isvalidposition(x, y) && brd[x, y] == '*'
+star(bp, brd) = star(bp.row, bp.col, brd)
 
-isatentry(p, brd) = p.x == 
-
-isblocked(p, brd) = brd[p.x, p.y] == '*'
-
-function isreflectedfirst(p, direc, brd)
-    return p.y == 1 && direc[1] == 1 && (star(1, p.x - 1) || star(1, p.x +1, brd))
-           p.y == boardsize && direc[1] == -1 ||
-           p.x == 1 && direc[2] == 1 || 
-           p.x == boardsize && direc[2] == -1
-
-
-function diagonalright(position, direction) 
-    if direction[1] == 1 # down
-        return position .+ [1, -1]
-    elseif direction[1] == -1 #up
-        return position .+ [-1, 1]
-    elseif direction[2] == -1 # left
-        return position .+ [-1, -1]
-    else
-        return position .+ [1, 1]
-    end
+function ondiagonalsides(x, y, direc)
+    nextpos = [x, y] .+ direc
+    plusminus = direc[1] == 0 ? [1, 0] : [0, 1]
+    return map((r, c) -> isvalidposition(r, c) ? (r, c) : (0, 0), 
+        [[x, y] .+ plusminus, [x, y] .- plusminus])
 end
 
-function isreflected(position, direc, brd)
-    if 
-    newp = position .+ direc
-    if d[1] == 1 || d[1] == -1
-        return brd[newp.x, newp.y + 1] == '*' && 
-               brd[newp.x, newp.y - 1] == '*'
-    elseif d[2] == 1 || d[2] == -1
-        return brd[newp.x, newp.y + 1] == '*' && 
-               brd[newp.x, newp.y - 1] == '*'
-    
+function isatentry(p, direc)
+    return p.row == 1 && direc[1] == 1 || p.row == boardsize && direc[1] == -1 ||
+           p.col == 1 && direc[2] == 1 || p.col == boardsize && direc[2] == -1
+end
+
+isblocked(p, brd) = star(p, brd)
+
+function isreflected(p, direc, brd)
+    if isatentry(p, direc)
+        poutside = p .- direc
+        bp1, bp2 = ondiagonalsides(poutside.row, poutside.col, direc)
+        if star(bp1, brd) || star(bp2, brd)
+            return true
+        end
+    else
+        bp1, bp2 = ondiagonalsides(p.row, p.col, direc)
+        if star(bp1, brd) && star(bp2, brd)
+            return true
+        end
+    end
+    return false
+end
+
+function isturnedright(p, direc, brd)
+    nextpos = [p.row, p.col] .+ direc
+    rightdiag = nextpos .+ (direc[1] == 1 ? [0, -1] : direc[1] == -1 ? [0, 1] :
+        direc[2] == 1 ? [1, 0] : [-1, 0])
+    return star(rightdiag)
+end
+
+function isturnedleft(p, direc, brd)
+    nextpos = [p.row, p.col] .+ direc
+    leftdiag = nextpos .+ (direc[1] == 1 ? [0, 1] : direc[1] == -1 ? [0, -1] :
+        direc[2] == 1 ? [-1, 0] : [1, 0])
+    return star(leftdiag)
+end
 
 function pathresult(start, direction, board)
     current = start
     while isvalidposition(current)
-    
-    for col in 1:8, row in 1:8
-        if board[row, col] == '*'
-            return "0" # nothing out
+        if isblocked(current, board)
+            return (0, 0)
+        elseif isreflected(current, direction, board)
+            direction .*= -1
+        elseif isturnedright(current, direction, board)
+            direction = (direction[1] == 0) ? reverse(direction) : 
+                reverse(direction) .* -1 
+        elseif isturnedleft(current, direction, board)
+            direction = (direction[2] == 0) ? reverse(direction) : 
+                reverse(direction) .* -1 
         end
-        rightcorner, leftcorner = start .+ 
-        elseif col > 1 && row < 8 && board[row + 1, col - 1] == '*'
-            if col < 8 && board[row + 1, col + 1] == '*'
-                return pathresult(current, rebound(direction), board)
-            else
-                
-            end
-        elseif
+        current = BoardPosition(current.row + direction[1], current.col + direction[2])
+    end
+    println("Start: $start, finish: $current")
+    return current
+end
+
+function testpaths(boardsize=config["boardsize"], numballs = config["numberballs"])
+    emptyboard = fill('?', boardsize, boardsize)
+    board = deepcopy(emptyboard)
+    cart = CartesianIndices(board)
+    board[rand(cart, 4)] .= '*'
+    printboard(board)
+    
+end
+    
+testpaths()
+
