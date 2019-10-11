@@ -1,186 +1,43 @@
-module FormalPowerSeries
-
-using Base, Printf
-
-_div(a, b) = a / b
-_div(a::Union{Integer,Rational}, b::Union{Integer,Rational}) = a // b
-
-abstract type AbstractFPS{T<:Number} end
-
-IteratorSize(::AbstractFPS) = IsInfinite()
-IteratorEltype(::AbstractFPS) = HasEltype()
-eltype(::AbstractFPS{T}) where T = T
-
-Base.one(::AbstractFPS{T}) where T = ConstantFPS(one(T))
-
-function Base.show(io::IO, fps::AbstractFPS{T}) where T
-    if (next = Base.iterate(fps)) != nothing
-        a, s = next[1], next[2:end]
-        print(io, a)
-        if (next = Base.iterate(fps, s)) != nothing
-            a, s = next[1], next[2:end]
-            @printf(io, " %s %s⋅x",
-            ifelse(sign(a) ≥ 0, '+', '-'), abs(a))
-            local i = 2
-            while (next = Base.iterate(fps, s)) != nothing
-                a, s = next[1], next[2:end]
-                @printf(io, " %s %s⋅x^%i",
-                ifelse(sign(a) ≥ 0, '+', '-'), abs(a), i)
-                i += 1
-            end
-        end
-    end
-    print(io, "...")
-end
-
-struct MinusFPS{T,A<:AbstractFPS{T}} <: AbstractFPS{T}
-    a::A
-end
-Base.:-(a::AbstractFPS{T}) where T = MinusFPS{T,typeof(a)}(a)
-
-Base.iterate(fps::MinusFPS) = Base.iterate(fps.a)
-function Base.iterate(fps::MinusFPS, st)
-    v, s = Base.iterate(fps.a, st)
-    return -v, s
-end
-
-struct SumFPS{T,A<:AbstractFPS,B<:AbstractFPS} <: AbstractFPS{T}
-    a::A
-    b::B
-end
-Base.:+(a::AbstractFPS{A}, b::AbstractFPS{B}) where {A,B} =
-    SumFPS{promote_type(A, B),typeof(a),typeof(b)}(a, b)
-Base.:-(a::AbstractFPS, b::AbstractFPS) = a + (-b)
-
-Base.iterate(fps::SumFPS) = (Base.iterate(fps.a), Base.iterate(fps.b))
-function Base.iterate(fps::SumFPS{T,A,B}, st) where {T,A,B}
-    stateA, stateB = st
-    valueA, stateA = Base.iterate(fps.a, stateA)
-    valueB, stateB = Base.iterate(fps.b, stateB)
-    return T(valueA + valueB), (stateA, stateB)
-end
-
-struct ProductFPS{T,A<:AbstractFPS,B<:AbstractFPS} <: AbstractFPS{T}
-    a::A
-    b::B
-end
-Base.:*(a::AbstractFPS{A}, b::AbstractFPS{B}) where {A,B} =
-    ProductFPS{promote_type(A, B),typeof(a),typeof(b)}(a, b)
-
-Base.iterate(fps::ProductFPS{T}) where T = (Base.iterate(fps.a), Base.iterate(fps.b), T[], T[])
-function Base.iterate(fps::ProductFPS{T,A,B}, st) where {T,A,B}
-    stateA, stateB, listA, listB = st
-    valueA, stateA = Base.iterate(fps.a, stateA)
-    valueB, stateB = Base.iterate(fps.b, stateB)
-    push!(listA, valueA)
-    popfirst!(listB, valueB)
-    return T(sum(listA .* listB)), (stateA, stateB, listA, listB)
-end
-
-struct DifferentiatedFPS{T,A<:AbstractFPS} <: AbstractFPS{T}
-    a::A
-end
-differentiate(fps::AbstractFPS{T}) where T = DifferentiatedFPS{T,typeof(fps)}(fps)
-
-function Base.iterate(fps::DifferentiatedFPS{T,A}) where {T,A}
-    s = Base.iterate(fps.a)
-    _, s = next(fps.a, s)
-    n = zero(T)
-    return n, s
-end
-function Base.iterate(fps::DifferentiatedFPS{T,A}, st) where {T,A}
-    n, s = st
-    n += one(n)
-    v, s = next(fps.a, s)
-    return n * v, (n, s)
-end
-
-struct IntegratedFPS{T,A<:AbstractFPS} <: AbstractFPS{T}
-    a::A
-    k::T
-end
-integrate(fps::AbstractFPS{T}, k::T=zero(T)) where T = IntegratedFPS{T,typeof(fps)}(fps, k)
-integrate(fps::AbstractFPS{T}, k::T=zero(T)) where T <: Integer =
-    IntegratedFPS{Rational{T},typeof(fps)}(fps, k)
-
-Base.iterate(fps::IntegratedFPS{T,A}) where {T,A} = zero(T), Base.iterate(fps.a)
-function Base.iterate(fps::IntegratedFPS{T,A}, st) where {T,A}
-    n, s = st
-    iszero(n) && return fps.k, (one(n), s)
-    v, s = next(fps.a, s)
-    r::T = _div(v, n)
-    n += one(n)
-    return r, (n, s)
-end
-
-# Examples of FPS: constant
-
-struct FiniteFPS{T} <: AbstractFPS{T}
-    v::NTuple{N,T} where N
-end
-Base.iterate(fps::FiniteFPS) = 1
-Base.iterate(fps::FiniteFPS{T}, st) where T =
-    st > endof(fps.v) ? (zero(T), st) : (fps.v[st], st + 1)
-Base.convert(::Type{FiniteFPS}, x::Real) = FiniteFPS{typeof(x)}((x,))
-for op in (:+, :-, :*)
-    @eval Base.$op(x::Number, a::AbstractFPS) = $op(FiniteFPS(x), a)
-    @eval Base.$op(a::AbstractFPS, x::Number) = $op(a, FiniteFPS(x))
-end
-
-struct ConstantFPS{T} <: AbstractFPS{T}
-    k::T
-end
-Base.iterate(::ConstantFPS) = nothing
-Base.iterate(c::ConstantFPS, ::Any) = c.k, nothing
-
-struct SineFPS{T} <: AbstractFPS{T} end
-SineFPS() = SineFPS{Rational{Int}}()
-Base.iterate(::SineFPS) = 0, 1, 1
-function Base.iterate(::SineFPS{T}, st) where T
-    n, fac, s = st
-    local r::T
-    if iseven(n)
-        r = zero(T)
-    else
-        r = _div(one(T), (s * fac))
-        s = -s
-    end
-    n += 1
-    fac *= n
-    return r, (n, fac, s)
-end
-
-struct CosineFPS{T} <: AbstractFPS{T} end
-CosineFPS() = CosineFPS{Rational{Int}}()
-Base.iterate(::CosineFPS) = (0, 1, 1)
-function Base.iterate(::CosineFPS{T}, st) where T
-    n, fac, s = st
-    local r::T
-    if iseven(n)
-        r = _div(one(T), (s * fac))
-    else
-        r = zero(T)
-        s = -s
-    end
-    n += 1
-    fac *= n
-    return r, (n, fac, s)
-end
-
-end  # module FormalPowerSeries
-
-@show cosine = FormalPowerSeries.CosineFPS()
-@show sine = FormalPowerSeries.SineFPS()
-
-intcosine = FormalPowerSeries.integrate(cosine)
-uminintsine = 1 - FormalPowerSeries.integrate(sine)
-
-# Check coefficients up to the 20th term
-coefsine = collect(Iterators.take(sine, 20))
-coefintcosine = collect(Iterators.take(intcosine, 20))
-
-coefcosine = collect(Iterators.take(cosine, 20))
-coefuminintsine = collect(Iterators.take(uminintsine, 20))
-
-@assert coefsine == coefintcosine "The integral of cos should be sin"
-@assert coefcosine == coefuminintsine "1 minus the integral of sin should be cos"
+NUMBER,NAME,PARENT_NUMBER,WEIGHT,COVERAGE
+1,cleaning,0,1,0
+2,house1,1,40,0
+3,bedrooms,2,1,0.25
+4,bathrooms,2,1,0
+5,bathroom1,4,1,0.5
+6,bathroom2,4,1,0
+7,outside_lavatory,4,1,1
+8,attic,2,1,0.75
+9,kitchen,2,1,0.1
+10,living_rooms,2,1,0
+11,lounge,10,1,0
+12,dining_room,10,1,0
+13,conservatory,10,1,0
+14,playroom,10,1,1
+15,basement,2,1,0
+16,garage,2,1,0
+17,garden,2,1,0.8
+18,house2,1,60,0
+19,upstairs,18,1,0
+20,bedrooms,19,1,0
+21,suite_1,20,1,0
+22,suite_2,20,1,0
+23,bedroom_3,20,1,0
+24,bedroom_4,20,1,0
+25,bathroom,19,1,0
+26,toilet,19,1,0
+27,attics,19,1,0.6
+28,groundfloor,18,1,0
+29,kitchen,28,1,0
+30,living_rooms,28,1,0
+31,lounge,30,1,0
+32,dining_room,30,1,0
+33,conservatory,30,1,0
+34,playroom,30,1,0
+36,wet_room_&_toilet,29,1,0
+37,garage,29,1,0
+39,garden,29,1,0.9
+40,hot_tub_suite,29,1,1
+41,basement,18,1,0
+42,cellars,41,1,1
+43,wine_cellar,41,1,1
+44,cinema,41,1,0.75
