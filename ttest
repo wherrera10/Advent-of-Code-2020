@@ -1,3 +1,9 @@
+need dict int -> int[] for prent -> children
+need dict item -> indentlevel
+calulate coverages
+output rows
+
+
 NUMBER,NAME,PARENT_NUMBER,WEIGHT,COVERAGE
 1,cleaning,0,1,0
 2,house1,1,40,0
