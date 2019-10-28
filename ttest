@@ -1,12 +1,17 @@
-using GeometryTypes
+import Main.isapprox
 
 const radius = 1.0   # simplifies calculations
 const θ = π / 6      # 30 degrees
 
-Point = Point2f0
+struct Point
+	x::Float32
+	y::Float32
+end
 
-rightwardfrom(start, angle) = Point(start[1] + sin(angle + θ), start[2] + cos(angle + θ))
-leftwardfrom(start, angle) = Point(start[1] + sin(angle - θ), start[2] + cos(angle - θ))
+Main.isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
+
+rightwardfrom(start, angle) = Point(start.x + sin(angle + θ), start.y + cos(angle + θ))
+leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angle - θ))
 
 struct RailwayCircuit
     startpoint::Point
@@ -49,4 +54,3 @@ function allvalidcircuits(N)
 	end
 	ret			
 end
-
