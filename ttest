@@ -15,7 +15,7 @@ leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angl
 
 struct RailwayCircuit
     startpoint::Point
-    startdirection:Float64
+    startdirection::Float64
     turns::Array{Bool, 1}  # true for right, false for left
     RailwayCircuit(turnarray=Bool[]) = new(Point(0, 0), 0, turnarray)
 end
