@@ -30,41 +30,36 @@ isduplicate(c1, c2) = issymmetry(c1, c2) || issymmetry(c1, [-x for x in c2])
 function points(tracks::RailwayCircuit)
     ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
     for turn in tracks.turns
-        if turn ==  1
+        if turn == 1
             point = rightwardfrom(point, ϕ)
-            ϕ = (ϕ + θ) % 2π
+            ϕ += θ
         else
-            lastangle = ϕ
             point = leftwardfrom(point, ϕ)
-             ϕ = (ϕ - θ) % 2π
+             ϕ -= θ
         end
         push!(ret, point)
     end
-    return ret, ϕ - tracks.startdirection
+    return ret
 end
 
-function isvalidcircuit(tracks, useangle=true)
-    if sum(tracks.turns) % 12  != 0
-        return false
-    end
-    c, ϕ = points(tracks)
-    return c[1] ≈ c[end] && (!useangle || isapprox(0.0, ϕ, atol=0.00001))
+function isvalidcircuit(tracks)
+    return sum(tracks.turns) % 12 != 0 ? false : (c = points(tracks); c[1] ≈ c[end])
 end
 
-function allvalidcircuits(N)
-    ret = RailwayCircuit[]
+function allvalidcircuits(N, doprint)
+    found = RailwayCircuit[]
+    println("\nFor N of $N: ")
     for i in 0:2^N-1
-        c = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
-        if isvalidcircuit(c) & all(x -> !isduplicate(x.turns, c.turns), ret)
-            push!(ret, c)
+        rc = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
+        if isvalidcircuit(rc) & all(x -> !isduplicate(x.turns, rc.turns), found)
+            doprint && println(rc.turns)
+            push!(found, rc)
         end
     end
-    ret
+    println("There are ", length(found), " unique valid circuits.")
 end
 
-for i in 12:4:48
-    println("\nFor N of $i:")
-    for r in allvalidcircuits(i)
-        println(r.turns)
-    end
+for i in 12:4:32
+    allvalidcircuits(i, i < 24)
 end
+
