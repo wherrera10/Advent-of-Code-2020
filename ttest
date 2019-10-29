@@ -42,9 +42,7 @@ function points(tracks::RailwayCircuit)
     return ret
 end
 
-function isvalidcircuit(tracks)
-    return sum(tracks.turns) % 12 != 0 ? false : (c = points(tracks); c[1] ≈ c[end])
-end
+valid(tracks) = sum(tracks.turns) % 12 != 0 ? false : (c = points(tracks); c[1] ≈ c[end])
 
 function allvalidcircuits(N, doprint)
     found = RailwayCircuit[]
