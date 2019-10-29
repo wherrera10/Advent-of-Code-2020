@@ -20,9 +20,8 @@ struct RailwayCircuit
     RailwayCircuit(turnarray=Bool[]) = new(Point(0, 0), 0, turnarray)
 end
 
-invert(c) = [-x for x in c]
-maximumcirc(c) = maximum([circshift(c, i) for i in 0:length(c)-1])
-canonical(c) = max(maximumcirc(c), maximumcirc(invert(c)))
+allshifts(c) = [circshift(c, i) for i in 0:length(c)-1]
+canonical(c) = maximum(vcat(allshifts(c), allshifts([-x for x in c])))
 
 function points(tracks::RailwayCircuit)
     ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
@@ -42,15 +41,15 @@ end
 valid(tracks) = sum(tracks.turns) % 12 != 0 ? false : (c = points(tracks); c[1] ≈ c[end])
 
 function allvalidcircuits(N, doprint)
-    found = RailwayCircuit[]
+    found = Vector{Vector{Int}}()
     println("\nFor N of $N: ")
     for i in 0:2^N-1
         rc = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
         if valid(rc)
             canon = canonical(rc.turns)
-            if all(x -> canonical(x.turns) != canon, found)
-                doprint && println(rc.turns)
-                push!(found, rc)
+            if !(canon in found)
+                doprint && println(canon)
+                push!(found, canon)
             end
         end
     end
@@ -58,6 +57,6 @@ function allvalidcircuits(N, doprint)
 end
 
 for i in 12:4:32
-    allvalidcircuits(i, i < 24)
+    allvalidcircuits(i, i < 20)
 end
 
