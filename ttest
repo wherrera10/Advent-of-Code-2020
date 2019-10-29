@@ -16,7 +16,7 @@ leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angl
 struct RailwayCircuit
     startpoint::Point
     startdirection::Float64
-    turns::Array{Bool, 1}  # true for right, false for left
+    turns::Array{Int, 1}  # 1 for right, -1 for left
     RailwayCircuit(turnarray=Bool[]) = new(Point(0, 0), 0, turnarray)
 end
 
@@ -25,12 +25,12 @@ function issymmetry(c1, c2)
         any(n -> c1 == circshift(c2, n), 0:length(c2)-1)
 end
 
-isduplicate(c1, c2) = issymmetry(c1, c2) || issymmetry(c1, [!x for x in c2])
+isduplicate(c1, c2) = issymmetry(c1, c2) || issymmetry(c1, [-x for x in c2])
 
 function points(tracks::RailwayCircuit)
     ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
     for turn in tracks.turns
-        if turn
+        if turn ==  1
             point = rightwardfrom(point, ϕ)
             ϕ = (ϕ + θ) % 2π
         else
@@ -44,6 +44,9 @@ function points(tracks::RailwayCircuit)
 end
 
 function isvalidcircuit(tracks, useangle=true)
+    if sum(tracks.turns) % 12  != 0
+        return false
+    end
     c, ϕ = points(tracks)
     return c[1] ≈ c[end] && (!useangle || isapprox(0.0, ϕ, atol=0.00001))
 end
@@ -51,7 +54,7 @@ end
 function allvalidcircuits(N)
     ret = RailwayCircuit[]
     for i in 0:2^N-1
-        c = RailwayCircuit([d == 1 for d in digits(i, base=2, pad=N)])
+        c = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
         if isvalidcircuit(c) & all(x -> !isduplicate(x.turns, c.turns), ret)
             push!(ret, c)
         end
@@ -59,4 +62,9 @@ function allvalidcircuits(N)
     ret
 end
 
-println(allvalidcircuits(12))
+for i in 12:4:48
+    println("\nFor N of $i:")
+    for r in allvalidcircuits(i)
+        println(r.turns)
+    end
+end
