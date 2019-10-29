@@ -1,14 +1,14 @@
-import Main.isapprox
+import Main.≈
 
 const radius = 1.0   # simplifies calculations
 const θ = π / 6      # 30 degrees
 
 struct Point
-	x::Float32
-	y::Float32
+    x::Float32
+    y::Float32
 end
 
-Main.isapprox(p1::Point, p2::Point) = isapprox(p1.x, p2.x) && isapprox(p1.y, p2.y)
+Main.:≈(p1::Point, p2::Point) = ≈(p1.x, p2.x, atol= 0.00001) && ≈(p1.y, p2.y, atol=0.00001)
 
 rightwardfrom(start, angle) = Point(start.x + sin(angle + θ), start.y + cos(angle + θ))
 leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angle - θ))
@@ -30,27 +30,33 @@ isduplicate(c1, c2) = issymmetry(c1, c2) || issymmetry(c1, [!x for x in c2])
 function points(tracks::RailwayCircuit)
     ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
     for turn in tracks.turns
-		if turn
-			point = rightwardfrom(point, ϕ)
-			ϕ += θ
-		else
-		    point = leftwardfrom(point, ϕ)
-		    ϕ -= θ
-		end
-		push!(ret, point)
+        if turn
+            point = rightwardfrom(point, ϕ)
+            ϕ = (ϕ + θ) % 2π
+        else
+            lastangle = ϕ
+            point = leftwardfrom(point, ϕ)
+             ϕ = (ϕ - θ) % 2π
+        end
+        push!(ret, point)
     end
-    return ret
+    return ret, ϕ
 end
 
-isvalidcircuit(tracks) = (c = points(tracks); c[1] ≈ c[end])
+function isvalidcircuit(tracks, useangle=true)
+    c, ϕ = points(tracks)
+    return c[1] ≈ c[end] && (!useangle || isapprox(0.0, ϕ, atol=0.00001))
+end
 
 function allvalidcircuits(N)
-	ret = RailwayCircuit[]
-	for i in 0:2^N-1
-		c = RailwayCircuit([d -> d == 1 for d in digits(i, base=2)])
-		if isvalidcircuit(c) & all(x -> !isduplicate(x.turns, c.turns), ret)
-			push!(ret, c)
-		end
-	end
-	ret			
+    ret = RailwayCircuit[]
+    for i in 0:2^N-1
+        c = RailwayCircuit([d == 1 for d in digits(i, base=2, pad=N)])
+        if isvalidcircuit(c) & all(x -> !isduplicate(x.turns, c.turns), ret)
+            push!(ret, c)
+        end
+    end
+    ret
 end
+
+println(allvalidcircuits(12))
