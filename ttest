@@ -40,7 +40,7 @@ function points(tracks::RailwayCircuit)
         end
         push!(ret, point)
     end
-    return ret, ϕ
+    return ret, ϕ - tracks.startdirection
 end
 
 function isvalidcircuit(tracks, useangle=true)
