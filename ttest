@@ -1,44 +1,57 @@
-import Main.isapprox
+import Main.≈
 
-const radius = 1.0   # simplifies calculations
+# Simplify by setting the radius of the circle of 12 track turns to 1.0
 const θ = π / 6      # 30 degrees
+const ρ = π / 2      # 90 degrees
+const Right = 1
+const Left = -1
+const Straight = 0
 
 struct Point
     x::Float32
     y::Float32
 end
 
-isapprox(p::Point, q) = isapprox(p.x, q.x, atol=0.0001) && isapprox(p.y, q.y, atol=0.0001)
+same(x, y) = ≈(x, y, atol=0.001)
+Main.:≈(p::Point, q::Point) = same(p.x, q.x) && same(p.y, q.y)
 
-rightwardfrom(start, angle) = Point(start.x + sin(angle + θ), start.y + cos(angle + θ))
-leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angle - θ))
+rightwardfrom(start, angl) = Point(start.x + sin(angl + θ), start.y + cos(angl + θ))
+leftwardfrom(start, angl) = Point(start.x + sin(angl - θ), start.y + cos(angl - θ))
+rightturnfrom(start, angl) = Point(start.x + sin(angl + ρ), start.y + cos(angl + ρ))
+leftturnfrom(start, angl) = Point(start.x + sin(angl - ρ), start.y + cos(angl - ρ))
+straightfrom(start, angl) = Point(start.x + sin(angl), start.y + cos(angl))
 
-allshifts(c) = [circshift(c, i) for i in 0:length(c)-1]
-canonical(c) = maximum(vcat(allshifts(c), allshifts([-x for x in c])))
+circularsymmetries(c) = [circshift(c, i) for i in 0:length(c)-1]
+canonical(c) = maximum(vcat(circularsymmetries(c), circularsymmetries([-x for x in c])))
 
-function points(turns)
+function points(turns, straight=false)
     ret, point, ϕ = [Point(0,0)], Point(0,0), 0.0
     for turn in turns
-        if turn == 1
-            point = rightwardfrom(point, ϕ)
-            ϕ += θ
-        else
-            point = leftwardfrom(point, ϕ)
-             ϕ -= θ
+        if turn == Right
+            point = straight ? rightturnfrom(point, ϕ) : rightwardfrom(point, ϕ)
+            ϕ += straight ? ρ : θ
+        elseif turn == Left
+            point = straight ? leftturnfrom(point, ϕ) : leftwardfrom(point, ϕ)
+            ϕ -= straight ? ρ : θ
+        else    # straight
+            point = straightfrom(point, ϕ)
         end
         push!(ret, point)
     end
-    return ret
+    return ret, ϕ % 2π
 end
 
-valid(t) = sum(t) % 12 != 0 ? false : (c = points(t); isapprox(c[1], c[end]))
+isclosed(turns) = ((c, ϕ) = points(turns); c[1] ≈ c[end])
+valid(t, straight) = sum(t) % (straight ? 4 : 12) != 0 ? false : isclosed(t)
 
-function allvalidcircuits(N, doprint)
+function allvalidcircuits(N, doprint, straight=false)
     found = Vector{Vector{Int}}()
-    println("\nFor N of $N: ")
-    for i in 0:2^N-1
-        turns = [d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)]
-        if valid(turns)
+    println("\nFor N of $N and ", straight ? "straight" : "curved", " track: ")
+    for i in (straight ? (0:3^N-1) : (0:2^N-1))
+        turns = straight ? 
+			[d == 0 ? 0 : d == 1 ? -1 : 1 for d in digits(i, base=3, pad=N)] :
+			[d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)]
+        if valid(turns, straight)
             canon = canonical(turns)
             if !(canon in found)
                 doprint && println(canon)
@@ -49,7 +62,8 @@ function allvalidcircuits(N, doprint)
     println("There are ", length(found), " unique valid circuits.")
 end
 
-for i in 12:4:32
-    allvalidcircuits(i, i < 20)
+for i in 12:4:24
+    allvalidcircuits(i, i < 28)
 end
 
+allvalidcircuits(12, true, true)
