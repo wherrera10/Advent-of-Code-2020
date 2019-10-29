@@ -13,19 +13,12 @@ Main.:≈(p1::Point, p2::Point) = ≈(p1.x, p2.x, atol= 0.00001) && ≈(p1.y, p2
 rightwardfrom(start, angle) = Point(start.x + sin(angle + θ), start.y + cos(angle + θ))
 leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angle - θ))
 
-struct RailwayCircuit
-    startpoint::Point
-    startdirection::Float64
-    turns::Array{Int, 1}  # 1 for right, -1 for left
-    RailwayCircuit(turnarray=Bool[]) = new(Point(0, 0), 0, turnarray)
-end
-
 allshifts(c) = [circshift(c, i) for i in 0:length(c)-1]
 canonical(c) = maximum(vcat(allshifts(c), allshifts([-x for x in c])))
 
-function points(tracks::RailwayCircuit)
-    ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
-    for turn in tracks.turns
+function points(turns)
+    ret, point, ϕ = [Point(0,0)], Point(0,0), 0.0
+    for turn in turns
         if turn == 1
             point = rightwardfrom(point, ϕ)
             ϕ += θ
@@ -38,15 +31,15 @@ function points(tracks::RailwayCircuit)
     return ret
 end
 
-valid(tracks) = sum(tracks.turns) % 12 != 0 ? false : (c = points(tracks); c[1] ≈ c[end])
+valid(turns) = sum(turns) % 12 != 0 ? false : (c = points(turns); c[1] ≈ c[end])
 
 function allvalidcircuits(N, doprint)
     found = Vector{Vector{Int}}()
     println("\nFor N of $N: ")
     for i in 0:2^N-1
-        rc = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
-        if valid(rc)
-            canon = canonical(rc.turns)
+        turns = [d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)]
+        if valid(turns)
+            canon = canonical(turns)
             if !(canon in found)
                 doprint && println(canon)
                 push!(found, canon)
