@@ -20,12 +20,9 @@ struct RailwayCircuit
     RailwayCircuit(turnarray=Bool[]) = new(Point(0, 0), 0, turnarray)
 end
 
-function issymmetry(c1, c2)
-    return length(c1) == length(c2) && sum(c1) == sum(c2) &&
-        any(n -> c1 == circshift(c2, n), 0:length(c2)-1)
-end
-
-isduplicate(c1, c2) = issymmetry(c1, c2) || issymmetry(c1, [-x for x in c2])
+invert(c) = [-x for x in c]
+maximumcirc(c) = maximum([circshift(c, i) for i in 0:length(c)-1])
+canonical(c) = max(maximumcirc(c), maximumcirc(invert(c)))
 
 function points(tracks::RailwayCircuit)
     ret, point, ϕ = [tracks.startpoint], tracks.startpoint, tracks.startdirection
@@ -49,9 +46,12 @@ function allvalidcircuits(N, doprint)
     println("\nFor N of $N: ")
     for i in 0:2^N-1
         rc = RailwayCircuit([d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)])
-        if isvalidcircuit(rc) & all(x -> !isduplicate(x.turns, rc.turns), found)
-            doprint && println(rc.turns)
-            push!(found, rc)
+        if valid(rc)
+            canon = canonical(rc.turns)
+            if all(x -> canonical(x.turns) != canon, found)
+                doprint && println(rc.turns)
+                push!(found, rc)
+            end
         end
     end
     println("There are ", length(found), " unique valid circuits.")
