@@ -1,4 +1,4 @@
-import Main.≈
+import Main.isapprox
 
 const radius = 1.0   # simplifies calculations
 const θ = π / 6      # 30 degrees
@@ -8,7 +8,7 @@ struct Point
     y::Float32
 end
 
-Main.:≈(p1::Point, p2::Point) = ≈(p1.x, p2.x, atol= 0.00001) && ≈(p1.y, p2.y, atol=0.00001)
+isapprox(p::Point, q) = isapprox(p.x, q.x, atol=0.0001) && isapprox(p.y, q.y, atol=0.0001)
 
 rightwardfrom(start, angle) = Point(start.x + sin(angle + θ), start.y + cos(angle + θ))
 leftwardfrom(start, angle) = Point(start.x + sin(angle - θ), start.y + cos(angle - θ))
@@ -31,7 +31,7 @@ function points(turns)
     return ret
 end
 
-valid(turns) = sum(turns) % 12 != 0 ? false : (c = points(turns); c[1] ≈ c[end])
+valid(t) = sum(t) % 12 != 0 ? false : (c = points(t); isapprox(c[1], c[end]))
 
 function allvalidcircuits(N, doprint)
     found = Vector{Vector{Int}}()
