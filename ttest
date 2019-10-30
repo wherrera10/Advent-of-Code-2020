@@ -1,8 +1,8 @@
 import Main.≈, Main.+
 
-struct Point
-    x::Float32
-    y::Float32
+struct Point{T}
+    x::T
+    y::T
 end
 +(p::Point, q) = Point(p.x + q.x, p.y + q.y)
 ≈(p::Point, q) = isapprox(p.x, q.x, atol=0.0001) && isapprox(p.y, q.y, atol=0.0001)
@@ -19,7 +19,7 @@ function addsymmetries!(infound, turns)
     return maximum(allsym)
 end
 
-function isclosedpath(turns, straight, start=Point(0, 0))
+function isclosedpath(turns, straight, start=Point(0.0, 0.0))
     if sum(turns) % (straight ? 4 : 12) != 0
         return false
     end
@@ -56,60 +56,12 @@ function allvalidcircuits(N, doprint, straight=false)
     return found
 end
 
-for i in 12:4:48
-    allvalidcircuits(i, i < 24)
+for i in 12:4:36
+    allvalidcircuits(i, i < 28)
 end
 
 for i in 4:2:16
-    allvalidcircuits(i, false, true)
+    allvalidcircuits(i, i < 12, true)
 end
 
-==========================================================
 
-
-For N of 4 and straight track:
-There are 1 unique valid circuits.
-
-For N of 6 and straight track:
-There are 1 unique valid circuits.
-
-For N of 8 and straight track:
-There are 7 unique valid circuits.
-
-For N of 10 and straight track:
-There are 23 unique valid circuits.
-
-For N of 12 and straight track:
-There are 141 unique valid circuits.
-
-For N of 14 and straight track:
-There are 871 unique valid circuits.
-
-For N of 16 and straight track:
-There are 6045 unique valid circuits.
-
-For N of 12 and curved track:
-[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-There are 1 unique valid circuits.
-
-For N of 16 and curved track:
-[1, 1, 1, 1, 1, 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1]
-There are 1 unique valid circuits.
-
-For N of 20 and curved track:
-[1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1]
-[1, 1, 1, 1, 1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1]
-[1, 1, 1, 1, 1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, 1, -1]
-[1, 1, 1, 1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, 1, 1, -1]
-[1, 1, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1, 1, 1, 1, -1, 1, 1, 1, -1]
-[1, 1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1, 1, 1, -1]
-There are 6 unique valid circuits.
-
-For N of 24 and curved track:
-There are 40 unique valid circuits.
-
-For N of 28 and curved track:
-There are 293 unique valid circuits.
-
-For N of 32 and curved track:
-There are 2793 unique valid circuits.
