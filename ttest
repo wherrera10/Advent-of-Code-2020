@@ -10,13 +10,19 @@ end
 const twelvesteps = [Point(sinpi(a/6), cospi(a/6)) for a in 1:12]
 const foursteps = [Point(sinpi(a/2), cospi(a/2)) for a in 1:4]
 
-twelvestep(n) = twelvesteps[mod1(n, 12)]
-fourstep(n) = foursteps[mod1(n, 4)]
-
-circularsymmetries(c) = [circshift(c, i) for i in 0:length(c)-1]
-canonical(c) = maximum(vcat(circularsymmetries(c), circularsymmetries([-x for x in c])))
+function addsymmetries!(infound, turns)
+    circularsymmetries(c) = [circshift(c, i) for i in 0:length(c)-1]
+    allsym = [circularsymmetries(turns); circularsymmetries([-x for x in turns])]
+    for c in allsym
+        infound[c] = 1
+    end
+    return maximum(allsym)
+end
 
 function isclosedpath(turns, straight, start=Point(0, 0))
+    twelvestep(n) = twelvesteps[mod1(n, 12)]
+    fourstep(n) = foursteps[mod1(n, 4)]
+    
     if sum(turns) % (straight ? 4 : 12) != 0
         return false
     end
@@ -37,26 +43,27 @@ end
 
 function allvalidcircuits(N, doprint, straight=false)
     found = Vector{Vector{Int}}()
+    infound = Dict{Vector{Int},Int}()
     println("\nFor N of $N and ", straight ? "straight" : "curved", " track: ")
     for i in (straight ? (0:3^N-1) : (0:2^N-1))
         turns = straight ?
             [d == 0 ? 0 : (d == 1 ? -1 : 1) for d in digits(i, base=3, pad=N)] :
             [d == 0 ? -1 : 1 for d in digits(i, base=2, pad=N)]
-        if isclosedpath(turns, straight)
-            canon = canonical(turns)
-            if !(canon in found)
-                doprint && println(canon)
-                push!(found, canon)
-            end
+        if isclosedpath(turns, straight) && !haskey(infound, turns)
+            canon = addsymmetries!(infound, turns)
+            doprint && println(canon)
+            push!(found, canon)
         end
     end
     println("There are ", length(found), " unique valid circuits.")
+    return found
+end
+
+for i in 12:4:48
+    allvalidcircuits(i, i < 24)
 end
 
 for i in 4:2:16
     allvalidcircuits(i, false, true)
 end
 
-for i in 12:4:48
-    allvalidcircuits(i, i < 24)
-end
