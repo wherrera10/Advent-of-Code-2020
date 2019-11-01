@@ -24,6 +24,7 @@ end
 seq(from, to, step) = Int8.(collect(from:step:to))
 
 function findrarenumbers()
+    start = time()
     pow = UInt64(1)
     println("Aggregate timings to process all numbers up to:")
     # terms of (n-r) expression for number of digits from 2 to maxdigits
@@ -78,10 +79,9 @@ function findrarenumbers()
                 return
             end
             count += 1
-            println("     R/N ", count)
-            ms = UInt64(time.Since(start).Milliseconds())
+            ms = format((time() - start) * 1000, commas=true)
             n = toUInt64(dgits, false)
-            println("  ", format(ms, commas=true), " ms  ($n)")
+            println("     R/N ", lpad($count, 2), ":  $ms ms  ($n)")
             push!(rares, n)
         else
             for num in dis[level]
@@ -152,12 +152,13 @@ function findrarenumbers()
             cand = [Int8[] for _ in 1:length(list)]
             fnmr(cand, list, indices, nd, 0)
         end
-        fmt.Printf("  $nd digits:  %9s ms\n", nd, commatize(ms))
+        ms = lpad(format((time() - start) * 1000, commas=true), 9)
+        println("  $nd digits:  $ms ms\n")
     end
 
     sort!(rares)
     println("\nThe rare numbers with up to $maxdigits digits are:")
     for (i, rare) in enumerate(rares)
-        println("  ", lpad(i, 2), ":  ", lpad(format(rare, commas=true), 25)) 
+        println("  ", lpad(i, 2), ":  ", lpad(format(rare, commas=true), 25))
     end
 end
