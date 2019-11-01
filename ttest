@@ -23,12 +23,93 @@ end
 
 seq(from, to, step) = Int8.(collect(from:step:to))
 
+"""
+ Recursive closure to generate (n+r) candidates from (n-r) candidates
+and hence find Rare numbers with a given number of digits.
+"""
+function fnpr(cand, di, dis, indices, nmr, nd, level, dgits)
+    if level == length(dis)
+        dgits[indices[1][1]] = fml[cand[1]][di[1]][1]
+        dgits[indices[1][2]] = fml[cand[1]][di[1]][2]
+        le = length(di)
+        if isodd(nd)
+            le -= 1
+            dgits[nd ÷ 2] = di[le]
+        end
+        for (i, d) in enumerate(di[2:le])
+            dgits[indices[i + 1][1]] = dmd[cand[i + 1]][d][1]
+            dgits[indices[i + 1][2]] = dmd[cand[i + 1]][d][2]
+        end
+        r = toUInt64(dgits, true)
+        npr = nmr + 2 * r
+        if !issquare(npr)
+            return
+        end
+        count += 1
+        ms = format((time() - start) * 1000, commas=true)
+        n = toUInt64(dgits, false)
+        println("     R/N ", lpad(count, 2), ":  $ms ms  ($n)")
+        push!(rares, n)
+    else
+        for num in dis[level]
+            di[level] = num
+            fnpr(cand, di, dis, indices, nmr, nd, level+1)
+        end
+    end
+end
+
+"""
+Recursive closure to generate (n-r) candidates with a given number of digits.
+"""
+function fnmr(cand, list, indices, nd, level, allterms)
+    if level == length(list)
+        for (i, t) in enumerate(allterms[nd-1])
+            if cand[i] >= 0
+                nmr += t.coeff * UInt64(cand[i])
+            else
+                nmr2 += t.coeff * UInt64(-cand[i])
+                if nmr >= nmr2
+                    nmr -= nmr2
+                    nmr2 = 0
+                else
+                    nmr2 -= nmr
+                    nmr = 0
+                end
+            end
+        end
+        if nmr2 >= nmr
+            return
+        end
+        nmr -= nmr2
+        if !issquare(nmr)
+            return
+        end
+        dis = [seq(0, Int8(length(fml[cand[1]])) - 1, 1)]
+        for i in 2:length(cand)
+            push!(dis, seq(0, Int8(length(dmd[cand[i]])) - 1, 1))
+        end
+        if isodd(nd)
+            push!(dis, il)
+        end
+        di = [Int8[] for _ in 1:length(dis)]
+        fnpr(cand, di, dis, indices, nmr, nd, 0)
+    else
+        for num in list[level + 1]
+            cand[level + 1] = num
+            fnmr(cand, list, indices, nd, level + 1, allterms)
+        end
+    end
+end
+
+"""
+main function 
+"""
 function findrarenumbers()
     start = time()
     pow = UInt64(1)
     println("Aggregate timings to process all numbers up to:")
     # terms of (n-r) expression for number of digits from 2 to maxdigits
-    allterms = [Term[] for _ in maxdigits-1]
+    allterms = [Term[] for _ in 1:maxdigits-1]
     for r in 2:maxdigits
         terms = Term[]
         pow *= 10
@@ -58,79 +139,6 @@ function findrarenumbers()
     dgits = Int8[]
     count = 0
 
-    # Recursive closure to generate (n+r) candidates from (n-r) candidates
-    # and hence find Rare numbers with a given number of digits.
-    function fnpr(cand, di, dis, indices, nmr, nd, level)
-        if level == length(dis)
-            dgits[indices[1][1]] = fml[cand[1]][di[1]][1]
-            dgits[indices[1][2]] = fml[cand[1]][di[1]][2]
-            le = length(di)
-            if isodd(nd)
-                le -= 1
-                dgits[nd ÷ 2] = di[le]
-            end
-            for (i, d) in enumerate(di[2:le])
-                dgits[indices[i + 1][1]] = dmd[cand[i + 1]][d][1]
-                dgits[indices[i + 1][2]] = dmd[cand[i + 1]][d][2]
-            end
-            r = toUInt64(dgits, true)
-            npr = nmr + 2 * r
-            if !issquare(npr)
-                return
-            end
-            count += 1
-            ms = format((time() - start) * 1000, commas=true)
-            n = toUInt64(dgits, false)
-            println("     R/N ", lpad($count, 2), ":  $ms ms  ($n)")
-            push!(rares, n)
-        else
-            for num in dis[level]
-                di[level] = num
-                fnpr(cand, di, dis, indices, nmr, nd, level+1)
-            end
-        end
-    end
-
-    # Recursive closure to generate (n-r) candidates with a given number of digits.
-    function fnmr(cand, list, indices, nd, level)
-        if level == length(list)
-            for (i, t) in enumerate(allTerms[nd-1])
-                if cand[i] >= 0
-                    nmr += t.coeff * UInt64(cand[i])
-                else
-                    nmr2 += t.coeff * UInt64(-cand[i])
-                    if nmr >= nmr2
-                        nmr -= nmr2
-                        nmr2 = 0
-                    else
-                        nmr2 -= nmr
-                        nmr = 0
-                    end
-                end
-            end
-            if nmr2 >= nmr
-                return
-            end
-            nmr -= nmr2
-            if !issquare(nmr)
-                return
-            ens
-            dis = [seq(0, Int8(length(fml[cand[1]])) - 1, 1)]
-            for i in 2:length(cand)
-                push!(dis, seq(0, Int8(length(dmd[cand[i]])) - 1, 1))
-            end
-            if isodd(nd)
-                push!(dis, il)
-            end
-            di = [Int8[] for _ in 1:length(dis)]
-            fnpr(cand, di, dis, indices, nmr, nd, 0)
-        else
-            for num in list[level]
-                cand[level] = num
-                fnmr(cand, list, indices, nd, level + 1)
-            end
-        end
-    end
 
     for nd in 3:maxdigits
         dgits = [Int8[] for _ in 1:nd]
@@ -144,13 +152,13 @@ function findrarenumbers()
                 push!(lists[i], dl)
             end
         end
-        indices = Int8[[2]]
+        indices = [[Int8(2)]]
         for t in allterms[nd - 1]
             push!(indices, [t.ix1, t.ix2])
         end
         for list in lists
             cand = [Int8[] for _ in 1:length(list)]
-            fnmr(cand, list, indices, nd, 0)
+            fnmr(cand, list, indices, nd, 0, allterms)
         end
         ms = lpad(format((time() - start) * 1000, commas=true), 9)
         println("  $nd digits:  $ms ms\n")
@@ -162,3 +170,6 @@ function findrarenumbers()
         println("  ", lpad(i, 2), ":  ", lpad(format(rare, commas=true), 25))
     end
 end
+
+findrarenumbers()
+
