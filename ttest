@@ -1,7 +1,7 @@
 using Formatting
 
 struct Term
-	coeff::UInt64
+    coeff::UInt64
     ix1::Int8
     ix2::Int8
 end
@@ -9,12 +9,12 @@ end
 const maxdigits = 19
 
 function toUInt64(dgits, reverse)
-	return reverse ? foldr((i, j) -> i + 10j, UInt64(dgits)) : 
-	                 foldl((i, j) -> 10i + j, UInt64(dgits))
+    return reverse ? foldr((i, j) -> i + 10j, UInt64(dgits)) :
+                     foldl((i, j) -> 10i + j, UInt64(dgits))
 end
 
 function issquare(n)
-    if 0x202021202030213 & (1 << (n & 63)) != 0 
+    if 0x202021202030213 & (1 << (n & 63)) != 0
         root = round(sqrt(n))
         return root * root == n
     end
@@ -33,7 +33,7 @@ function findrarenumbers()
         pow *= 10
         pow1, pow2, i1, i2 = pow, UInt64(1), Int(0), Int8(r - 1)
         while i1 < i2
-			push!(terms, Term(pow1 - pow2, i1, i2))
+            push!(terms, Term(pow1 - pow2, i1, i2))
             pow1 ÷= 10
             pow2 *= 10
             i1, i2 = i1 + 1, i2 - 1
@@ -41,129 +41,123 @@ function findrarenumbers()
         allterms[r - 1] = terms
     end
     #  map of first minus last digits for n to pairs giving this value
-    fml = Dict(0 => [2 => 2, 8 => 8], 1 => [6 => 5, 8 => 7], 
-					 4 => [4 => 0], 6 => [6 => 0, 8 => 2])
+    fml = Dict(0 => [2 => 2, 8 => 8], 1 => [6 => 5, 8 => 7],
+                     4 => [4 => 0], 6 => [6 => 0, 8 => 2])
     # map of other digit differences for n to pairs giving this value
     makepair(i) = (a = i ÷ 10 => i % 10; d = a[1] - a[2]; d => a)
     dmd = Dict(makepair(i) for i in 0:99)
     fl = Int8[0, 1, 4, 6]
-    dl = seq(-9, 9, 1)  // all differences
-    zl = Int8(0)        // zero differences only
-    el = seq(-8, 8, 2)  // even differences only
-    ol = seq(-9, 9, 2)  // odd differences only
+    dl = seq(-9, 9, 1)  # all differences
+    zl = Int8(0)        # zero differences only
+    el = seq(-8, 8, 2)  # even differences only
+    ol = seq(-9, 9, 2)  # odd differences only
     il = seq(0, 9, 1)
     rares = UInt64[]
     lists = [[f] for f in fl]
-    digits = Int8[]
+    dgits = Int8[]
     count = 0
 
     # Recursive closure to generate (n+r) candidates from (n-r) candidates
     # and hence find Rare numbers with a given number of digits.
     function fnpr(cand, di, dis, indices, nmr, nd, level)
         if level == length(dis)
-            digits[indices[1][1]] = fml[cand[1]][di[1]][1]
-            digits[indices[1][2]] = fml[cand[1]][di[1]][2]
-            le := len(di)
-            if nd%2 == 1
-                le--
-                digits[nd/2] = di[le]
+            dgits[indices[1][1]] = fml[cand[1]][di[1]][1]
+            dgits[indices[1][2]] = fml[cand[1]][di[1]][2]
+            le = length(di)
+            if isodd(nd)
+                le -= 1
+                dgits[nd ÷ 2] = di[le]
             end
-            for i, d := range di[1:le]
-                digits[indices[i+1][0]] = dmd[cand[i+1]][d][0]
-                digits[indices[i+1][1]] = dmd[cand[i+1]][d][1]
+            for (i, d) in enumerate(di[2:le])
+                dgits[indices[i + 1][1]] = dmd[cand[i + 1]][d][1]
+                dgits[indices[i + 1][2]] = dmd[cand[i + 1]][d][2]
             end
-            r := toUint64(digits, true)
-            npr := nmr + 2*r
+            r = toUInt64(dgits, true)
+            npr = nmr + 2 * r
             if !issquare(npr)
                 return
             end
             count += 1
-            fmt.Printf("     R/N %2d:", count)
-            ms := uint64(time.Since(start).Milliseconds())
-            fmt.Printf("  %9s ms", commatize(ms))
-            n := toUint64(digits, false)
-            fmt.Printf("  (%s)\n", commatize(n))
-            rares = append(rares, n)
+            println("     R/N ", count)
+            ms = UInt64(time.Since(start).Milliseconds())
+            n = toUInt64(dgits, false)
+            println("  ", format(ms, commas=true), " ms  ($n)")
+            push!(rares, n)
         else
-            for _, num := range dis[level]
+            for num in dis[level]
                 di[level] = num
                 fnpr(cand, di, dis, indices, nmr, nd, level+1)
             end
         end
     end
 
-    // Recursive closure to generate (n-r) candidates with a given number of digits.
-    var fnmr func(cand []int8, list [][]int8, indices [][2]int8, nd, level int)
-    fnmr = func(cand []int8, list [][]int8, indices [][2]int8, nd, level int) {
-        if level == len(list) {
-            var nmr, nmr2 uint64
-            for i, t := range allTerms[nd-2] {
-                if cand[i] >= 0 {
-                    nmr += t.coeff * uint64(cand[i])
-                } else {
-                    nmr2 += t.coeff * uint64(-cand[i])
-                    if nmr >= nmr2 {
+    # Recursive closure to generate (n-r) candidates with a given number of digits.
+    function fnmr(cand, list, indices, nd, level)
+        if level == length(list)
+            for (i, t) in enumerate(allTerms[nd-1])
+                if cand[i] >= 0
+                    nmr += t.coeff * UInt64(cand[i])
+                else
+                    nmr2 += t.coeff * UInt64(-cand[i])
+                    if nmr >= nmr2
                         nmr -= nmr2
                         nmr2 = 0
-                    } else {
+                    else
                         nmr2 -= nmr
                         nmr = 0
-                    }
-                }
-            }
-            if nmr2 >= nmr {
+                    end
+                end
+            end
+            if nmr2 >= nmr
                 return
-            }
+            end
             nmr -= nmr2
-            if !isSquare(nmr) {
+            if !issquare(nmr)
                 return
-            }
-            var dis [][]int8
-            dis = append(dis, seq(0, int8(len(fml[cand[0]]))-1, 1))
-            for i := 1; i < len(cand); i++ {
-                dis = append(dis, seq(0, int8(len(dmd[cand[i]]))-1, 1))
-            }
-            if nd%2 == 1 {
-                dis = append(dis, il)
-            }
-            di := make([]int8, len(dis))
+            ens
+            dis = [seq(0, Int8(length(fml[cand[1]])) - 1, 1)]
+            for i in 2:length(cand)
+                push!(dis, seq(0, Int8(length(dmd[cand[i]])) - 1, 1))
+            end
+            if isodd(nd)
+                push!(dis, il)
+            end
+            di = [Int8[] for _ in 1:length(dis)]
             fnpr(cand, di, dis, indices, nmr, nd, 0)
-        } else {
-            for _, num := range list[level] {
+        else
+            for num in list[level]
                 cand[level] = num
-                fnmr(cand, list, indices, nd, level+1)
-            }
-        }
-    }
+                fnmr(cand, list, indices, nd, level + 1)
+            end
+        end
+    end
 
-    for nd := 2; nd <= maxDigits; nd++ {
-        digits = make([]int8, nd)
-        if nd == 4 {
-            lists[0] = append(lists[0], zl)
-            lists[1] = append(lists[1], ol)
-            lists[2] = append(lists[2], el)
-            lists[3] = append(lists[3], ol)
-        } else if len(allTerms[nd-2]) > len(lists[0]) {
-            for i := 0; i < 4; i++ {
-                lists[i] = append(lists[i], dl)
-            }
-        }
-        var indices [][2]int8
-        for _, t := range allTerms[nd-2] {
-            indices = append(indices, [2]int8{t.ix1, t.ix2})
-        }
-        for _, list := range lists {
-            cand := make([]int8, len(list))
+    for nd in 3:maxdigits
+        dgits = [Int8[] for _ in 1:nd]
+        if nd == 4
+            push!(lists[1], zl)
+            push!(lists[2], ol)
+            push!(lists[3], el)
+            push!(lists[4], ol)
+        elseif length(allterms[nd-1]) > length(lists[1])
+            for i in 1:4
+                push!(lists[i], dl)
+            end
+        end
+        indices = Int8[[2]]
+        for t in allterms[nd - 1]
+            push!(indices, [t.ix1, t.ix2])
+        end
+        for list in lists
+            cand = [Int8[] for _ in 1:length(list)]
             fnmr(cand, list, indices, nd, 0)
-        }
-        ms := uint64(time.Since(start).Milliseconds())
-        fmt.Printf("  %2d digits:  %9s ms\n", nd, commatize(ms))
-    }
+        end
+        fmt.Printf("  $nd digits:  %9s ms\n", nd, commatize(ms))
+    end
 
-    sort.Slice(rares, func(i, j int) bool { return rares[i] < rares[j] })
-    fmt.Printf("\nThe rare numbers with up to %d digits are:\n", maxDigits)
-    for i, rare := range rares {
-        fmt.Printf("  %2d:  %25s\n", i+1, commatize(rare))
-    }
-}
-
+    sort!(rares)
+    println("\nThe rare numbers with up to $maxdigits digits are:")
+    for (i, rare) in enumerate(rares)
+        println("  ", lpad(i, 2), ":  ", lpad(format(rare, commas=true), 25)) 
+    end
+end
