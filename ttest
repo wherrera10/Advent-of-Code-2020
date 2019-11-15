@@ -3,14 +3,15 @@ using Lazy
 dig_fl(n) = (d = digits(n); return d, 10 * d[end] + d[1])
 isgp(n) = ((d, f) = dig_fl(n); d == reverse(d) && (length(d) < 3 || (f != 0 && n ÷ f == n / f)))
 isgpendingwith(n, i) = n % 10 == i && isgp(n)
-gapfulpalindromesendingwith(i, start) = filter(x -> isgpendingwith(x, i), Lazy.range(start))
+gapfulpalindromesendingwith(i) = filter(x -> isgpendingwith(x, i), Lazy.range(100))
 
-for i in 1:9
-    println("First 20 palindromic gapful numbers starting at 100 and ending with $i are:\n",
-        take(20, gapfulpalindromesendingwith(i, 100)))
+
+for (lastones, outof) in [(20, 20), (15, 20)]
+    println("\nLast digit | Last $lastones of $outof palindromic gapful numbers from 100\n",
+        "-----------|------------------------------------------------------------------------------------------------------------------------")
+    for i in 1:9
+        gplist = collect(take(outof, gapfulpalindromesendingwith(i)))
+        println("     $i        ", Int64.(gplist[end-lastones+1:end]))
+    end
 end
 
-for (j, n) in [(100, 15), (1000, 10)], i in 1:9
-    println("The last $n out of $j palindromic gapful numbers from 100 which end with $i are:\n",
-        collect(take(j, gapfulpalindromesendingwith(i, 100)))[end-n:end])
-end
