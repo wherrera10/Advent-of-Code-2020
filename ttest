@@ -1,32 +1,21 @@
-
-s = "VNUBRTEFDJFDJKBFNBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIBFUIRGUIRYHDNUKDHJBRFESURSDLIFBVGTLKVBDLKKLJVDNIJVDBVJIOJBIOVNVKLLKLKDFNRKRTIORGTNFDLSEAOFDKJNGFFBEILDVOKFVJKRDLKDFODFKJFGzzzz"
-
-function dnasequenceprettyprint(seq, colsize=40)
-    println(length(seq), "nt DNA sequence:\n")
-    rows = [seq[i:min(length(seq), i + colsize - 1)] for i in 1:colsize:length(seq)]
-    for (i, r) in enumerate(rows)
-        println(lpad(colsize * (i - 1), 5), "   ", r)
+function isbncheck(str)
+    str, isum = replace(str, r"\D" => ""), 0
+    for (i, ch) in enumerate(str)
+        isum += iseven(i) ? 3 * parse(Int, ch) : parse(Int, ch)
     end
+    return isum % 10 == 0
 end
 
-dnasequenceprettyprint(s)
+const testingcodes = ["978-1734314502", "978-1734314509", 
+                      "978-1788399081", "978-1788399083"]
 
-
-function printcounts(seq)
-    bases = [['A', 0], ['C', 0], ['G', 0], ['T', 0]]
-    for c in seq, base in bases
-        if c == base[1]
-            base[2] += 1
-        end
-    end
-    println("\nNucleotide counts:\n")
-    for base in bases
-        println(lpad(base[1], 10), lpad(string(base[2]), 12))
-    end
-    println(lpad("Other", 10), lpad(string(length(seq) - sum(x[2] for x in bases)), 12))
+for code in testingcodes
+    println(code, ": ", isbncheck(code) ? "good" : "bad")
 end
 
-printcounts(s)
-
-
-
+#=
+978-1734314502: good
+978-1734314509: bad
+978-1788399081: good
+978-1788399083: bad
+=#
