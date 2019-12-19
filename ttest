@@ -3,7 +3,7 @@ struct Polynomial{T}
     varname::Char
 end
 
-Polynomial(arr::Vector{Number}) = Polynomial(arr, 'x')
+Polynomial(arr::Vector{Float64}) = Polynomial(arr, 'x')
 
 struct Term
     coef::Float64
@@ -31,7 +31,7 @@ function exprtoascii(s, varname)
 end
 
 function topoly(s::String, varname)
-    terms, allexpo, allcoef = Term[], Int[], Float64[]
+    allcoef, arr = Dict{Int,Float64}(0 => 0.0), Float64[]
     s = exprtoascii(s, varname)
     reg = Regex("[\\.\\-\\+\\deE\\/]*" * varname * "\\^[\\d]+")
     matched = collect(eachmatch(reg, s))
@@ -40,13 +40,12 @@ function topoly(s::String, varname)
         coef, expo = tryparse(Float64, p[1]), tryparse(Int, p[2])
         coef = coef == nothing ? 1.0 : coef
         expo = expo == nothing ? 1 : expo
-        push!(allexpo, expo)
-        push!(terms, Term(coef, expo, varname[end]))
+        allcoef[expo] = coef
     end
-    for i in 0:maximum(t.expo, terms)
-        push!(allcoef, i in allexpo ? terms[find(x -> x.expo == i, terms)], 0.0)
+    for i in 0:maximum(keys(allcoef))
+        push!(arr, get(allcoef, i, 0.0))
     end
-    return Polynomial(allcoef, varname)        
+    return Polynomial(arr)
 end
 
 testcases = [
@@ -67,7 +66,7 @@ testcases = [
 
 const vname = "x"
 for s in testcases
-    println(s, "   ", toterms(s, vname))
+    println(s, "   ", topoly(s, vname))
 end
 
 
