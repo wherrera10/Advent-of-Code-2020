@@ -1,21 +1,28 @@
-function isbncheck(str)
-    str, isum = replace(str, r"\D" => ""), 0
-    for (i, ch) in enumerate(str)
-        isum += iseven(i) ? 3 * parse(Int, ch) : parse(Int, ch)
-    end
-    return isum % 10 == 0
+struct Polynomial{T}
+    coef::Vector{T}
+    varname::Char
 end
 
-const testingcodes = ["978-1734314502", "978-1734314509", 
-                      "978-1788399081", "978-1788399083"]
+Polynomial(arr::Vector{Number}) = Polynomial(arr, 'x')
 
-for code in testingcodes
-    println(code, ": ", isbncheck(code) ? "good" : "bad")
+struct Term
+    coef::Int
+    exp::Int
+    varname::Char
 end
 
-#=
-978-1734314502: good
-978-1734314509: bad
-978-1788399081: good
-978-1788399083: bad
-=#
+const uniexp = [collect('\u2070':'\u2071'); collect('\u00b2':'\u00b3'); collect('\u2074':'\u2079')]
+const unitoascii = Dict([[u => i-1 for (i, u) in enumerate(uniexp)]; ])
+
+touniexp(n) = (dig = reverse(digits(n)); String([uniexp[d+1] for d in dig]))
+supertoascii(chararr) = String([unitoascii[u] for u in chararr])
+uniexptoascii(s) = "^(" * String([haskey(unitoascii, c) ? unitoascii[c] : c for c in s]) * ")"
+
+function Term(s::String, varname)
+    
+end
+
+function findterms(str, varname)
+
+end
+
