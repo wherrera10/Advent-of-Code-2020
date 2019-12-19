@@ -1,15 +1,10 @@
 struct Polynomial{T}
     coef::Vector{T}
     varname::Char
+    Polynomial(arr::Vector{Float64}, x='x') = new{Float64}(arr, x)
 end
 
-Polynomial(arr::Vector{Float64}) = Polynomial(arr, 'x')
 
-struct Term
-    coef::Float64
-    expo::Int
-    varname::Char
-end
 
 const uniexp = [collect('\u2070':'\u2071'); collect('\u00b2':'\u00b3'); collect('\u2074':'\u2079')]
 const allsuper = String(vcat(uniexp, ['\u207a', '\u207b']))
@@ -23,14 +18,14 @@ const fracs = Dict(['¼' => 1//4, '½' => 1//2, '¾' => 3//4, '⅐' => 1//7, '�
 
 utoascii(c) = (x = haskey(udi, c) ? Char('0' + udi[c]) : haskey(uch, c) ? uch[c] : c)
 
-function exprtoascii(s, varname)
+function exprtoascii(s, varname='x')
     s = replace(replace(replace(s, r"\s+" => ""), r"\*\*|↑" => "^"), "\u23e8" => "e")
     s = replace(s, Regex(varname * "(?=[$allsuper]+)") => "$varname^")
     s = replace(prod([utoascii(c) for c in s]), r"\s+" => "")
     return replace(s, r"(?<=[0-9])(,)(?=[0-9])" => "")
 end
 
-function topoly(s::String, varname)
+function topoly(s::String, varname='x')
     allcoef, arr = Dict{Int,Float64}(0 => 0.0), Float64[]
     s = exprtoascii(s, varname)
     reg = Regex("[\\.\\-\\+\\deE\\/]*" * varname * "\\^[\\d]+")
@@ -92,4 +87,6 @@ Optionally support Unicode Vulgar fractions for both input and output.
 ¼ ½ ¾ ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ↉	x⁵ - ½x⁴ + 101¼x³ + 100¾x + 2½
 On output round the decimal to appropriate fraction.
 =#
+
+
 
