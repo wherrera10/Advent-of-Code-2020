@@ -4,22 +4,21 @@ struct Polynomial{T}
     Polynomial(arr::Vector{Float64}, x='x') = new{Float64}(arr, x)
 end
 
-
-
 const uniexp = [collect('\u2070':'\u2071'); collect('\u00b2':'\u00b3'); collect('\u2074':'\u2079')]
 const allsuper = String(vcat(uniexp, ['\u207a', '\u207b']))
 const udi = Dict([u => i-1 for (i, u) in enumerate(uniexp)])
-const uch = Dict(['\u207a' => '+', '\u207b' => '-', '\u00b7' => '*', 
+const uch = Dict(['\u207a' => '+', '\u207b' => '-', '\u00b7' => '*',
     '\u00d7' => '*', '\u2044' => '/', '\u2091' => '^', '\u23e8' => 'E'])
-const fracs = Dict(['¼' => 1//4, '½' => 1//2, '¾' => 3//4, '⅐' => 1//7, '⅑' => 1//9, 
-    '⅒' => 1//10, '⅓' => 1//3, '⅔' => 2//3, '⅕' => 1//5, '⅖' => 2//5, '⅗' => 3//5, 
-    '⅘' => 4//5, '⅙' => 1//6, '⅚' => 5//6, '⅛' => 1//8, '⅜' => 3//8, '⅝' => 5//8, 
+const fracs = Dict(['¼' => 1//4, '½' => 1//2, '¾' => 3//4, '⅐' => 1//7, '⅑' => 1//9,
+    '⅒' => 1//10, '⅓' => 1//3, '⅔' => 2//3, '⅕' => 1//5, '⅖' => 2//5, '⅗' => 3//5,
+    '⅘' => 4//5, '⅙' => 1//6, '⅚' => 5//6, '⅛' => 1//8, '⅜' => 3//8, '⅝' => 5//8,
     '⅞' => 7//8, '↉' => 0//3])
 
 utoascii(c) = (x = haskey(udi, c) ? Char('0' + udi[c]) : haskey(uch, c) ? uch[c] : c)
 
 function exprtoascii(s, varname='x')
     s = replace(replace(replace(s, r"\s+" => ""), r"\*\*|↑" => "^"), "\u23e8" => "e")
+    s = replace(replace(s, "++" => "+"), "--" => "+")
     s = replace(s, Regex(varname * "(?=[$allsuper]+)") => "$varname^")
     s = replace(prod([utoascii(c) for c in s]), r"\s+" => "")
     return replace(s, r"(?<=[0-9])(,)(?=[0-9])" => "")
@@ -28,10 +27,16 @@ end
 function topoly(s::String, varname='x')
     allcoef, arr = Dict{Int,Float64}(0 => 0.0), Float64[]
     s = exprtoascii(s, varname)
-    reg = Regex("[\\.\\-\\+\\deE\\/]*" * varname * "\\^[\\d]+")
+    reg = Regex("[\\.\\-\\+\\deE\\/]*" * varname * "(?:\\^[\\d]+)?(?=(?:[^\\+\\-]?(?:\\+|\\-)))")
     matched = collect(eachmatch(reg, s))
     pairs = [split(x.match, vname * "^") for x in matched]
+    matched = match(r"(?:\+|\-)[\d
+println("pairs: $pairs")    
     for p in pairs
+        if length(p) == 1
+            push!(p, "1")
+            p[1] = replace(p[1], Regex(vname * "\$") => "")
+        end
         coef, expo = tryparse(Float64, p[1]), tryparse(Int, p[2])
         coef = coef == nothing ? 1.0 : coef
         expo = expo == nothing ? 1 : expo
@@ -44,7 +49,7 @@ function topoly(s::String, varname='x')
 end
 
 testcases = [
-"x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1", 
+"x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1",
 "0e+0x⁰⁰⁷ + 00e-00x + 0x + .0x⁰⁵ - 0.x⁴ + 0×x³ + 0x⁻⁰ + 0/x + 0/x³ + 0x⁻⁵",
 "1x⁵ - 2x⁴ + 42x³ + 40x + 1x⁰",
 "+x⁺⁵ + -2x⁻⁻⁴ + 42x⁺⁺³ + +40x - -1",
@@ -55,7 +60,7 @@ testcases = [
 "x⁵ - 2x⁴ + 0,042x³ + 40.000,000x + 1",
 "0x⁷ + 10x + 10x + x⁵ - 2x⁴ + 42x³ + 20x + 1",
 "1E0x⁵ - 2,000,000.e-6x⁴ + 4.2⏨1x³ + .40e+2x + 1", # support: ⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁻ ⁺ · × ⁄ ↑ ⏨.
-"x⁵ - x⁴⁄2 + 405x³⁄4 + 403x⁄4 + 5⁄2", # support: ¼ ½ ¾ ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ↉	
+"x⁵ - x⁴⁄2 + 405x³⁄4 + 403x⁄4 + 5⁄2", # support: ¼ ½ ¾ ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ↉
 "x⁵ - ½x⁴ + 101¼x³ + 100¾x + 2½",
 ]
 
@@ -66,27 +71,25 @@ end
 
 
 #=
-Description	Input example test cases
-"Zero" coefficients are removed	x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1
-The "0" polynomial case	0e+0x⁰⁰⁷ + 00e-00x + 0x + .0x⁰⁵ - 0.x⁴ + 0×x³ + 0x⁻⁰ + 0/x + 0/x³ + 0x⁻⁵
-"One" coefficients are normalised	1x⁵ - 2x⁴ + 42x³ + 40x + 1x⁰
-Signs are normalised	+x⁺⁵ + -2x⁻⁻⁴ + 42x⁺⁺³ + +40x - -1
-ASCII representations are parsed	x^5 - 2x**4 + 42x^3 + 40x + 1
-Non-ASCII representations are parsed	x↑5 - 2.00·x⁴ + 42.00·x³ + 40.00·x + 1 (c.f. ↑ & ·)
-Specifically permit non-polynomials where terms have negative exponents	x⁻⁵ - 2⁄x⁴ + 42x⁻³ + 40/x + 1x⁻⁰ (n.b. Unicode Fraction)
-Spaces in numbers and between operators are ignored	x⁵ - 2x⁴ + 42.000 000x³ + 40x + 1
-Single commas are ignored in numbers	x⁵ - 2x⁴ + 0,042x³ + 40.000,000x + 1
-A coefficient may be duplicated, zero, or missing	0x⁷ + 10x + 10x + x⁵ - 2x⁴ + 42x³ + 20x + 1
+Description Input example test cases
+"Zero" coefficients are removed x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1
+The "0" polynomial case 0e+0x⁰⁰⁷ + 00e-00x + 0x + .0x⁰⁵ - 0.x⁴ + 0×x³ + 0x⁻⁰ + 0/x + 0/x³ + 0x⁻⁵
+"One" coefficients are normalised   1x⁵ - 2x⁴ + 42x³ + 40x + 1x⁰
+Signs are normalised    +x⁺⁵ + -2x⁻⁻⁴ + 42x⁺⁺³ + +40x - -1
+ASCII representations are parsed    x^5 - 2x**4 + 42x^3 + 40x + 1
+Non-ASCII representations are parsed    x↑5 - 2.00·x⁴ + 42.00·x³ + 40.00·x + 1 (c.f. ↑ & ·)
+Specifically permit non-polynomials where terms have negative exponents x⁻⁵ - 2⁄x⁴ + 42x⁻³ + 40/x + 1x⁻⁰ (n.b. Unicode Fraction)
+Spaces in numbers and between operators are ignored x⁵ - 2x⁴ + 42.000 000x³ + 40x + 1
+Single commas are ignored in numbers    x⁵ - 2x⁴ + 0,042x³ + 40.000,000x + 1
+A coefficient may be duplicated, zero, or missing   0x⁷ + 10x + 10x + x⁵ - 2x⁴ + 42x³ + 20x + 1
 Support Scientific notation and optionally
-support Unicode Decimal Exponent Symbol U+23E8/⏨	1E0x⁵ - 2,000,000.e-6x⁴ + 4.2⏨1x³ + .40e+2x + 1
-Unicode characters that must be specifically supported are:	⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁻ ⁺ · × ⁄ ↑ ⏨.
+support Unicode Decimal Exponent Symbol U+23E8/⏨    1E0x⁵ - 2,000,000.e-6x⁴ + 4.2⏨1x³ + .40e+2x + 1
+Unicode characters that must be specifically supported are: ⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁻ ⁺ · × ⁄ ↑ ⏨.
 Where · & × are multiplication, and ⁄ is Unicode Fraction.
-Support fractions for both input and output.	x⁵ - x⁴⁄2 + 405x³⁄4 + 403x⁄4 + 5⁄2
+Support fractions for both input and output.    x⁵ - x⁴⁄2 + 405x³⁄4 + 403x⁄4 + 5⁄2
 On output round the decimal to appropriate fraction.
 Optionally support Unicode Vulgar fractions for both input and output.
-¼ ½ ¾ ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ↉	x⁵ - ½x⁴ + 101¼x³ + 100¾x + 2½
+¼ ½ ¾ ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ↉   x⁵ - ½x⁴ + 101¼x³ + 100¾x + 2½
 On output round the decimal to appropriate fraction.
 =#
-
-
 
