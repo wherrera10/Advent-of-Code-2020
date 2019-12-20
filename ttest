@@ -1,3 +1,5 @@
+Laurent Polynomial (allows positive or negative interger
+
 s = "17.89    101⅔  ½  22"
 d = Dict('½' => 1/2, '⅔' => 2/3)
 allfrac = join(keys(d), "|")
