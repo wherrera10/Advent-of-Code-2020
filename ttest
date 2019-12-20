@@ -1,3 +1,5 @@
+([+-]?(?:(?:\d+x\^\d+)|(?:\d+x)|(?:\d+)|(?:x)))
+
 struct Polynomial{T}
     coef::Vector{T}
     varname::Char
@@ -27,11 +29,12 @@ end
 function topoly(s::String, varname='x')
     allcoef, arr = Dict{Int,Float64}(0 => 0.0), Float64[]
     s = exprtoascii(s, varname)
+m = eachmatch(r"([+-]?(?:(?:\d+x\^\d+)|(?:\d+x)|(?:\d+)|(?:x)))", s)
+println(collect(m))
+
     reg = Regex("[\\.\\-\\+\\deE\\/]*" * varname * "(?:\\^[\\d]+)?(?=(?:[^\\+\\-]?(?:\\+|\\-)))")
     matched = collect(eachmatch(reg, s))
     pairs = [split(x.match, vname * "^") for x in matched]
-    matched = match(r"(?:\+|\-)[\d
-println("pairs: $pairs")    
     for p in pairs
         if length(p) == 1
             push!(p, "1")
@@ -49,7 +52,7 @@ println("pairs: $pairs")
 end
 
 testcases = [
-"x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1",
+"1x⁵ - 2x⁴ + 42x³ + 0x² + 40x + 1",
 "0e+0x⁰⁰⁷ + 00e-00x + 0x + .0x⁰⁵ - 0.x⁴ + 0×x³ + 0x⁻⁰ + 0/x + 0/x³ + 0x⁻⁵",
 "1x⁵ - 2x⁴ + 42x³ + 40x + 1x⁰",
 "+x⁺⁵ + -2x⁻⁻⁴ + 42x⁺⁺³ + +40x - -1",
