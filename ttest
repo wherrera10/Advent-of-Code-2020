@@ -1,6 +1,5 @@
-s = "17.89    101⅔  34½  22"
+s = "17.89    101⅔  ½  22"
 d = Dict('½' => 1/2, '⅔' => 2/3)
 allfrac = join(keys(d), "|")
-str = replace(s, Regex("\\d*(" * allfrac * ")") => (x) -> string(parse(Float64, x[1:end-1]) + d[x[end]]))
+str = replace(s, Regex("\\d*(" * allfrac * ")") => (x) -> "$(something(tryparse(Float64, x[1:end-1]), 0.0) + d[x[end]])")
 println(str)
-
