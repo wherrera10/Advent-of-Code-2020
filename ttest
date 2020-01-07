@@ -1,7 +1,42 @@
-Laurent Polynomial (allows positive or negative interger
+using Base64, HTTP, JSON, Sockets, SQLite, SHA
+using HTTP.Handlers
 
-s = "17.89    101⅔  ½  22"
-d = Dict('½' => 1/2, '⅔' => 2/3)
-allfrac = join(keys(d), "|")
-str = replace(s, Regex("\\d*(" * allfrac * ")") => (x) -> "$(something(tryparse(Float64, x[1:end-1]), 0.0) + d[x[end]])")
-println(str)
+function processpost(req::HTTP.Request)
+  println("body: ", String(req.body))
+    longname = JSON2.read(IOBuffer(HTTP.payload(req)), long)
+  println("json: $longname")
+    encoded, shortname = String(transcode(Base64Encoder(), sha256(longname))), ""
+    for i in 0:length(encoded)-1
+        shortname = circshift(encoded, i)[1:urilen]
+        result = SQLite.Query(dbhandle, "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" *
+            shortname * "\"")
+        if length(result) == 0
+            SQLite.Query(dbhandle, "INSERT INTO LONG_SHORT VALUES \"" * longname * "\" \"" *
+            shortname * "\"")
+            break
+        end
+    end
+    return HTTP.Response(200, JSON2.write(shortname))
+end
+
+function processget(req::HTTP.Request)
+    shortname = split(req.target, r"[^\w\d\+\\]+")[end]
+  @show shortname
+    result = SQLite.Query(dbhandle, "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" *
+            shortname * "\"")
+    longname = length(result) == 0 ? "Not Found" : result.longname
+    responsebody = "<!DOCTYPE html><html><head></head><body>\n" *
+        "<meta http-equiv=\"refresh\" content = \"0; url = https://localhost:" *
+        "$localport/$longname /></body></html>"
+    return Response(200, responsebody)
+end
+
+function run_web_server(portnum)
+    router = HTTP.Router()
+    HTTP.@register(router, "POST", "*", processpost)
+    HTTP.@register(router, "GET", "*", processget)
+    HTTP.serve(router, Sockets.localhost, portnum)
+end
+
+const dbhandle = SQLite.DB("longshort.db")
+run_web_server(3000)
