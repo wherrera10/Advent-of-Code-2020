@@ -1,22 +1,23 @@
-using Base64, HTTP, JSON, Sockets, SQLite, SHA
-using HTTP.Handlers
+using Base64, HTTP, JSON2, Sockets, SQLite, SHA
 
 function processpost(req::HTTP.Request)
-  println("body: ", String(req.body))
-    longname = JSON2.read(IOBuffer(HTTP.payload(req)), long)
-  println("json: $longname")
-    encoded, shortname = String(transcode(Base64Encoder(), sha256(longname))), ""
-    for i in 0:length(encoded)-1
-        shortname = circshift(encoded, i)[1:urilen]
-        result = SQLite.Query(dbhandle, "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" *
-            shortname * "\"")
-        if length(result) == 0
-            SQLite.Query(dbhandle, "INSERT INTO LONG_SHORT VALUES \"" * longname * "\" \"" *
-            shortname * "\"")
-            break
+    json = JSON2.read(HTTP.payload(req))
+    if haskey(json, :long)
+        longname =  json.long
+        encoded, shortname = String(transcode(Base64Encoder(), sha256(longname))), ""
+        for i in 0:length(encoded)-1
+            shortname = circshift(encoded, i)[1:urilen]
+            result = SQLite.Query(dbhandle, 
+                "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" * shortname * "\"")
+            if length(result) == 0
+                SQLite.Query(dbhandle, 
+                    "INSERT INTO LONG_SHORT VALUES \"" * longname * "\" \"" * shortname * "\"")
+                break
+            end
         end
+        return HTTP.Response(200, JSON2.write("$shortname is short name for $longname."))
     end
-    return HTTP.Response(200, JSON2.write(shortname))
+    HTTP.Response(400, JSON2.write("Bad request. Please POST JSON as { long : longname }"))
 end
 
 function processget(req::HTTP.Request)
@@ -40,3 +41,5 @@ end
 
 const dbhandle = SQLite.DB("longshort.db")
 run_web_server(3000)
+
+
