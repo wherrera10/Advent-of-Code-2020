@@ -1,45 +1,29 @@
-using Base64, HTTP, JSON2, Sockets, SQLite, SHA
 
-function processpost(req::HTTP.Request)
-    json = JSON2.read(HTTP.payload(req))
-    if haskey(json, :long)
-        longname =  json.long
-        encoded, shortname = String(transcode(Base64Encoder(), sha256(longname))), ""
-        for i in 0:length(encoded)-1
-            shortname = circshift(encoded, i)[1:urilen]
-            result = SQLite.Query(dbhandle, 
-                "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" * shortname * "\"")
-            if length(result) == 0
-                SQLite.Query(dbhandle, 
-                    "INSERT INTO LONG_SHORT VALUES \"" * longname * "\" \"" * shortname * "\"")
-                break
+struct BalancedTernary
+    dig::Array{Int8, 1}
+    function BalancedTernary(n::Int)
+        if n < 0
+            return new(BalancedTernary(-n).dig .* -1)
+        elseif n == 0
+            return new([0])
+        else
+            arr = Int8[]
+            while n != 0
+                push!(arr, [0, 1, -1][n % 3 + 1])
+                n = div(-~n, 3)
             end
+            return new(arr)
         end
-        return HTTP.Response(200, JSON2.write("$shortname is short name for $longname."))
     end
-    HTTP.Response(400, JSON2.write("Bad request. Please POST JSON as { long : longname }"))
 end
 
-function processget(req::HTTP.Request)
-    shortname = split(req.target, r"[^\w\d\+\\]+")[end]
-  @show shortname
-    result = SQLite.Query(dbhandle, "SELECT LONG FROM LONG_SHORT WHERE SHORT = \"" *
-            shortname * "\"")
-    longname = length(result) == 0 ? "Not Found" : result.longname
-    responsebody = "<!DOCTYPE html><html><head></head><body>\n" *
-        "<meta http-equiv=\"refresh\" content = \"0; url = https://localhost:" *
-        "$localport/$longname /></body></html>"
-    return Response(200, responsebody)
-end
+println(BalancedTernary(-250))
+println(BalancedTernary(250))
 
-function run_web_server(portnum)
-    router = HTTP.Router()
-    HTTP.@register(router, "POST", "*", processpost)
-    HTTP.@register(router, "GET", "*", processget)
-    HTTP.serve(router, Sockets.localhost, portnum)
-end
+asint(b::BalancedTernary) = sum(t -> 3^(t[1] - 1) * t[2], enumerate(b.dig))
 
-const dbhandle = SQLite.DB("longshort.db")
-run_web_server(3000)
+println(asint(BalancedTernary(-250)))
+
+
 
 
