@@ -1,6 +1,29 @@
+#=
+Support arbitrary precision real numbers, both positive and negative;
 
-struct BalancedTernary
+Provide ways to convert to and from text strings, using digits '+', '-' and '0' 
+(unless you are already using strings to represent balanced ternary; but see requirement 5).
+
+Provide ways to convert to and from native integer and real type (unless, improbably, 
+your platform's native integer type is balanced ternary). If your native integers can't 
+support arbitrary length, overflows during conversion must be indicated.
+
+Provide ways to perform addition, negation and multiplication directly on balanced 
+ternary integers; do not convert to native integers first.
+
+Make your implementation efficient, with a reasonable definition of "efficient" 
+(and with a reasonable definition of "reasonable").
+
+The Template should successfully handle these multiplications in other bases. 
+In particular Septemvigesimal and "Balanced base-27".
+=#
+import Base.print, Base.+, Base.-, Base.*, Base./
+
+mutable struct BalancedTernary
     dig::Array{Int8, 1}
+    BalancedTernary() = new(Int8[0])
+    BalancedTernary(arr) = new(arr) 
+    BalancedTernary(s::String) = BalancedTernary([c == '-' ? -1 : c == '0' ? 0 : 1 for c in s]]  
     function BalancedTernary(n::Int)
         if n < 0
             return new(BalancedTernary(-n).dig .* -1)
@@ -9,7 +32,7 @@ struct BalancedTernary
         else
             arr = Int8[]
             while n != 0
-                push!(arr, [0, 1, -1][n % 3 + 1])
+                push!(arr, [0, 1, -1][mod1(n, 3)])
                 n = div(-~n, 3)
             end
             return new(arr)
@@ -17,12 +40,49 @@ struct BalancedTernary
     end
 end
 
-println(BalancedTernary(-250))
-println(BalancedTernary(250))
-
 asint(b::BalancedTernary) = sum(t -> 3^(t[1] - 1) * t[2], enumerate(b.dig))
+asstring(b::BalancedTernary) = String([['-', '0', '+'][c + 2] for c in b.dig])
+
+Base.print(io::IO, b::BalancedTernary) = print(io, asstring(b))
 
 println(asint(BalancedTernary(-250)))
+
+function +(b1::BalancedTernary, b2::BalancedTernary)
+    longlen, shortlen = length(b1.dig), length(b2.dig)
+    if longlen == 0
+        return b2
+    elseif shortlen == 0
+        return b1
+    end
+    if longlen < shortlen
+        b1, b2, longlen , shortlen = b2, b1, shortlen, longlen
+    end
+    arr = deepcopy(b1.dig)
+    arr[1:shortlen] .+= b2.dig
+    return BalancedTernary(arr)
+end
+
+-(b1::BalancedTernary) = BalancedTernary(b1.dig .* -1)
+-(b1::BalancedTernary, b2::BalancedTernary) = +(b1, -b2)
+
+function *(b1::BalancedTernary, b2::BalancedTernary)
+    bsum = BalancedTernary()
+    for (i, j) in enumerate(b2.dig)
+        bsum += BalancedTernary([b1.dig .* j; zeros(Int8, i - 1)])
+        println(bsum)
+    end
+    return bsum
+end
+
+println(BalancedTernary(12))
+println(BalancedTernary(20))
+
+println(BalancedTernary(12) * BalancedTernary(20))
+            
+            
+    
+
+
 
 
 
