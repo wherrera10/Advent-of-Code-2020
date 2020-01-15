@@ -75,27 +75,29 @@ function canonicalize!(b::BalancedTernary)
     return b
 end
 
+# The following should work with any base number where dig, p are a similar array and Int
+# and the proper constructors, canon, and conversion routines are defined     # 6
+
 align!(b, n::Int) = if (i = n - b.p) > 0 b.dig = [zeros(Int8, i; b.dig]; b.p = i end
 align!(b1, b2::BalancedTernary) = if b1.p > b2.p align!(b2, b1.p) else align!(b1, b2.p) end
 
-# The following should work with any base number where dig is a similar array
-# and the proper constructors, canon, and conversion routines are defined             # 6
-
 Base.print(io::IO, b::BalancedBaseDigitArray) = print(io, String(b))
 
-
 function +(b1::T, b2::T) where T <: BalancedBaseDigitArray                    # 4
+    align!(b1, b2)
     longlen, shortlen = length(b1.dig), length(b2.dig)
     if longlen == 0
-        return b2
+        return deepcopy(b2)
     elseif shortlen == 0
-        return b1
+        return deepcopy(b1)
     end
     if longlen < shortlen
         b1, b2, longlen , shortlen = b2, b1, shortlen, longlen
     end
     arr = deepcopy(b1.dig)
     arr[1:shortlen] .+= b2.dig
+    canonicalize!(b1)
+    canonicalize!(b2)
     return canonicalize!(T(arr))
 end
 
