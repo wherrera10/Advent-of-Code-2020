@@ -20,32 +20,31 @@ In particular Septemvigesimal and "Balanced base-27".
 import Base.print, Base.+, Base.-, Base.*, Base./
 
 mutable struct BalancedTernary
-    dig::Array{Int8, 1}
-    BalancedTernary() = new(Int8[0])
-    BalancedTernary(arr) = new(arr) 
-    BalancedTernary(s::String) = BalancedTernary([c == '-' ? -1 : c == '0' ? 0 : 1 for c in s]]  
-    function BalancedTernary(n::Int)
-        if n < 0
-            return new(BalancedTernary(-n).dig .* -1)
-        elseif n == 0
-            return new([0])
-        else
-            arr = Int8[]
-            while n != 0
-                push!(arr, [0, 1, -1][mod1(n, 3)])
-                n = div(-~n, 3)
-            end
-            return new(arr)
+    dig::Vector{Int8}
+    BalancedTernary(arr::Vector=zeros(Int8, 1)) = new(Int8.(arr))
+end
+
+BalancedTernary(s::String) = BalancedTernary([c == '-' ? -1 : c == '0' ? 0 : 1 for c in s])
+function BalancedTernary(n::Int)        # 1, 2, 3
+    if n < 0
+        return BalancedTernary(BalancedTernary(-n).dig .* Int8(-1))
+    elseif n == 0
+        return BalancedTernary([0])
+    else
+        arr = Vector{Int8}()
+        while n != 0
+            push!(arr, [1, -1, 0][mod1(n, 3)])
+            n = div(-~n, 3)
         end
+        return BalancedTernary(arr)
     end
 end
 
-asint(b::BalancedTernary) = sum(t -> 3^(t[1] - 1) * t[2], enumerate(b.dig))
-asstring(b::BalancedTernary) = String([['-', '0', '+'][c + 2] for c in b.dig])
+Int(b::BalancedTernary) = sum(t -> 3^(t[1] - 1) * t[2], enumerate(b.dig))
+String(b::BalancedTernary) = String([['-', '0', '+'][c + 2] for c in b.dig])
 
-Base.print(io::IO, b::BalancedTernary) = print(io, asstring(b))
+Base.print(io::IO, b::BalancedTernary) = print(io, String(b))
 
-println(asint(BalancedTernary(-250)))
 
 function +(b1::BalancedTernary, b2::BalancedTernary)
     longlen, shortlen = length(b1.dig), length(b2.dig)
@@ -74,13 +73,14 @@ function *(b1::BalancedTernary, b2::BalancedTernary)
     return bsum
 end
 
-println(BalancedTernary(12))
+println(Int(BalancedTernary(12)))
 println(BalancedTernary(20))
 
 println(BalancedTernary(12) * BalancedTernary(20))
-            
-            
-    
+
+println(Int64(BalancedTernary(-250)))
+println(Int(BalancedTernary("-+-+")))
+
 
 
 
