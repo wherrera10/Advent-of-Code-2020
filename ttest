@@ -1,3 +1,12 @@
+#=
+Test case 1 - With balanced ternaries a from string "+-0++0+.+-0++0+",
+b from native real -436.436, c "+-++-.+-++-":
+
+write out a, b and c in decimal notation.
+calculate a × (b − c), write out the result in both ternary and decimal notations.
+In the above limit the precision to 81 ternary digits after the point.
+=#
+
 import Base.print, Base.+, Base.-, Base.*
 
 abstract type BalancedBaseDigitArray end
@@ -8,28 +17,68 @@ mutable struct BalancedTernary <: BalancedBaseDigitArray
     BalancedTernary(arr::Vector=zeros(Int8, 1), i=0) = new(Int8.(arr), i)
 end
 
-BalancedTernary(s::String) = BalancedTernary([c == '-' ? -1 : c == '0' ? 0 : 1 for c in s]) # 2
-function BalancedTernary(n::Int)        # 1, 3
+const MAX_PRECISION = 81
+
+function BalancedTernary(s::String)
+    if (i = findfirst(x -> x == '.', s)) != nothing
+        p = length(s) - i
+        s = s[1:i-1] * s[i+1:end]
+    else
+        p = 0
+    end
+    b = BalancedTernary([c == '-' ? -1 : c == '0' ? 0 : 1 for c in s], p)  # 2
+end
+
+function BalancedTernary(n::Integer)                                                # 1, 3
     if n < 0
-        return BalancedTernary(BalancedTernary(-n).dig .* Int8(-1))
+        return -BalancedTernary(-n)
     elseif n == 0
         return BalancedTernary([0])
     else
         arr = Vector{Int8}()
         while n != 0
-            push!(arr, [1, -1, 0][mod1(n, 3)])
+            pushfirst!(arr, [1, -1, 0][mod1(n, 3)])
             n = div(-~n, 3)
         end
-        return BalancedTernary(arr)
+        return BalancedTernary(arr, 0)
     end
+end
+
+function BalancedTernary(x::Real)                                             # 1, 3
+    if x < 0
+        return -BalancedTernary(-x)
+    end
+    denom = BigFloat(3^MAX_PRECISION)
+    bigint = BigInt(round(x * denom))
+    b = BalancedTernary(bigint)
+    b.p = MAX_PRECISION
+    return canonicalize!(b)
 end
 
 function String(b::BalancedTernary)                                           # 3
     canonicalize!(b)
-    String([['-', '0', '+'][c + 2] for c in b.dig])
+    s = String([['-', '0', '+'][c + 2] for c in b.dig])
+    if b.p > 0
+        if b.p < length(s)
+            s = s[1:end-b.p] * "." * s[end-b.p+1:end]
+        elseif b.p == length(s)
+            s = "0." * s
+        else
+            s = "0." * "0"^(b.p - length(s)) * s
+        end
+    end
+    return s
 end
 
-Int(b::BalancedTernary) = sum(t -> 3^(t[1] - 1) * t[2], enumerate(b.dig))     # 3
+function Int(b::BalancedTernary)
+    canonicalize!(b)
+    if b.p > 0
+        throw(InexactError("$(b.p) places after decimal point"))
+    end
+    return sum(t -> 3^(t[1] - 1) * t[2], enumerate(reverse(b.dig)))          # 3
+end
+
+Float64(b::BalancedTernary) = Int(BalancedTernary(b.dig)) * 3.0^(-b.p)
 
 function canonicalize!(b::BalancedTernary)
     for (i, d) in enumerate(b.dig)
@@ -48,11 +97,13 @@ function canonicalize!(b::BalancedTernary)
         end
     end
     if (i = findlast(x -> x != 0, b.dig)) != nothing
-        resize!(b.dig, i)
+        if i < length(b.dig)
+            resize!(b.dig, i)
+        end
     else
         b.dig = [0]
     end
-    if b.p > 0 && (i = findfirst(x -> x != 0, b.dig)) != nothing
+    if b.p > 0 && (i = findfirst(x -> x != 0, b.dig)) != nothing && i > 1
         removable = min(b.p, i)
         b.dig = b.dig[removable:end]
         b.p -= removable
@@ -63,7 +114,7 @@ end
 # The following should work with any base number where dig, p are a similar array and Int
 # and the proper constructors, canon, and conversion routines are defined     # 6
 
-align!(b, n::Int) = if (i = n - b.p) > 0 b.dig = [zeros(Int8, i); b.dig]; b.p = i end
+align!(b, n::Int) = if (i = n - b.p) > 0 b.dig = [b.dig; zeros(Int8, i)]; b.p = i end
 align!(b1, b2::BalancedTernary) = if b1.p > b2.p align!(b2, b1.p) else align!(b1, b2.p) end
 
 Base.print(io::IO, b::BalancedBaseDigitArray) = print(io, String(b))
@@ -88,7 +139,7 @@ end
 -(b1::T) where T <: BalancedBaseDigitArray = T(b1.dig .* -1)                  # 4
 -(b1::T, b2::T) where T <: BalancedBaseDigitArray = +(b1, -b2)                # 4
 
-function *(b1::T, b2::T) where T <: BalancedBaseDigitArray                    # 4    
+function *(b1::T, b2::T) where T <: BalancedBaseDigitArray                    # 4
     bsum = T()
     for (i, j) in enumerate(b2.dig)
         bsum += T([zeros(Int8, i - 1); b1.dig .* j])
@@ -98,15 +149,8 @@ function *(b1::T, b2::T) where T <: BalancedBaseDigitArray                    # 
     return canonicalize!(bsum)
 end
 
-b1 = BalancedTernary(12)
-b2 = BalancedTernary(20)
+a, b, c = "+-0++0+.+-0++0+", -436.436, "+-++-.+-++-"
 
-println(Int(b1))
-println(Int(b2))
+ba, bb, bc = BalancedTernary(a), BalancedTernary(b), BalancedTernary(c)
 
-println(b1 + b2, "  ", Int(b1 + b2))
-println(b1 * b2, "  ", Int(b1 * b2))
-
-println(Int64(BalancedTernary(-250)))
-println(Int(BalancedTernary("-+-+")))
-
+println("a: $ba  $(Float64(ba)), b: $bb  $(Float64(bb)), c: $bc  $(Float64(bc))")
