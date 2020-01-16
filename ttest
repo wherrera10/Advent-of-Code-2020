@@ -48,10 +48,9 @@ function BalancedTernary(x::Real)                                             # 
     if x < 0
         return -BalancedTernary(-x)
     end
-    denom = BigFloat(3^MAX_PRECISION)
+    denom = BigFloat(3.0)^MAX_PRECISION
     bigint = BigInt(round(x * denom))
-    b = BalancedTernary(bigint)
-    b.p = MAX_PRECISION
+    b = BalancedTernary(reverse(digits(bigint, base=3)), MAX_PRECISION)
     return canonicalize!(b)
 end
 
