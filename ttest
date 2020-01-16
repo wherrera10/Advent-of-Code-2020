@@ -79,7 +79,7 @@ end
 
 Float64(b::BalancedTernary) = Int(BalancedTernary(b.dig)) * 3.0^(-b.p)
 
-function canonicalize!(b::BalancedTernary)
+function canonicalize!(b::BalancedTernary) FIX
     for (i, d) in enumerate(b.dig)
         if d > 1
             b.dig[i] -= 3
