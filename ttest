@@ -6,13 +6,13 @@ pow2afterstartingwith(n, lengthofrest) = nextpow(big"2", n * BigInt(10)^lengthof
 struct Pow2Prefixed
     prefix::Int
     len::Int
-    Pow2Prefixed(seq) = (len = length(seq); new(seq, len)
+    Pow2Prefixed(seq) = (len = length(seq); new(seq, len))
 end
 
-iterate(p::Pow2Prefixed, loops=0)
-    for j in loops+1:typemax(Int)
-        k = pow2afterstartingwith(seq, j)
-        if div(k, big"10"^i) == p.seq
+function iterate(p::Pow2Prefixed, loops=0)
+    for j in loops+1:1000000000
+        k = pow2afterstartingwith(p.prefix, j)
+        if div(k, big"10"^j) == p.prefix
             return Int(round(log(2, k))), j
         end
     end
@@ -22,7 +22,8 @@ IteratorEltype(Pow2Prefixed) = Base.HasEltype()
 
 eltype(Pow2Prefixed) = Int
 
-for i in Iterators.take(Pow2Prefixed(12), 10)
-    println(i, "  ", Int(round(log(2, i))))
+for i in Iterators.take(Pow2Prefixed(12), 3)
+    println(i)
 end
 
+nth()
