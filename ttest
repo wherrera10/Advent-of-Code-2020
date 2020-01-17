@@ -9,8 +9,8 @@ struct Pow2NumberWithLeading
     end
 end
 
-function iterate(p::Pow2NumberWithLeading, i::BigInt=big"0")
-    d = reverse(digits(2i + 1))
+function iterate(p::Pow2NumberWithLeading, i=foldl((x, y) -> BigInt(10)x + y, p.leading))
+    d = reverse(digits(2i + i))
     while length(d) < p.len || p.leading != d[1:p.len]
         i = nextpow(BigInt(2), foldl((x, y) -> BigInt(10)x + y, d) + 1)
         d = reverse(digits(i + 1))
