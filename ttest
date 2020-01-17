@@ -1,30 +1,28 @@
+using IterTools
 import Base.iterate, Base.eltype, Base.IteratorSize
 
-struct Pow2NumberWithLeading
-    leading::Vector{Int}
+pow2afterstartingwith(n, lengthofrest) = nextpow(big"2", n * BigInt(10)^lengthofrest)
+
+struct Pow2Prefixed
+    prefix::Int
     len::Int
-    function Pow2NumberWithLeading(i::Int)
-        d = reverse(digits(i))
-        return new(d, length(d))
+    Pow2Prefixed(seq) = (len = length(seq); new(seq, len)
+end
+
+iterate(p::Pow2Prefixed, loops=0)
+    for j in loops+1:typemax(Int)
+        k = pow2afterstartingwith(seq, j)
+        if div(k, big"10"^i) == p.seq
+            return Int(round(log(2, k))), j
+        end
     end
 end
 
-function iterate(p::Pow2NumberWithLeading, i=foldl((x, y) -> BigInt(10)x + y, p.leading))
-    d = reverse(digits(2i + i))
-    while length(d) < p.len || p.leading != d[1:p.len]
-        i = nextpow(BigInt(2), foldl((x, y) -> BigInt(10)x + y, d) + 1)
-        d = reverse(digits(i + 1))
-    end
-    return i, i
-end
+IteratorEltype(Pow2Prefixed) = Base.HasEltype()
 
-IteratorSize(Pow2NumberWithLeading) = Base.IsInfinite
+eltype(Pow2Prefixed) = Int
 
-IteratorEltype(Pow2NumberWithLeading) = Base.HasEltype()
-
-eltype(Pow2NumberWithLeading) = Pow2NumberWithLeading
-
-for i in Iterators.take(Pow2NumberWithLeading(12), 10)
+for i in Iterators.take(Pow2Prefixed(12), 10)
     println(i, "  ", Int(round(log(2, i))))
 end
 
