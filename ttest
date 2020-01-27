@@ -1,71 +1,160 @@
-using Dates
+module AVLTrees
 
-var sacred = strings.Fields("Imix’ Ik’ Ak’bal K’an Chikchan Kimi Manik’ Lamat Muluk Ok Chuwen Eb Ben Hix Men K’ib’ Kaban Etz’nab’ Kawak Ajaw")
-
-var civil = strings.Fields("Pop Wo’ Sip Sotz’ Sek Xul Yaxk’in Mol Ch’en Yax Sak’ Keh Mak K’ank’in Muwan’ Pax K’ayab Kumk’u Wayeb’")
-
-const date1 = Date(2012, 12, 21)
-const date2 = Date(2019, 4, 2)
+import Base.print
+export AVLNode, AVLTree, insert, delete_key
 
 
-function tzolkin(gregorian::Date)
-    deltadays = Days(gregorian - date1).value
-    rem = mod1(deltadays, 13)
-    return string(rem <= 9 ? rem + 5 : rem - 8) * " " * sacred[mod1(deltadays, 20)]
+mutable struct AVLNode{T}
+    key::T
+    balance::Int
+    left::MaybeAVL
+    right::MaybeAVL
+    parent::MaybeAVL
+end
+AVLNode(k, b, l, r, p) where T <: Real = AVLNode(k, b, l, r, p)
+AVLNode(k::T) where T <: Real = AVLNode(k, 0, nothing, nothing, nothing)
+AVLTree(typ::Type) = AVLNode(typ(0))
+const MaybeAVL = Union{AVLNode, Nothing}
+
+@enum Direction LEFT RIGHT
+
+function insert(node, key)
+    if node == nothing
+        node = AVLNode(key)
+        return true
+    end
+    n, parent = MaybeAVL(node), MaybeAVL(nothing)
+    while true
+        if n.key == key
+            return false
+        end
+        parent = n
+        goleft = n.key > key
+        n = goleft ? n.left : n.right
+        if n == nothing
+            if goleft
+                parent.left = AVLNode(key, 0, nothing, nothing, parent)
+            else
+                parent.right = AVLNode(key, 0, nothing, nothing, parent)
+            end
+            rebalance(parent)
+            break
+        end
+    end
+    rebalance(node)
+    return true
 end
 
-function haab(gregorian::Date)
-    deltadays = Days(gregorian - date2).value
-    rem = deltadays % 365
-    month = civil[div(rem + 21, 20)]
-    lastdayofmonth = month == "Wayeb’" ? 5 : 20
-    dayofmonth = rem % 20 + 1
-    return dayofmonth < islastdayofmonth ? "$dayofmonth $month" : "Chum $month"
+function delete_key(node, delkey)
+    root == nothing && return nothing
+    n, parent = MaybeAVL(node), MaybeAVL(node)
+    delnode, child = MaybeAVL(nothing), MaybeAVL(node)
+    while child != nothing
+        parent = n
+        n = child
+        child = delkey >= n.key ? n.right : n.left
+        if delkey == n.key
+            delnode = n
+        end
+    end
+    if delnode != nothing
+        delnode.key = n.key
+        child = n.left != nothing ? n.left : n.right
+        if node.key == delkey
+            node = child
+        else
+            if parent.left == n
+                parent.left = child
+            else
+                parent.right = child
+            end
+            rebalance(parent)
+        end
+    end
 end
 
-function tolongdate(gregorian::Date)
-    delta = Days(gregorian - date1).value + (13 * 400 * 360)
-    baktun = deltadays ÷ (400 * 360)
-    katun := baktun ÷ (20 * 360)
-    tun = diff ÷ 360
-    diff = tun
-    winal = diff ÷ 20
-    kin = diff ÷ 20
-    return fmt.Sprintf("%d.%d.%d.%d.%d", baktun, katun, tun, winal, kin)
-}
+function rebalance(n)
+    n == nothing && return nothing
+    x = n.balance
+    if x == -2
+        if height(n.left.left) >= height(n.left.right)
+            n = rotate(n, RIGHT)
+        else
+            n = rotate_twice(n, LEFT, RIGHT)
+        end
+    elseif x == 2
+        if height(n.right.right) >= height(n.right.left)
+            n = rotate(n, LEFT)
+        else
+            n = rotate_twice(n, RIGHT, LEFT)
+        end
+    end
+    if n != nothing && n.parent != nothing
+        rebalance(n.parent)
+    end
+end
 
-function nightlord(date::Date)
-    diff := int(date.Sub(date1).Hours()) / 24
-    rem := diff % 9
-    if rem <= 0 {
-        rem = 9 + rem
-    }
-    return fmt.Sprintf("G%d", rem)
-}
+function rotate(a, direction)
+    (a == nothing || a.parent == nothing) && return
+    b = direction == LEFT ? a.right : a.left
+    b == nothing && return
+    b.parent = a.parent
+    if direction == LEFT
+        a.right = b.left
+    else
+        a.left  = b.right
+    end
+    if a.right != nothing
+        a.right.parent = a
+    end
+    if direction == LEFT
+        b.left = a
+    else
+        b.right = a
+    end
+    a.parent = b
+    if b.parent != nothing
+        if b.parent.right == a
+            b.parent.right = b
+        else
+            b.parent.left = b
+        end
+    end
+    setbalance([a, b])
+    return b
+end
 
-func main() {
-    const shortForm = "2006-01-02"
-    dates := []string{
-        "2004-06-19",
-        "2012-12-18",
-        "2012-12-21",
-        "2019-01-19",
-        "2019-03-27",
-        "2020-02-29",
-        "2020-03-01",
-        "2071-05-16",
-    }
-    fmt.Println(" Gregorian   Tzolk’in        Haab’              Long           Lord of")
-    fmt.Println("   Date       # Name       Day Month            Count         the Night")
-    fmt.Println("----------   --------    -------------        --------------  ---------")
-    for _, dt := range dates {
-        date, _ := time.Parse(shortForm, dt)
-        n, s := tzolkin(date)
-        d, m := haab(date)
-        lc := longCount(date)
-        l := lord(date)
-        fmt.Printf("%s   %2d %-8s %4s %-9s       %-14s     %s\n", dt, n, s, d, m, lc, l)
-    }
-}
+function rotate_twice(n, dir1, dir2)
+    n.left = rotate(n.left, dir1)
+    rotate(n, dir2)
+end
+
+height(n) = n == nothing ? 0 : 1 + max(height(n.left), height(n.right))
+
+function setbalance(nodes)
+    for n in nodes
+        n.balance = height(n.right) - height(n.left)
+    end
+end
+
+function Base.print(io::IO, n::AVLNode)
+    if n != nothing
+        n.left != nothing && print(io, n.left)
+        print(io, "<$(n.key):$(n.balance)> ")
+        n.right != nothing && print(io, n.right)
+    end
+end
+
+end # module
+
+using .AVLTrees
+
+const tree = AVLTree(Int)
+
+println("Inserting 20 values.")
+foreach(x -> insert(tree, tree, x), rand(collect(1:80), 18))
+println("Printing tree after insertion: ")
+println(tree)
+
 
 
