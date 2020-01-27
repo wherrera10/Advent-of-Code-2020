@@ -3,99 +3,123 @@ module AVLTrees
 import Base.print
 export AVLNode, AVLTree, insert, delete_key
 
+@enum Direction LEFT RIGHT
+avlhash(x) = Int32(hash(x) & 0xfffffff)
 
 mutable struct AVLNode{T}
-    key::T
-    balance::Int
-    left::MaybeAVL
-    right::MaybeAVL
-    parent::MaybeAVL
+    value::T
+    key::Int32
+    balance::Int32
+    left::Union{AVLNode, Nothing}
+    right::Union{AVLNode, Nothing}
+    parent::Union{AVLNode, Nothing}
 end
-AVLNode(k, b, l, r, p) where T <: Real = AVLNode(k, b, l, r, p)
-AVLNode(k::T) where T <: Real = AVLNode(k, 0, nothing, nothing, nothing)
-AVLTree(typ::Type) = AVLNode(typ(0))
+AVLNode(v::T, b, l, r, p) where T <: Real = AVLNode(v, avlhash(v), Int32(b), l, r, p)
+AVLNode(v::T, h, b::Int64, l, r, p) where T <: Real = AVLNode(v, h, Int32(b), l, r, p)
+AVLNode(v::T) where T <: Real = AVLNode(v, avlhash(v), Int32(0), nothing, nothing, nothing)
+
+# The root has a hash value of 0, which should not occur with other AVLNode values.
+AVLTree(typ::Type) = AVLNode(typ(0), Int32(0), Int32(0), nothing, nothing, nothing)
 const MaybeAVL = Union{AVLNode, Nothing}
 
-@enum Direction LEFT RIGHT
+height(node::MaybeAVL) = (node == nothing) ? 0 : 1 + max(height(node.right), height(node.left))
 
-function insert(node, key)
+function insert(node, value)
     if node == nothing
-        node = AVLNode(key)
+        node = AVLNode(value)
         return true
     end
-    n, parent = MaybeAVL(node), MaybeAVL(nothing)
+    key, n, parent::MaybeAVL = avlhash(value), node, nothing
     while true
         if n.key == key
             return false
         end
         parent = n
-        goleft = n.key > key
-        n = goleft ? n.left : n.right
+        ngreater = n.key > key
+        n = ngreater ? n.left : n.right
         if n == nothing
-            if goleft
-                parent.left = AVLNode(key, 0, nothing, nothing, parent)
+            if ngreater
+                parent.left = AVLNode(value, key, 0, nothing, nothing, parent)
             else
-                parent.right = AVLNode(key, 0, nothing, nothing, parent)
+                parent.right = AVLNode(value, key, 0, nothing, nothing, parent)
             end
-            rebalance(parent)
+            setbalance(parent)
+            rebalance(parent)  # this needs to recurse up
             break
         end
     end
-    rebalance(node)
     return true
 end
 
-function delete_key(node, delkey)
-    root == nothing && return nothing
+function insert(node::AVLNode, othernode::MaybeAVL)
+    othernode == nothing && return false
+    n, parent = MaybeAVL(node), MaybeAVL(node)
+    while true
+        if n.key == key
+            return false
+        end
+        parent = n
+        ngreater = n.key > othernode.key
+        n = ngreater ? n.left : n.right
+        if n == nothing
+            if ngreater
+                parent.left = othernode
+            else
+                parent.right = othernode
+            end
+            setbalance(parent)
+            rebalance(parent)  # this needs to recurse up
+            break
+        end
+    end
+    return true
+end
+
+function deletekey(node, delkey)
+    node == nothing && return nothing
     n, parent = MaybeAVL(node), MaybeAVL(node)
     delnode, child = MaybeAVL(nothing), MaybeAVL(node)
     while child != nothing
-        parent = n
-        n = child
+        parent, n = n, child
         child = delkey >= n.key ? n.right : n.left
         if delkey == n.key
             delnode = n
         end
     end
-    if delnode != nothing
-        delnode.key = n.key
-        child = n.left != nothing ? n.left : n.right
-        if node.key == delkey
-            node = child
-        else
-            if parent.left == n
-                parent.left = child
-            else
-                parent.right = child
-            end
-            rebalance(parent)
-        end
+    delnode == nothing && return false
+    # now delnode == n, and has the key we were looking for and its parent is parent
+    if parent.left == delnode
+        parent.left = child
+    else
+        parent.right = child
     end
+    insert(child, delnode.right == child ? delnode.left : delnode.right)
+    setbalance(parent)
+    rebalance(parent)
+    return true
 end
 
-function rebalance(n)
-    n == nothing && return nothing
-    x = n.balance
-    if x == -2
-        if height(n.left.left) >= height(n.left.right)
-            n = rotate(n, RIGHT)
+function rebalance(node::MaybeAVL)
+    node == nothing && return nothing
+    node.balance = height(node)
+    if node.balance < -1
+        if height(node.left.left) >= height(node.left.right)
+            node = rotate(node, RIGHT)
         else
-            n = rotate_twice(n, LEFT, RIGHT)
+            node = rotatetwice(node, LEFT, RIGHT)
         end
-    elseif x == 2
-        if height(n.right.right) >= height(n.right.left)
-            n = rotate(n, LEFT)
+    elseif node.balance > 1
+        if node.right != nothing && height(node.right.right) >= height(node.right.left)
+            node = rotate(node, LEFT)
         else
-            n = rotate_twice(n, RIGHT, LEFT)
+            node = rotatetwice(node, RIGHT, LEFT)
         end
     end
-    if n != nothing && n.parent != nothing
-        rebalance(n.parent)
-    end
+    node != nothing && rebalance(node.parent)
 end
 
 function rotate(a, direction)
-    (a == nothing || a.parent == nothing) && return
+    (a == nothing || a.parent == nothing) && return nothing
     b = direction == LEFT ? a.right : a.left
     b == nothing && return
     b.parent = a.parent
@@ -124,23 +148,19 @@ function rotate(a, direction)
     return b
 end
 
-function rotate_twice(n, dir1, dir2)
+function rotatetwice(n, dir1, dir2)
     n.left = rotate(n.left, dir1)
     rotate(n, dir2)
 end
 
-height(n) = n == nothing ? 0 : 1 + max(height(n.left), height(n.right))
+setbalance(n::AVLNode) = begin n.balance = height(n.right) - height(n.left) end
+setbalance(n::Nothing) = 0
+setbalance(nodes::Vector) = for n in nodes setbalance(n) end
 
-function setbalance(nodes)
-    for n in nodes
-        n.balance = height(n.right) - height(n.left)
-    end
-end
-
-function Base.print(io::IO, n::AVLNode)
+function Base.print(io::IO, n::MaybeAVL)
     if n != nothing
         n.left != nothing && print(io, n.left)
-        print(io, "<$(n.key):$(n.balance)> ")
+        print(io, "<$(n.value):$(n.balance)> ")
         n.right != nothing && print(io, n.right)
     end
 end
@@ -152,9 +172,10 @@ using .AVLTrees
 const tree = AVLTree(Int)
 
 println("Inserting 20 values.")
-foreach(x -> insert(tree, tree, x), rand(collect(1:80), 18))
+foreach(x -> insert(tree, x), rand(collect(1:80), 18))
 println("Printing tree after insertion: ")
 println(tree)
+
 
 
 
