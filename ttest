@@ -16,7 +16,8 @@ end
     cyclotomic(n::Integer)
     
 Calculate the n -th cyclotomic polynomial.
-See wikipedia article at botoom of section /wiki/Cyclotomic_polynomial#Fundamental_tools
+See wikipedia article at bottom of section /wiki/Cyclotomic_polynomial#Fundamental_tools
+The algorithm is reliable but slow for large n > 1000.
 """
 function cyclotomic(n::Integer)
     if haskey(cyclotomics, n)
@@ -46,11 +47,11 @@ for i in 1:1000000
         break
     end
     c = cyclotomic(i)
-    for coef in coeffs(c)
-        x = BigInt(abs(round(coef)))
-        if 0 < x < 10 && dig[Int(x)] == 0
+    for coef in filter(x -> -9.9 < x < 9.9, coeffs(c))
+        x = Int(round(abs(coef)))
+        if 0 < x < 10 && dig[x] == 0
             dig[x] = coef < 0 ? -i : i
-println("$x  :  $i")
+println("Φ($i):  $coef")
         end
     end
 end
@@ -92,3 +93,4 @@ First 30 cyclotomic polynomials:
 30:  Poly(1.0 + 1.0*x - 1.0*x^3 - 1.0*x^4 - 1.0*x^5 + 1.0*x^7 + 1.0*x^8)
 
 =#
+
