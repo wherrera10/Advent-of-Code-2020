@@ -3,14 +3,14 @@ const b = [BigInt(1) 1; 1 0]
 matrixfibonacci(n) = n == 0 ? 0 : n == 1 ? 1 : (b^(n+1))[2,2]
 binetfibonacci(n) = ((1+sqrt(big"5"))^n-(1-sqrt(big"5"))^n)/(sqrt(big"5")*big"2"^n)
 
-mf32 = string(matrixfibonacci(big"2"^32))
-mf64 = string(matrixfibonacci(big"2"^64))
-bf32 = string(BigInt(round(binetfibonacci(big"2"^32))))
-bf64 = string(BigInt(round(binetfibonacci(big"2"^64))))
+mf32 = string(matrixfibonacci(big"2"^10))
+mf64 = string(matrixfibonacci(big"2"^14))
+bf32 = string(BigInt(round(binetfibonacci(big"2"^10))))
+bf64 = string(BigInt(round(binetfibonacci(big"2"^14))))
 
 firstlast(s) = (length(s) < 44 ? s : s[1:20] * "..." * s[end-20+1:end])
 
-println("N     Matrix                                Binet")
+println("N                    Matrix                                         Binet")
 println("2^32  ", rpad(firstlast(mf32), 45), rpad(firstlast(bf32), 45))
 println("2^32  ", rpad(firstlast(mf64), 45), rpad(firstlast(bf64), 45))
 
