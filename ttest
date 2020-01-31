@@ -4,6 +4,6 @@ matrixfibonacci(n) = n == 0 ? 0 : n == 1 ? 1 : (b^(n+1))[2,2]
 
 
 for n in 1:30
-    println(maxtrixfibonacci(n)
+    println(maxtrixfibonacci(n))
 end
 
