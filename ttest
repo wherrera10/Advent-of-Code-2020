@@ -1,27 +1,35 @@
-const b = [BigInt(1) 1; 1 0]
-
-matrixfibonacci(n) = n == 0 ? 0 : n == 1 ? 1 : (b^(n+1))[2,2]
-binetfibonacci(n) = ((1+sqrt(big"5"))^n-(1-sqrt(big"5"))^n)/(sqrt(big"5")*big"2"^n)
-
-mf32 = string(matrixfibonacci(big"2"^10))
-mf64 = string(matrixfibonacci(big"2"^14))
-bf32 = string(BigInt(round(binetfibonacci(big"2"^10))))
-bf64 = string(BigInt(round(binetfibonacci(big"2"^14))))
-
+const b = [big"1" 1; 1 0]
+matrixfibonacci(n) = n == 0 ? 0 : n == 1 ? 1 : (b^(n + 1))[2, 2]
+ 
+binetfibonacci(n) = ((1+sqrt(big"5"))^n-(1-sqrt(big"5"))^n)/(sqrt(big"5")*big"2"^n)  # not used here
+ 
+# This is derived from the Schönhage-Strassen algorithm using Lucas numbers
+function lucasfibonacci(n)
+    function inner(n)
+        if n == 0
+            return big"0", big"1"
+        end
+        u, v = inner(n >> 1)
+        q = (n & 2) - 1
+        u *= u
+        v *= v
+        return isodd(n) ? BigInt(u + v), BiGint(3 * v - 2 * (u - q)) :
+            BigInt(2 * (v + q) - 3 * u), BigInt(u + v)
+    end
+    u, v = inner(n >> 1)
+    l = 2*v - u # the lucas function
+    if isodd(n)
+        q = (n & 2) - 1
+        return v * l + q
+    end
+    return u * l
+end
+ 
+m2s(bits) = string(matrixfibonacci(big"2"^bits))
+l2s(bits) = string(lucasfibonacci(big"2"^bits))
 firstlast(s) = (length(s) < 44 ? s : s[1:20] * "..." * s[end-20+1:end])
-
-println("N                    Matrix                                         Binet")
-println("2^32  ", rpad(firstlast(mf32), 45), rpad(firstlast(bf32), 45))
-println("2^32  ", rpad(firstlast(mf64), 45), rpad(firstlast(bf64), 45))
-
-
-
-
-
-
-
-
-
-
-
+ 
+println("N", " "^23, "Matrix", " "^40, "Lucas\n", "-"^97)
+println("2^32  ", rpad(firstlast(m2s(32)), 45), rpad(firstlast(l2s(32)), 45))
+# println("2^64  ", rpad(firstlast(m2s(64)), 45), rpad(firstlast(l2s(64)), 45))
 
