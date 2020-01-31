@@ -1,12 +1,9 @@
 const b = [ BigInt(1) 1; 1 0]
 
-function matrixfibonacci(n)
-    if n == 0
-        return 0
-    elseif n == 1
-        return 1
-    else
-        return (b^(n+1))[2,2]
-    end
+matrixfibonacci(n) = n == 0 ? 0 : n == 1 ? 1 : (b^(n+1))[2,2]
+
+
+for n in 1:30
+    println(maxtrixfibonacci(n)
 end
 
