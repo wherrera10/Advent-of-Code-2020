@@ -10,8 +10,9 @@ a(n) - the smallest number not already in sequence such that a(n) is relatively 
 a(n) is 4 because 4 is the smallest number following 1, 2, 3 in the sequence that is relatively prime to the entry before it (3), 
 and is not relatively prime to the number two entries before it (2).
 
-;Related task:
+;Related tasks:
 :* &nbsp; [https://rosettacode.org/wiki/Greatest_common_divisor Greatest common divisor].
+:* &nbsp; [https://rosettacode.org/wiki/Plot_coordinate_pairs Plot coordinate pairs].
 
 See also:
 
