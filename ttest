@@ -18,14 +18,11 @@ function yellowstone(N)
     ylist = [1, 2, 3]
     b = Dict(1 => 1, 2 => 1, 3 => 1)
     while length(ylist) < N
-        i = 4
-        while true
+        for i in 4:typemax(Int)
             if !haskey(b, i) && (gcd(i, ylist[end]) == 1) && (gcd(i, ylist[end - 1]) > 1)
                 push!(ylist, i)
                 b[i] = 1
                 break
-            else
-                i += 1
             end
         end
     end
@@ -35,9 +32,10 @@ end
 println(yellowstone(30))
 
 using Plots
-
 x = 1:100
 y = yellowstone(100)
 plot(x, y)
+
+
 
 
