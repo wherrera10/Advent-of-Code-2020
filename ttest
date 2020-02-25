@@ -1,27 +1,57 @@
+from tabulate import tabulate
 
 def KMP_lookup_table(bytestring):
+    """
+    Parameters
+    ----------
+    bytestring : string
+        search string.
+
+    Returns
+    -------
+    table : Vector of Int
+        Used for moving search position in text during search.
+
+    """
     tablesize = len(bytestring)
     table = [0] * (tablesize + 1)
     i, table[0] = 0, -1
 
-    for i in range(len(bytestring)):
+    for (i, c) in enumerate(bytestring):
         table[i + 1] = table[i] + 1
-        while table[i + 1] > 0 and bytestring[i] != bytestring[table[i + 1] - 1]:
+        while table[i + 1] > 0 and c != bytestring[table[i + 1] - 1]:
             table[i + 1] = table[table[i + 1] - 1] + 1
 
-    print(table)
     return table
 
 
 
 
 def KMP_text_search(pattern, text):
+    """
+    Parameters
+    ----------
+    pattern : string
+        pattern to be searched for in text.
+    text : string
+        text to be searched for pattern.
+
+    Returns
+    -------
+    Vector of integers
+        containing start positions for places pattern in found in text.
+
+    """
     patlen, textlen = len(pattern), len(text)
-    if patlen == 0
+    if patlen == 0:
         return -1
 
     # Preprocessing
     lookup_table = KMP_lookup_table(pattern)
+    print(tabulate([list(pattern), lookup_table],
+                   range(patlen), tablefmt="grid",
+                   showindex=["pattern[i]", "table[i]"]))
+
     i = j = 0
     while j < textlen:
         while i > -1 and pattern[i] != text[j]:
@@ -35,6 +65,3 @@ def KMP_text_search(pattern, text):
 
 
 KMP_text_search("bab", "abebcaceaebabecabecababiba")
-
-
-
