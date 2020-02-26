@@ -83,58 +83,26 @@ algorithm kmp_search:
 
 from tabulate import tabulate
 
-def KMP_lookup_table(bytestring):
-    """
-    Parameters
-    ----------
-    bytestring : string
-        search string.
-
-    Returns
-    -------
-    table : Vector of Int
-        Used for moving search position in text during search.
-
-    """
-    tablesize = len(bytestring)
-    table = [0] * (tablesize + 1)
-    i, table[0] = 0, -1
-
-    for (i, c) in enumerate(bytestring):
-        table[i + 1] = table[i] + 1
-        while table[i + 1] > 0 and c != bytestring[table[i + 1] - 1]:
-            table[i + 1] = table[table[i + 1] - 1] + 1
-
-    return table
-
-
-
-
 def KMP_text_search(pattern, text):
     """
-    Parameters
-    ----------
-    pattern : string
-        pattern to be searched for in text.
-    text : string
-        text to be searched for pattern.
-
-    Returns
-    -------
-    Vector of integers
-        containing start positions for places pattern in found in text.
-
+    Knuth- text search
+    O(m+n), near O(n) for large n, small m
     """
     patlen, textlen = len(pattern), len(text)
     if patlen == 0:
         return -1
 
-    # Preprocessing
-    lookup_table = KMP_lookup_table(pattern)
-    print(tabulate([list(pattern), lookup_table],
-                   range(patlen), tablefmt="grid",
-                   showindex=["pattern[i]", "table[i]"]))
+    # make the lookup table
+    table = [0] * (tablesize + 1)
+    i, table[0] = 0, -1
+    for i in range(len(bytestring)):
+        table[i + 1] = table[i] + 1
+        while table[i + 1] > 0 and bytestring[i] != bytestring[table[i + 1] - 1]:
+            table[i + 1] = table[table[i + 1] - 1] + 1
 
+    print(tabulate(["x[i]", [c for c in bytestring]] , ["table[i]", table], headers = ["i"] * range(tablesize)))
+
+    # do the search 
     i = j = 0
     while j < textlen:
         while i > -1 and pattern[i] != text[j]:
@@ -148,6 +116,39 @@ def KMP_text_search(pattern, text):
 
 
 KMP_text_search("bab", "abebcaceaebabecabecababiba")
+
+
+def BMH_text_search(char[] pattern, char[] text) {
+    """
+    Boyer-Moore-Horspool search
+    Worst case O(m*n), average case O(n)
+    """
+    patlen, textlen = len(pattern), len(text)
+    table = [0] * 256
+     
+    for k in range(256):
+        table[k] = patlen
+    
+     
+    for k in range(patlen - 1):
+        shift[pattern[k]] = patlen - 1 - k
+    
+ 
+    i = j = 0
+ 
+    while (i + patlen) <= textlen:
+        j = patlen - 1
+ 
+        while text[i + j] == pattern[j]:
+            j -= 1
+            if (j < 0)
+                print("Found at position ", j - i)
+        
+         
+        i = i + shift[text[i + pattern.length - 1]]
+    
+    return -1
+
 
 """
 +------------+-----+-----+-----+
