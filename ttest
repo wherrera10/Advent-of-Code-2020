@@ -1,7 +1,4 @@
-    
 import Base.iterate, Base.IteratorSize, Base.IteratorEltype
-
-diffbyone(bas) = sort([[i, j] for i in 0:bas-1, j in 0:bas-1 if abs(i - j) == 1])
 
 function filldecreasing(vec, pos)
     n = vec[pos]
@@ -14,28 +11,41 @@ end
 struct Esthetic
     n::Int128
     base::UInt8
-    pairs::Vector{Vector{Int}}
-    Esthetic(n, bas) = new(n, bas, diffbyone(bas))
+    Esthetic(n, bas) = new(n, bas)
 end
 
 Base.IteratorSize(n::Esthetic) = Base.IsInfinite()
 Base.IteratorEltype(n::Esthetic) = Int128
 
+function increment(vec, bas, startpos = 1)
+    if length(vec) == 1
+        return vec > bas - 2 ? [1, 0] : [vec[1] + 1]
+    end
+    pos = findfirst(vec[i] < vec[i + i], startpos:length(vec)-1)
+    if pos == nothing
+        if vec[end] >= bas - 1
+            return filldecreasing(vcat(vec, 1))
+        else
+            vec[end] += 1
+            return filldecreasing(vec, length(vec))
+        end
+    else
+        if vec[pos] < bas - 2
+            vec[pos] += 2
+            return filldecreasing(vec, pos)
+        else
+            return increment(vec, bas, pos + 1)
+        end
+    end
+end
+
+toInt128(dig) = foldr((i, j) -> i + Int128(10)j, dig)
  
 function Base.iterate(es::Esthetic, state=Int[])
     if isempty(state)
         state = digits(es.n, base=es.base)
     end
-    pos = findfirst(state[i] < state[i + i], i:length(state)-1)
-    if pos == nothing
-        if state[end] == 9
-            state = filldecreasing(vcat(fill(0, length(state)), 1))
-        else
-            state[1] += 2
-        end
-    else
-        state[pos] += 2
-    end
-
-    return n , state
+    state = increment(state, es.base, 1)
+    es.n = toInt128(state)
+    return es.n, (es, state)
 end
