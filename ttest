@@ -1,164 +1,41 @@
-#=
-{{draft task}} 
-<br>
+    
+import Base.iterate, Base.IteratorSize, Base.IteratorEltype
 
-Methods for computer searches for a pattern in a text are callled string-searching or string-matching algorithms.  
-Most such  algorithms are preferred over a naive serch because of the decrease they yield in search time. For example, the 
-Knuth-Morris-Pratt algorithm decreases the search time on average from O(nm) to O(n), where n is the search text length
-and m is the pattern length. The Knuth-Morris-Pratt or KMP algorithm precomputes a jump table to shorten the number of
-charachter matches needed. The table is computed in O(m) time, which is a good tradeoff when, as is typical, the pattern is 
-much shorter than the text.
+diffbyone(bas) = sort([[i, j] for i in 0:bas-1, j in 0:bas-1 if abs(i - j) == 1])
 
-The pseudocode below is from Wikipedia:
-	
-algorithm kmp_table:
-    input:
-        an array of characters, W (the word to be analyzed)
-        an array of integers, T (the table to be filled)
-    output:
-        nothing (but during operation, it populates the table)
+function filldecreasing(vec, pos)
+    n = vec[pos]
+    for i in pos:-1:1
+        n = (n <= 0) ? 1 : n - 1
+        vec[i] = n
+    end
+end
 
-    define variables:
-        an integer, pos ← 1 (the current position we are computing in T)
-        an integer, cnd ← 0 (the zero-based index in W of the next character of the current candidate substring)
+struct Esthetic
+    n::Int128
+    base::UInt8
+    pairs::Vector{Vector{Int}}
+    Esthetic(n, bas) = new(n, bas, diffbyone(bas))
+end
 
-    let T[0] ← -1
+Base.IteratorSize(n::Esthetic) = Base.IsInfinite()
+Base.IteratorEltype(n::Esthetic) = Int128
 
-    while pos < length(W) do
-        if W[pos] = W[cnd] then
-            let T[pos] ← T[cnd]
+ 
+function Base.iterate(es::Esthetic, state=Int[])
+    if isempty(state)
+        state = digits(es.n, base=es.base)
+    end
+    pos = findfirst(state[i] < state[i + i], i:length(state)-1)
+    if pos == nothing
+        if state[end] == 9
+            state = filldecreasing(vcat(fill(0, length(state)), 1))
         else
-            let T[pos] ← cnd
-            let cnd ← T[cnd] (to increase performance)
-            while cnd ≥ 0 and W[pos] <> W[cnd] do
-                let cnd ← T[cnd]
-        let pos ← pos + 1, cnd ← cnd + 1
+            state[1] += 2
+        end
+    else
+        state[pos] += 2
+    end
 
-    let T[pos] ← cnd (only need when all word occurrences searched)
-    
-algorithm kmp_search:
-    input:
-        an array of characters, S (the text to be searched)
-        an array of characters, W (the word sought)
-    output:
-        an array of integers, P (positions in S at which W is found)
-        an integer, nP (number of positions)
-
-    define variables:
-        an integer, j ← 0 (the position of the current character in S)
-        an integer, k ← 0 (the position of the current character in W)
-        an array of integers, T (the table, computed elsewhere)
-
-    let nP ← 0
-
-    while j < length(S) do
-        if W[k] = S[j] then
-            let j ← j + 1
-            let k ← k + 1
-            if k = length(W) then
-                (occurrence found, if only first occurrence is needed, m ← j - k  may be returned here)
-                let P[nP] ← j - k, nP ← nP + 1
-                let k ← T[k] (T[length(W)] can't be -1)
-        else
-            let k ← T[k]
-            if k < 0 then
-                let j ← j + 1
-                let k ← k + 1
-
-
-;Example:
-
-
-;Task
-
-
-;Related tasks:
-:* &nbsp; [https://rosettacode.org/wiki/Greatest_common_divisor Greatest common divisor].
-:* &nbsp; [https://rosettacode.org/wiki/Plot_coordinate_pairs Plot coordinate pairs].
-
-
-;See also:
-
-=#
-
-from tabulate import tabulate
-
-def KMP_text_search(pattern, text):
-    """
-    Knuth- text search
-    O(m+n), near O(n) for large n, small m
-    """
-    patlen, textlen = len(pattern), len(text)
-    if patlen == 0:
-        return -1
-
-    # make the lookup table
-    table = [0] * (tablesize + 1)
-    i, table[0] = 0, -1
-    for i in range(len(bytestring)):
-        table[i + 1] = table[i] + 1
-        while table[i + 1] > 0 and bytestring[i] != bytestring[table[i + 1] - 1]:
-            table[i + 1] = table[table[i + 1] - 1] + 1
-
-    print(tabulate(["x[i]", [c for c in bytestring]] , ["table[i]", table], headers = ["i"] * range(tablesize)))
-
-    # do the search 
-    i = j = 0
-    while j < textlen:
-        while i > -1 and pattern[i] != text[j]:
-            i = lookup_table[i]
-        i += 1
-        j += 1
-        if i >= patlen:
-            print("Found at position ", j - i)
-            i = lookup_table[i]
-
-
-
-KMP_text_search("bab", "abebcaceaebabecabecababiba")
-
-
-def BMH_text_search(char[] pattern, char[] text) {
-    """
-    Boyer-Moore-Horspool search
-    Worst case O(m*n), average case O(n)
-    """
-    patlen, textlen = len(pattern), len(text)
-    table = [0] * 256
-     
-    for k in range(256):
-        table[k] = patlen
-    
-     
-    for k in range(patlen - 1):
-        shift[pattern[k]] = patlen - 1 - k
-    
- 
-    i = j = 0
- 
-    while (i + patlen) <= textlen:
-        j = patlen - 1
- 
-        while text[i + j] == pattern[j]:
-            j -= 1
-            if (j < 0)
-                print("Found at position ", j - i)
-        
-         
-        i = i + shift[text[i + pattern.length - 1]]
-    
-    return -1
-
-
-"""
-+------------+-----+-----+-----+
-|            | 0   | 1   | 2   |
-+============+=====+=====+=====+
-| pattern[i] | b   | a   | b   |
-+------------+-----+-----+-----+
-| table[i]   | -1  | 0   | 0   |
-+------------+-----+-----+-----+
-Found at position  10
-Found at position  20
-"""
-
+    return n , state
+end
