@@ -1,51 +1,64 @@
 import Base.iterate, Base.IteratorSize, Base.IteratorEltype
 
-toInt128(dig, bas) = foldr((i, j) -> i + Int128(bas) * j, dig)
-
-function filldecreasing(vec, pos)
+function filldecreasing!(vec, pos)
     n = vec[pos]
-    for i in pos:-1:1
+    for i in pos-1:-1:1
         n = (n <= 0) ? 1 : n - 1
         vec[i] = n
     end
+    return vec
 end
 
 struct Esthetic
-    n::Int128
-    base::UInt8
-    Esthetic(n, bas) = new(n, bas)
+    lowerlimit::Int
+    base::Int
+    upperlimit::Int
+    Esthetic(n, bas, m = typemax(Int)) = new(nextesthetic(n, bas), bas, m)
 end
 
 Base.IteratorSize(n::Esthetic) = Base.IsInfinite()
 Base.IteratorEltype(n::Esthetic) = Int128
 
-function increment(vec, bas, startpos = 1)
-    if length(vec) == 1
-        return vec > bas - 2 ? [1, 0] : [vec[1] + 1]
+toInt(dig, bas) = foldr((i, j) -> i + bas * j, dig)
+nextesthetic(n, bas) = toInt(increment!(digits(n, base=bas), bas, true), bas)
+
+function increment!(dig, bas, allowequal=false)
+    len = length(dig)
+    if len == 1
+        return allowequal ? max(1, dig[1]) : dig[1] > bas - 2 ? [1, 0] : [dig[1] + 1]
     end
-    pos = findfirst(vec[i] < vec[i + i], startpos:length(vec)-1)
-    if pos == nothing
-        if vec[end] >= bas - 1
-            return filldecreasing(vcat(vec, 1))
-        else
-            vec[end] += 1
-            return filldecreasing(vec, length(vec))
+    for i in len:-1:2
+        if !allowequal && i == 2 && dig[1] in [dig[2] - 1, dig[2] + 1]
+            dig[1] += 1
         end
-    else
-        if vec[pos] < bas - 2
-            vec[pos] += 2
-            return filldecreasing(vec, pos)
-        else
-            return increment(vec, bas, pos + 1)
+        if dig[i - 1] != dig[i] -1 && dig[i - 1] != dig[i] + 1
+            if dig[i - 1] < dig[i] - 1
+                dig[i - 1] = dig[i] - 1
+                dig = filldecreasing!(dig, i - 1)
+            elseif dig[i - 1] == dig[i] && dig[i] < bas - 1
+                dig[i - 1] = dig[i] + 1
+                dig = filldecreasing!(dig, i - 1)
+            else # dig[i - 1] > dig[i] + 1 so will get next dig via recursion
+                dig[i] = dig[i] + 1
+                dig = filldecreasing!(dig, i)
+                dig = increment!(dig, bas, true)
+            end
+            break
         end
     end
+    return dig
 end
  
 function Base.iterate(es::Esthetic, state=Int[])
-    if isempty(state)
-        state = digits(es.n, base=es.base)
-    end
-    state = increment(state, es.base, 1)
-    es.n = toInt128(state, es.base)
-    return es.n, (es, state)
+    state = isempty(state) ? digits(es.lowerlimit, base=es.base) : increment!(state, es.base)
+    n = toInt(state, es.base)
+    return n <= es.upperlimit ? (
+    n, state) : nothing
 end
+
+for b in 2:16
+    bmin, bmax = 4b, 6b
+    println("The $(4b) through $(6b) esthetic numbers of base $b are:")
+    println(string.(collect(Iterators.take(Esthetic(1, b), bmax)), base=b)[bmin:bmax])
+end
+
