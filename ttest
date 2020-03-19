@@ -1,5 +1,7 @@
 import Base.iterate, Base.IteratorSize, Base.IteratorEltype
 
+toInt128(dig, bas) = foldr((i, j) -> i + Int128(bas) * j, dig)
+
 function filldecreasing(vec, pos)
     n = vec[pos]
     for i in pos:-1:1
@@ -38,14 +40,12 @@ function increment(vec, bas, startpos = 1)
         end
     end
 end
-
-toInt128(dig) = foldr((i, j) -> i + Int128(10)j, dig)
  
 function Base.iterate(es::Esthetic, state=Int[])
     if isempty(state)
         state = digits(es.n, base=es.base)
     end
     state = increment(state, es.base, 1)
-    es.n = toInt128(state)
+    es.n = toInt128(state, es.base)
     return es.n, (es, state)
 end
