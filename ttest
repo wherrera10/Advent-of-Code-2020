@@ -25,7 +25,8 @@ nextesthetic(n, bas) = toInt(increment!(digits(n, base=bas), bas, true), bas)
 function increment!(dig, bas, allowequal=false)
     len = length(dig)
     if len == 1
-        return allowequal ? max(1, dig[1]) : dig[1] > bas - 2 ? [1, 0] : [dig[1] + 1]
+        x = allowequal ? dig : (dig[1] > bas - 2 ? [0, 1] : [dig[1] + 1])
+        return x
     end
     for i in len:-1:2
         if !allowequal && i == 2 && dig[1] in [dig[2] - 1, dig[2] + 1]
@@ -38,10 +39,18 @@ function increment!(dig, bas, allowequal=false)
             elseif dig[i - 1] == dig[i] && dig[i] < bas - 1
                 dig[i - 1] = dig[i] + 1
                 dig = filldecreasing!(dig, i - 1)
-            else # dig[i - 1] > dig[i] + 1 so will get next dig via recursion
-                dig[i] = dig[i] + 1
-                dig = filldecreasing!(dig, i)
-                dig = increment!(dig, bas, true)
+            else 
+                if(pos = findfirst(j -> dig[j] < dig[j + 1], i:len-1)) != nothing    
+                    dig[pos + i - 1] += 2
+                    dig = filldecreasing!(dig, pos + i - 1)
+                else
+                    if dig[len] > bas - 2
+                        dig = filldecreasing!(vcat(dig, 1), len + 1)
+                    else
+                        dig[len] += 1
+                        dig = filldecreasing!(dig, len)
+                    end
+                end
             end
             break
         end
@@ -58,7 +67,8 @@ end
 
 for b in 2:16
     bmin, bmax = 4b, 6b
-    println("The $(4b) through $(6b) esthetic numbers of base $b are:")
+    println("The $bmin through $bmax esthetic numbers of base $b are:")
     println(string.(collect(Iterators.take(Esthetic(1, b), bmax)), base=b)[bmin:bmax])
 end
+
 
