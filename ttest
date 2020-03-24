@@ -1,74 +1,94 @@
-import Base.iterate, Base.IteratorSize, Base.IteratorEltype
+#=
+=={{header|Julia}}==
+{{trans|Go}}
+<lang julia>
+=#
+import Base.print
 
-function filldecreasing!(vec, pos)
-    n = vec[pos]
-    for i in pos-1:-1:1
-        n = (n <= 0) ? 1 : n - 1
-        vec[i] = n
-    end
-    return vec
+mutable struct Node
+    sub::String
+    ch::Vector{Int}
+    Node(str, v=Int[]) = new(str, v)
 end
 
-struct Esthetic
-    lowerlimit::Int
-    base::Int
-    upperlimit::Int
-    Esthetic(n, bas, m = typemax(Int)) = new(nextesthetic(n, bas), bas, m)
-end
-
-Base.IteratorSize(n::Esthetic) = Base.IsInfinite()
-Base.IteratorEltype(n::Esthetic) = Int128
-
-toInt(dig, bas) = foldr((i, j) -> i + bas * j, dig)
-nextesthetic(n, bas) = toInt(increment!(digits(n, base=bas), bas, true), bas)
-
-function increment!(dig, bas, allowequal=false)
-    len = length(dig)
-    if len == 1
-        x = allowequal ? dig : (dig[1] > bas - 2 ? [0, 1] : [dig[1] + 1])
-        return x
-    end
-    for i in len:-1:2
-        if !allowequal && i == 2 && dig[1] in [dig[2] - 1, dig[2] + 1]
-            dig[1] += 1
+struct SuffixTree
+    nodes::Vector{Node}
+    function SuffixTree(s::String)
+        nod = [Node("", Int[])]
+        for i in 1:length(s)
+            addSuffix!(nod, s[i:end])
         end
-        if dig[i - 1] != dig[i] -1 && dig[i - 1] != dig[i] + 1
-            if dig[i - 1] < dig[i] - 1
-                dig[i - 1] = dig[i] - 1
-                dig = filldecreasing!(dig, i - 1)
-            elseif dig[i - 1] == dig[i] && dig[i] < bas - 1
-                dig[i - 1] = dig[i] + 1
-                dig = filldecreasing!(dig, i - 1)
-            else 
-                if(pos = findfirst(j -> dig[j] < dig[j + 1], i:len-1)) != nothing    
-                    dig[pos + i - 1] += 2
-                    dig = filldecreasing!(dig, pos + i - 1)
-                else
-                    if dig[len] > bas - 2
-                        dig = filldecreasing!(vcat(dig, 1), len + 1)
-                    else
-                        dig[len] += 1
-                        dig = filldecreasing!(dig, len)
-                    end
-                end
+        return new(nod)
+    end
+end
+
+function addSuffix!(tree::Vector{Node}, suf::String)
+    n, i = 1, 1
+    while i <= length(suf)
+        x2, n2, b = 1, 1, suf[i]
+        while true
+            children = tree[n].ch
+            if x2 > length(children)
+                push!(tree, Node(suf[i:end]))
+                push!(tree[n].ch, length(tree))
+                return
             end
-            break
+            n2 = children[x2]
+            (tree[n2].sub[1] == b) && break
+            x2 += 1
+        end
+        sub2, j = tree[n2].sub, 0
+        while j < length(sub2)
+            if suf[i + j] != sub2[j + 1]
+                push!(tree, Node(sub2[1:j], [n2]))
+                tree[n2].sub = sub2[j+1:end]
+                n2 = length(tree)
+                tree[n].ch[x2] = n2
+                break
+            end
+            j += 1
+        end
+        i += j
+        n = n2
+    end
+end
+
+function Base.print(io::IO, suffixtree::SuffixTree)
+    function treeprint(n::Int, pre::String)
+        children = suffixtree.nodes[n].ch
+        if isempty(children)
+            println(io, "╴ ", suffixtree.nodes[n].sub)
+        else
+            println(io, "┐ ", suffixtree.nodes[n].sub)
+            for c in children[1:end-1]
+                print(io, pre, "├─")
+                treeprint(c, pre * "│ ")
+            end
+            print(io, pre, "└─")
+            treeprint(children[end], pre * "  ")
         end
     end
-    return dig
-end
- 
-function Base.iterate(es::Esthetic, state=Int[])
-    state = isempty(state) ? digits(es.lowerlimit, base=es.base) : increment!(state, es.base)
-    n = toInt(state, es.base)
-    return n <= es.upperlimit ? (
-    n, state) : nothing
+    if isempty(suffixtree.nodes)
+        println(io, "<empty>")
+    else
+        treeprint(1, "")
+    end
 end
 
-for b in 2:16
-    bmin, bmax = 4b, 6b
-    println("The $bmin through $bmax esthetic numbers of base $b are:")
-    println(string.(collect(Iterators.take(Esthetic(1, b), bmax)), base=b)[bmin:bmax])
-end
-
-
+println(SuffixTree("banana\$"))
+#=
+</lang> {{out}}
+<pre>
+┐
+├─╴ banana$
+├─┐ a
+│ ├─┐ na
+│ │ ├─╴ na$
+│ │ └─╴ $
+│ └─╴ $
+├─┐ na
+│ ├─╴ na$
+│ └─╴ $
+└─╴ $
+</pre>
+=#
