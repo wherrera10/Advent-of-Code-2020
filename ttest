@@ -41,12 +41,12 @@ function process_chemical_element_list(s = CHEMICAL_ELEMENTS)
 end
 
 function report()
-    filedate = 
+    filedate = Dates.unix2datetime(mtime(@__FILE__))
     element_list = process_chemical_element_list()
     element_count = length(element_list)
     last_element_in_list = element_list[end]
     
-    println("File last revised:", filedate)
+    println("File last revised (formatted as dateTtime):", filedate)
     println("Length of element list: ", element_count)
     println("last element in list: ", last_element_in_list
 end
