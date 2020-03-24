@@ -39,14 +39,6 @@ function process_chemical_element_list(s = CHEMICAL_ELEMENTS)
 end
 
 
-
-
-
-#=
-=={{header|Julia}}==
-{{trans|Go}}
-<lang julia>
-=#
 import Base.print
 
 mutable struct Node
@@ -121,8 +113,6 @@ end
 
 println(SuffixTree("banana\$"))
 #=
-</lang> {{out}}
-<pre>
 ┐
 ├─╴ banana$
 ├─┐ a
@@ -134,5 +124,4 @@ println(SuffixTree("banana\$"))
 │ ├─╴ na$
 │ └─╴ $
 └─╴ $
-</pre>
 =#
