@@ -1,3 +1,5 @@
+using Dates
+
 # FOR FUTURE EDITORS:
 #
 # Add to this list by adding more lines of text to this listing, placing the
@@ -37,6 +39,19 @@ function process_chemical_element_list(s = CHEMICAL_ELEMENTS)
     # return a list after splitting using whitespace between words as a separator
     return [element for element in split(s, r"\s+") if !(element in EXCLUDED)]
 end
+
+function report()
+    filedate = 
+    element_list = process_chemical_element_list()
+    element_count = length(element_list)
+    last_element_in_list = element_list[end]
+    
+    println("File last revised:", filedate)
+    println("Length of element list: ", element_count)
+    println("last element in list: ", last_element_in_list
+end
+
+report()
 
 
 import Base.print
