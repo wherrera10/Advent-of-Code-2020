@@ -1,142 +1,20 @@
-using Dates
+using Luxor
 
-# FOR FUTURE EDITORS:
-#
-# Add to this list by adding more lines of text to this listing, placing the
-# new words of text before the last """ below, with all entries separated by
-# spaces.
-#
-const CHEMICAL_ELEMENTS = """
+const centers = [Point(3, -5), Point(0, 0), Point(4, 2)]
+const rads = [3, 4, 5]
+const lins = [
+    [Point(-10, 11), Point(10, -9)], [Point(-10, 11), Point(-11, 12)], 
+    [Point(3, -2), Point(7, -2)], [Point(0, -3), Point(0, 6)], 
+    [Point(6, 3), Point(10, 7)], [Point(7, 4), Point(11, 8)],
+]
 
-Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon 
-Sodium Magnesium Aluminum Silicon Phosphorus Sulfur Chlorine Argon Potassium 
-Calcium Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper
-Zinc Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium 
-Yttrium Zirconium Niobium Molybdenum Technetium Ruthenium Rhodium Palladium 
-Silver Cadmium Indium Tin Antimony Tellurium Iodine Xenon Cesium Barium 
-Lanthanum Cerium Praseodymium Neodymium Promethium Samarium Europium Gadolinium
-Terbium Dysprosium Holmium Erbium Thulium Ytterbium Lutetium Hafnium Tantalum 
-Tungsten Rhenium Osmium Iridium Platinum Gold Mercury Thallium Lead Bismuth 
-Polonium Astatine Radon Francium Radium Actinium Thorium Protactinium Uranium 
-Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium 
-Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium 
-Meitnerium Darmstadtium Roentgenium Copernicium Nihonium Flerovium Moscovium
-Livermorium Tennessine Oganesson
-
-
-"""
-#
-# END OF ABOVE LISTING--DO NOT ADD ELEMENTS BELOW THIS LINE
-#
-
-const EXCLUDED = split(strip(
-"""ununennium unquadnilium triunhexium penthextrium penthexpentium """ *
-""" septhexunium octenntrium ennennbium"""), r"\s+")
-
-function process_chemical_element_list(s = CHEMICAL_ELEMENTS)
-    # remove leading and trailing whitespace
-    s = strip(s)
-    # return a list after splitting using whitespace between words as a separator
-    return [element for element in split(s, r"\s+") if !(element in EXCLUDED)]
+println("Center", " "^12, "Radius", " "^6, "Line P1", " "^12, "Line P2", " "^7,
+    "Segment?   Intersect 1       Intersect 2")
+for (cr, l, extended) in [(1, 1, true), (1, 2, false), (1, 3, false), 
+        (2, 4, true), (2, 4, false), (3, 5, true), (3, 6, false)]
+    tup = intersectionlinecircle(lins[l][1], lins[l][2], centers[cr], rads[cr])
+    v = [p for p in tup[2:end] if extended || ispointonline(p, lins[l][1], lins[l][2])]
+    println(rpad(centers[cr], 18), rads[cr], " "^6, rpad(lins[l][1], 18),
+        rpad(lins[l][2], 15), extended, "  ", isempty(v) ? "" : 
+            length(v) == 2 ? "$(v[1])   $(v[2])" : v[1])
 end
-
-function report()
-    filedate = Dates.unix2datetime(mtime(@__FILE__)
-    element_list = process_chemical_element_list()
-    element_count = length(element_list)
-    last_element_in_list = element_list[end]
-    
-    println("File last revised (formatted as dateTtime):", filedate, " GMT")
-    println("Length of element list: ", element_count)
-    println("last element in list: ", last_element_in_list)
-end
-
-report()
-
-
-import Base.print
-
-mutable struct Node
-    sub::String
-    ch::Vector{Int}
-    Node(str, v=Int[]) = new(str, v)
-end
-
-struct SuffixTree
-    nodes::Vector{Node}
-    function SuffixTree(s::String)
-        nod = [Node("", Int[])]
-        for i in 1:length(s)
-            addSuffix!(nod, s[i:end])
-        end
-        return new(nod)
-    end
-end
-
-function addSuffix!(tree::Vector{Node}, suf::String)
-    n, i = 1, 1
-    while i <= length(suf)
-        x2, n2, b = 1, 1, suf[i]
-        while true
-            children = tree[n].ch
-            if x2 > length(children)
-                push!(tree, Node(suf[i:end]))
-                push!(tree[n].ch, length(tree))
-                return
-            end
-            n2 = children[x2]
-            (tree[n2].sub[1] == b) && break
-            x2 += 1
-        end
-        sub2, j = tree[n2].sub, 0
-        while j < length(sub2)
-            if suf[i + j] != sub2[j + 1]
-                push!(tree, Node(sub2[1:j], [n2]))
-                tree[n2].sub = sub2[j+1:end]
-                n2 = length(tree)
-                tree[n].ch[x2] = n2
-                break
-            end
-            j += 1
-        end
-        i += j
-        n = n2
-    end
-end
-
-function Base.print(io::IO, suffixtree::SuffixTree)
-    function treeprint(n::Int, pre::String)
-        children = suffixtree.nodes[n].ch
-        if isempty(children)
-            println(io, "╴ ", suffixtree.nodes[n].sub)
-        else
-            println(io, "┐ ", suffixtree.nodes[n].sub)
-            for c in children[1:end-1]
-                print(io, pre, "├─")
-                treeprint(c, pre * "│ ")
-            end
-            print(io, pre, "└─")
-            treeprint(children[end], pre * "  ")
-        end
-    end
-    if isempty(suffixtree.nodes)
-        println(io, "<empty>")
-    else
-        treeprint(1, "")
-    end
-end
-
-println(SuffixTree("banana\$"))
-#=
-┐
-├─╴ banana$
-├─┐ a
-│ ├─┐ na
-│ │ ├─╴ na$
-│ │ └─╴ $
-│ └─╴ $
-├─┐ na
-│ ├─╴ na$
-│ └─╴ $
-└─╴ $
-=#
