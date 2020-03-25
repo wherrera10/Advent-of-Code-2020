@@ -1,20 +1,49 @@
-using Luxor
+using PortAudio
 
-const centers = [Point(3, -5), Point(0, 0), Point(4, 2)]
-const rads = [3, 4, 5]
-const lins = [
-    [Point(-10, 11), Point(10, -9)], [Point(-10, 11), Point(-11, 12)], 
-    [Point(3, -2), Point(7, -2)], [Point(0, -3), Point(0, 6)], 
-    [Point(6, 3), Point(10, 7)], [Point(7, 4), Point(11, 8)],
-]
+"""Continuously read from the default audio input and plot an
+ASCII level/peak meter"""
+function micmeter(metersize)
+    mic = PortAudioStream(1, 1)
 
-println("Center", " "^9, "Radius", " "^4, "Line P1", " "^14, "Line P2", " "^7,
-    "Segment?   Intersect 1       Intersect 2")
-for (cr, l, extended) in [(1, 1, true), (1, 2, false), (1, 3, false), 
-        (2, 4, true), (2, 4, false), (3, 5, true), (3, 6, false)]
-    tup = intersectionlinecircle(lins[l][1], lins[l][2], centers[cr], rads[cr])
-    v = [p for p in tup[2:end] if extended || ispointonline(p, lins[l][1], lins[l][2])]
-    println(rpad(centers[cr], 17), rads[cr], " "^3, rpad(lins[l][1], 21),
-        rpad(lins[l][2], 19), rpad(!extended, 8), isempty(v) ? "" : 
-            length(v) == 2 ? rpad(v[1], 18) * string(v[2]) : v[1])
+    signalmax = zero(eltype(mic))
+    println("Press Ctrl-C to quit")
+    while true
+        block = read(mic, 512)
+        blockmax = maximum(abs.(block)) # find the maximum value in the block
+        signalmax = max(signalmax, blockmax) # keep the maximum value ever
+        print("\r") # reset the cursor to the beginning of the line
+        printmeter(metersize, blockmax, signalmax)
+    end
 end
+
+"""Print an ASCII level meter of the given size. Signal and peak
+levels are assumed to be scaled from 0.0-1.0, with peak >= signal"""
+function printmeter(metersize, signal, peak)
+    # calculate the positions in terms of characters
+    peakpos = clamp(round(Int, peak * metersize), 0, metersize)
+    meterchars = clamp(round(Int, signal * metersize), 0, peakpos-1)
+    blankchars = max(0, peakpos-meterchars-1)
+
+    for position in 1:meterchars
+        printstyled(">", color=barcolor(metersize, position))
+    end
+
+    print(" " ^ blankchars)
+    printstyled("|", color=barcolor(metersize, peakpos))
+    print(" " ^ (metersize - peakpos))
+end
+
+"""Compute the proper color for a given position in the bar graph. The first
+half of the bar should be green, then the remainder is yellow except the final
+character, which is red."""
+function barcolor(metersize, position)
+    if position/metersize <= 0.5
+        :green
+    elseif position == metersize
+        :red
+    else
+        :yellow
+    end
+end
+
+micmeter(80)
