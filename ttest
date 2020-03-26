@@ -1,73 +1,61 @@
-# plot a real-time spectrogram. This example is adapted from the GR example
-# at http://gr-framework.org/examples/audio_ex.html
+Julia's string literals are delineated by double quotes <code>" "</code>, which 
+define string data that must begin and end on the sme line, and triple double quotes 
+<code>""" """</code>, which may encompass multiple lines, with the embedded newlines 
+and double quote characters kept as-is in such strings.
 
-module SpectrumExample
+Single quotes in Julia are reserved for single characterssuch as ' ', which in Julia may be 
+single 32-byte Unicode code characters as well as ordinary ACII code characters. The 
+characters making up Julia strings may be any combination of ASCII, UTF-8, or Unicode data. 
 
-using FFTW, GR, PortAudio, SampledSignals
+The following, from the Julia REPL, defines a single line string in Julia:
 
-const N = 1024
-const stream = PortAudioStream(1, 1)
-const buf = read(stream, N)
-const fmin = 0Hz
-const fmax = 10000Hz
-const fs = Float32[float(f) for f in domain(fft(buf)[fmin..fmax])]
+<code>
+julia> str = "Hello, world.\n"
+"Hello, world.\n"
 
-while true
-    read!(stream, buf)
-    plot(fs, abs.(fft(buf)[fmin..fmax]), xlim=(fs[1],fs[end]), ylim=(0,8))
-end
+julia> """Contains "quote" characters"""
+"Contains \"quote\" characters"
 
-end
+julia> s = "Some Unicode: \u2200 x \u2203 y"
+"Some Unicode: ∀ x ∃ y"
+</code>
+
+Interpolation of strings can be done with all quoting constructs, and uses a '$' character
+prior to the variable name or, with code interpolation, the code is enclosed in parantheses
+and then the parentheses preceded by a '$' character:
+
+<code>
+julia> greet, whom = "hello", "world"
+("hello", "world")
+
+julia> "$greet, $whom.\n"  # $variable or $(code) is interpolated
+"Hello, world.\n"
+
+julia> "2 + 3 is $(2 + 3)"
+"2 + 3 is 5"
+</code>
+
+There are some special rules regarding leading newlines and spaces when defining 
+triple double quoted data, to make it easier to place such data in the text of the 
+program without having later to strip the data of unwanted formatting.
+
+Indentation of triple double quoted data is reduced to the extent to which 
+all of the data is indented. Leading newlines are removed in the triple double quote 
+starts at the end of a line. Therefore,
+
+<code>
+str = """
+   This multiline string will have any leading newline and its uniform 3 space indentation 
+   removed, but because the last line is indented 5 spaces, that will become a 2 space 
+     indent in the final result. The two ending newlines are preserved.
+   
+   """
+</code>
+   
+becomes:
+
+<code>
+"This multiline stringswill have any leading newline and its uniform 3 space indentation \nremoved, but because the last line is indented 5 spaces, that will become a 2 space \n  indent in the final result. The two ending newlines are preserved.\n\n"
+</code>
 
 
-
-
-using PortAudio
-
-"""Continuously read from the default audio input and plot an
-ASCII level/peak meter"""
-function micmeter(metersize)
-    mic = PortAudioStream(1, 1)
-
-    signalmax = zero(eltype(mic))
-    println("Press Ctrl-C to quit")
-    while true
-        block = read(mic, 512)
-        blockmax = maximum(abs.(block)) # find the maximum value in the block
-        signalmax = max(signalmax, blockmax) # keep the maximum value ever
-        print("\r") # reset the cursor to the beginning of the line
-        printmeter(metersize, blockmax, signalmax)
-    end
-end
-
-"""Print an ASCII level meter of the given size. Signal and peak
-levels are assumed to be scaled from 0.0-1.0, with peak >= signal"""
-function printmeter(metersize, signal, peak)
-    # calculate the positions in terms of characters
-    peakpos = clamp(round(Int, peak * metersize), 0, metersize)
-    meterchars = clamp(round(Int, signal * metersize), 0, peakpos-1)
-    blankchars = max(0, peakpos-meterchars-1)
-
-    for position in 1:meterchars
-        printstyled(">", color=barcolor(metersize, position))
-    end
-
-    print(" " ^ blankchars)
-    printstyled("|", color=barcolor(metersize, peakpos))
-    print(" " ^ (metersize - peakpos))
-end
-
-"""Compute the proper color for a given position in the bar graph. The first
-half of the bar should be green, then the remainder is yellow except the final
-character, which is red."""
-function barcolor(metersize, position)
-    if position/metersize <= 0.5
-        :green
-    elseif position == metersize
-        :red
-    else
-        :yellow
-    end
-end
-
-micmeter(80)
