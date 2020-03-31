@@ -1,6 +1,5 @@
 function doif_equals(word, pattern, insens=false)
     regex = insens ? Regex("^$pattern\$", "i") : Regex("^$pattern\$")
-
     return replace(word, regex => "X"^length(pattern))
 end
 doif_ci_equals(word, pattern) = doif_equals(word, pattern, true)
@@ -12,8 +11,8 @@ end
 doif_ci_includes(word, pattern) = doif_includes(word, pattern, true)
 
 function overkill(word, pattern, insens=false)
-    r = insens ? Regex(pattern, "i") : Regex(pattern)
-    return occursin(r, word) ? "X"^length(word) : word
+    regex = insens ? Regex(pattern, "i") : Regex(pattern)
+    return occursin(regex, word) ? "X"^length(word) : word
 end
 ci_overkill(word, pattern) = overkill(word, pattern, true)
 
@@ -26,12 +25,9 @@ const method = Dict(
     "[p|i|o]" => ci_overkill
 )
 
-allnonwords(s) = split(s, r"[a-zA-Z\-\|\[\]\']+")
-allwords(s) = filter(!=(""), split(s, r"[\s\?\"\.]+"))
-
 function redact(teststring, pattern)
-    ws = allnonwords(teststring)
-    words = allwords(teststring)
+    ws = split(teststring, r"[a-zA-Z\u200d\u1f400-\u1f9ff\-\|\[\]\']+")
+    words = filter(!=(""), split(teststring, r"[\s\?\"\.]+"))
     fs = popfirst!(words)
     f = method[fs]
     return fs * ws[2] * mapreduce(i -> f(words[i], pattern) * ws[i + 2], *, 1:length(words))
@@ -45,10 +41,14 @@ const testtext = """
 [p|s|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
 [p|i|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
 """
+const stretchtext = "[w|s|n] \u1f9d1 \u1f468 \u1f9d4 \u1f468\u200d\u1f469\u200d\u1f466 "
 
-for pat in ["Tom", "tom"]
-    println("\nWith pattern \"$pat\":")
-    for s in string.(split(strip(testtext), r"\n"))
-        println(redact(s, pat))
+for test in [(testtext, ["Tom", "tom"]), (stretchtext, ["\u1f468", "\u1f468\u200d\u1f469\u200d\u1f466"])]
+    for pat in test[2]
+        println("\nWith pattern \"$pat\":")
+        for teststring in string.(split(strip(test[1]), r"\n"))
+            println(redact(teststring, pat))
+        end
     end
+    println()
 end
