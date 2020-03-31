@@ -1,61 +1,54 @@
-Julia's string literals are delineated by double quotes <code>" "</code>, which 
-define string data that must begin and end on the sme line, and triple double quotes 
-<code>""" """</code>, which may encompass multiple lines, with the embedded newlines 
-and double quote characters kept as-is in such strings.
+function doif_equals(word, pattern, insens=false)
+    regex = insens ? Regex("^$pattern\$", "i") : Regex("^$pattern\$")
 
-Single quotes in Julia are reserved for single characterssuch as ' ', which in Julia may be 
-single 32-byte Unicode code characters as well as ordinary ACII code characters. The 
-characters making up Julia strings may be any combination of ASCII, UTF-8, or Unicode data. 
+    return replace(word, regex => "X"^length(pattern))
+end
+doif_ci_equals(word, pattern) = doif_equals(word, pattern, true)
 
-The following, from the Julia REPL, defines a single line string in Julia:
+function doif_includes(word, pattern, insens=false)
+    regex = insens ? Regex(pattern, "i") : Regex(pattern)
+    return replace(word, regex => "X"^length(pattern))
+end
+doif_ci_includes(word, pattern) = doif_includes(word, pattern, true)
 
-<code>
-julia> str = "Hello, world.\n"
-"Hello, world.\n"
+function overkill(word, pattern, insens=false)
+    r = insens ? Regex(pattern, "i") : Regex(pattern)
+    return occursin(r, word) ? "X"^length(word) : word
+end
+ci_overkill(word, pattern) = overkill(word, pattern, true)
 
-julia> """Contains "quote" characters"""
-"Contains \"quote\" characters"
+const method = Dict(
+    "[w|s|n]" => doif_equals,
+    "[w|i|n]" => doif_ci_equals,
+    "[p|s|n]" => doif_includes,
+    "[p|i|n]" => doif_ci_includes,
+    "[p|s|o]" => overkill,
+    "[p|i|o]" => ci_overkill
+)
 
-julia> s = "Some Unicode: \u2200 x \u2203 y"
-"Some Unicode: ∀ x ∃ y"
-</code>
+allnonwords(s) = split(s, r"[a-zA-Z\-\|\[\]\']+")
+allwords(s) = filter(!=(""), split(s, r"[\s\?\"\.]+"))
 
-Interpolation of strings can be done with all quoting constructs, and uses a '$' character
-prior to the variable name or, with code interpolation, the code is enclosed in parantheses
-and then the parentheses preceded by a '$' character:
+function redact(teststring, pattern)
+    ws = allnonwords(teststring)
+    words = allwords(teststring)
+    fs = popfirst!(words)
+    f = method[fs]
+    return fs * ws[2] * mapreduce(i -> f(words[i], pattern) * ws[i + 2], *, 1:length(words))
+end
 
-<code>
-julia> greet, whom = "hello", "world"
-("hello", "world")
+const testtext = """
+[w|s|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+[w|i|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+[p|s|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+[p|i|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+[p|s|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+[p|i|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
+"""
 
-julia> "$greet, $whom.\n"  # $variable or $(code) is interpolated
-"Hello, world.\n"
-
-julia> "2 + 3 is $(2 + 3)"
-"2 + 3 is 5"
-</code>
-
-There are some special rules regarding leading newlines and spaces when defining 
-triple double quoted data, to make it easier to place such data in the text of the 
-program without having later to strip the data of unwanted formatting.
-
-Indentation of triple double quoted data is reduced to the extent to which 
-all of the data is indented. Leading newlines are removed in the triple double quote 
-starts at the end of a line. Therefore,
-
-<code>
-str = """
-   This multiline string will have any leading newline and its uniform 3 space indentation 
-   removed, but because the last line is indented 5 spaces, that will become a 2 space 
-     indent in the final result. The two ending newlines are preserved.
-   
-   """
-</code>
-   
-becomes:
-
-<code>
-"This multiline stringswill have any leading newline and its uniform 3 space indentation \nremoved, but because the last line is indented 5 spaces, that will become a 2 space \n  indent in the final result. The two ending newlines are preserved.\n\n"
-</code>
-
-
+for pat in ["Tom", "tom"]
+    println("\nWith pattern \"$pat\":")
+    for s in string.(split(strip(testtext), r"\n"))
+        println(redact(s, pat))
+    end
+end
