@@ -1,54 +1,41 @@
-function doif_equals(word, pattern, insens=false)
-    regex = insens ? Regex("^$pattern\$", "i") : Regex("^$pattern\$")
-    return replace(word, regex => "X"^length(pattern))
+const soundfilenae = "scale.wav"
+
+const solfa_to_freq = Dict{Float64, String(
+"DOH" => 130.81,
+"RAY" => 146.83,
+"MEE" => 164.81,
+"FAH" => 174.6,
+"SOH" => 196.00,
+"LAH" => 220.00,
+"TEE" => 246.94,
+"Doh" => 261.63,
+"Ray" => 293.66,
+"Mee" => 329.63,
+"Fah" => 349.23,
+"Soh" => 392.00,
+"Lah" => 440.00,
+"Tee" => 493.88,
+"doh" => 523.25,
+"ray" => 587.33,
+"mee" => 659.25,
+"fah" => 698.46,
+"soh" => 783.99,
+"lah" => 880.00,
+"tee" => 987.77,
+]
+
+const freq_to_solfa = Dict([v => k for (k, v) in solfa_to_freq])
+findclosestfrequency(freq) = (findmin(f -> abs(f - freq), keys(freq_to_solfa)))[2]
+
+function findmax(sample::Vector, fs)
+    F = fft(sample) |> fftshift
+    freqs = fftfreq(length(sample), fs) |> fftshift
+    return findclosestfrequency(freqs[findmax(abs.(F))[2]], fs)
 end
-doif_ci_equals(word, pattern) = doif_equals(word, pattern, true)
 
-function doif_includes(word, pattern, insens=false)
-    regex = insens ? Regex(pattern, "i") : Regex(pattern)
-    return replace(word, regex => "X"^length(pattern))
-end
-doif_ci_includes(word, pattern) = doif_includes(word, pattern, true)
+findclosestnote(sample, fs) = freq_to_solfa[findclosestfrequency(sample, fs)]
 
-function overkill(word, pattern, insens=false)
-    regex = insens ? Regex(pattern, "i") : Regex(pattern)
-    return occursin(regex, word) ? "X"^length(word) : word
-end
-ci_overkill(word, pattern) = overkill(word, pattern, true)
-
-const method = Dict(
-    "[w|s|n]" => doif_equals,
-    "[w|i|n]" => doif_ci_equals,
-    "[p|s|n]" => doif_includes,
-    "[p|i|n]" => doif_ci_includes,
-    "[p|s|o]" => overkill,
-    "[p|i|o]" => ci_overkill
-)
-
-function redact(teststring, pattern)
-    ws = split(teststring, r"[a-zA-Z\u200d\u1f400-\u1f9ff\-\|\[\]\']+")
-    words = filter(!=(""), split(teststring, r"[\s\?\"\.]+"))
-    fs = popfirst!(words)
-    f = method[fs]
-    return fs * ws[2] * mapreduce(i -> f(words[i], pattern) * ws[i + 2], *, 1:length(words))
-end
-
-const testtext = """
-[w|s|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-[w|i|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-[p|s|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-[p|i|n] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-[p|s|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-[p|i|o] Tom? Toms bottom tomato is in his stomach while playing the "Tom-tom" brand tom-toms. That's so tom.
-"""
-const stretchtext = "[w|s|n] \u1f9d1 \u1f468 \u1f9d4 \u1f468\u200d\u1f469\u200d\u1f466 "
-
-for test in [(testtext, ["Tom", "tom"]), (stretchtext, ["\u1f468", "\u1f468\u200d\u1f469\u200d\u1f466"])]
-    for pat in test[2]
-        println("\nWith pattern \"$pat\":")
-        for teststring in string.(split(strip(test[1]), r"\n"))
-            println(redact(teststring, pat))
-        end
-    end
-    println()
+function find_solfa_note(soundfile::String, fs=1440.0)
+    sample = read(soundfile, String)
+    return findclosestnote(sample, fs)
 end
