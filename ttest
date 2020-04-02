@@ -25,7 +25,7 @@ const solfa_to_freq = Dict{Float64, String(
 ]
 
 const freq_to_solfa = Dict([v => k for (k, v) in solfa_to_freq])
-findclosestfrequency(freq) = (findmin(f -> abs(f - freq), keys(freq_to_solfa)))[2]
+findclosestfrequency(freq) = argmax(f -> abs(f - freq), keys(freq_to_solfa))
 
 function findmax(sample::Vector, fs)
     F = fft(sample) |> fftshift
