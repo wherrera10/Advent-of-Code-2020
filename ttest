@@ -24,10 +24,12 @@ function findcircular(N)
 end
 
 function allonescircularprime()
-    for i in 6:60_000
-        n = BigInt(evalpoly(BigInt(10), ones(i)))
+    count = 0
+    for i in 6:100000
+        n = BigInt(evalpoly(BigInt(10), ones(Int, i)))
         if isprime(n)
             println("R($i)")
+            (count += 1) >= 4 && return
         end
     end
 end
@@ -35,10 +37,11 @@ end
 println("The first 19 circular primes are:\n", findcircular(19))
 println("\nThe next 4 circular primes, in repunit format, are:")
 allonescircularprime()
-
+println("\nChecking larger repunits:")
 for i in [5003, 9887, 15073, 25031, 35317, 49081]
-    n = BigInt(evalpoly(BigInt(10), ones(i)))
+    n = BigInt(evalpoly(BigInt(10), ones(Int, i)))
     if isprime(n)
         println("R($i) is prime")
     end
 end
+
