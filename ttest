@@ -6,41 +6,18 @@ Note that the evalpoly function used in the code was added in Julia 1.4
 using Primes
 
 function iscircularprime(n)
-    if isprime(n)
-        dig, ten = digits(n), zero(n) + 10
-        for i in 1:length(dig)-1
-            m = evalpoly(ten, circshift(dig, i))
-            (m < n || !isprime(m)) && return false
-        end
-        return true
-    end
-    return false
-end
-
-function findcircular(N)
-    i, circprimeseq = 2, Int[]
-    while length(circprimeseq) < N
-        if iscircularprime(i)
-            push!(circprimeseq, i)
-        end
-        i += 1
-    end
-    return circprimeseq
+    !isprime(n) && return false
+    dig = digits(n)
+    return all(i -> (m = evalpoly(10, circshift(dig, i))) < n && isprime(m), 1:length(dig)-1)
 end
 
 function next4circularprimes()
-    count = 0
-    for i in 6:100000
-        if isprime(evalpoly(BigInt(10), ones(Int, i)))
-            print("R($i) ")
-            (count += 1) >= 4 && return
-        end
-    end
+    return mapreduce(j -> "R($j) ", *, 
+        filter(i -> isprime(evalpoly(BigInt(10), ones(Int, i))), 6:1100))
 end
 
-println("The first 19 circular primes are:\n", findcircular(19))
-print("\nThe next 4 circular primes, in repunit format, are: ")
-next4circularprimes()
+println("The first 19 circular primes are:\n", [i for i in 1:200000 if iscircularprime(i)])
+print("\nThe next 4 circular primes, in repunit format, are: ", next4circularprimes())
 println("\n\nChecking larger repunits:")
 for i in [5003, 9887, 15073, 25031, 35317, 49081]
     println("R($i) is ", isprime(evalpoly(BigInt(10), ones(Int, i))) ? "prime." : "not prime.")
