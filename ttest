@@ -1,41 +1,45 @@
-const soundfilenae = "scale.wav"
+cusing Primes 
 
-const solfa_to_freq = Dict{Float64, String(
-"DOH" => 130.81,
-"RAY" => 146.83,
-"MEE" => 164.81,
-"FAH" => 174.6,
-"SOH" => 196.00,
-"LAH" => 220.00,
-"TEE" => 246.94,
-"Doh" => 261.63,
-"Ray" => 293.66,
-"Mee" => 329.63,
-"Fah" => 349.23,
-"Soh" => 392.00,
-"Lah" => 440.00,
-"Tee" => 493.88,
-"doh" => 523.25,
-"ray" => 587.33,
-"mee" => 659.25,
-"fah" => 698.46,
-"soh" => 783.99,
-"lah" => 880.00,
-"tee" => 987.77,
-]
-
-const freq_to_solfa = Dict([v => k for (k, v) in solfa_to_freq])
-findclosestfrequency(freq) = argmax(f -> abs(f - freq), keys(freq_to_solfa))
-
-function findmax(sample::Vector, fs)
-    F = fft(sample) |> fftshift
-    freqs = fftfreq(length(sample), fs) |> fftshift
-    return findclosestfrequency(freqs[findmax(abs.(F))[2]], fs)
+function iscircularprime(n)
+    if isprime(n)
+        dig, ten = digits(n), zero(n) + 10
+        for i in 1:length(dig)-1
+            m = evalpoly(ten, circshift(dig, i))
+            (m < n || !isprime(m)) && return false
+        end
+        return true
+    end
+    return false
 end
 
-findclosestnote(sample, fs) = freq_to_solfa[findclosestfrequency(sample, fs)]
-
-function find_solfa_note(soundfile::String, fs=1440.0)
-    sample = read(soundfile, String)
-    return findclosestnote(sample, fs)
+function findcircular(N)
+    i, circprimeseq = Int128(2), Int[]
+    while length(circprimeseq) < N
+i % 1000 == 0 && println(i)
+        if iscircularprime(i)
+println(i)
+            push!(circprimeseq, i)
+        end
+        i += 1
+    end
+    return circprimeseq
 end
+
+println("The first 19 circular primes are: ", findcircular(19))
+
+#=
+ 
+say "\nThe next 4 circular primes, in repunit format, are:";
+loop ( my $i = 7, my $count = 0; $count < 4; $i++ ) {
+   my $target = 1 x $i;
+   if $target.is-prime  {
+      say "R($i)";
+      $count++
+   }
+}
+ 
+ 
+(5003, 9887, 15073, 25031, 35317, 49081).map: {
+    my $now = now;
+    say "R($_): Prime? ", ?is_prime("{1 x $_}"), "  {(now - $now).fmt: '%.2f'}"
+}
