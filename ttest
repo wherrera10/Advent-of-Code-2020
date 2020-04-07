@@ -1,3 +1,8 @@
+#=
+=={{header|Julia}}==
+Note that the evalpoly function used in the code was added in Julia 1.4
+<lang julia>
+=#
 using Primes
 
 function iscircularprime(n)
@@ -23,25 +28,37 @@ function findcircular(N)
     return circprimeseq
 end
 
-function allonescircularprime()
+function next4circularprimes()
     count = 0
     for i in 6:100000
-        n = BigInt(evalpoly(BigInt(10), ones(Int, i)))
-        if isprime(n)
-            println("R($i)")
+        if isprime(evalpoly(BigInt(10), ones(Int, i)))
+            print("R($i) ")
             (count += 1) >= 4 && return
         end
     end
 end
 
 println("The first 19 circular primes are:\n", findcircular(19))
-println("\nThe next 4 circular primes, in repunit format, are:")
-allonescircularprime()
-println("\nChecking larger repunits:")
+print("\nThe next 4 circular primes, in repunit format, are: ")
+next4circularprimes()
+println("\n\nChecking larger repunits:")
 for i in [5003, 9887, 15073, 25031, 35317, 49081]
-    n = BigInt(evalpoly(BigInt(10), ones(Int, i)))
-    if isprime(n)
-        println("R($i) is prime")
-    end
+    println("R($i) is ", isprime(evalpoly(BigInt(10), ones(Int, i))) ? "prime." : "not prime.")
 end
+#=
+</lang>{{out}}
+<pre>
+The first 19 circular primes are:
+[2, 3, 5, 7, 11, 13, 17, 37, 79, 113, 197, 199, 337, 1193, 3779, 11939, 19937, 193939, 199933]
 
+The next 4 circular primes, in repunit format, are: R(19) R(23) R(317) R(1031)
+
+Checking larger repunits:
+R(5003) is not prime.
+R(9887) is not prime.
+R(15073) is not prime.
+R(25031) is not prime.
+R(35317) is not prime.
+
+</pre>
+=#
