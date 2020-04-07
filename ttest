@@ -1,4 +1,4 @@
-cusing Primes 
+using Primes
 
 function iscircularprime(n)
     if isprime(n)
@@ -13,11 +13,9 @@ function iscircularprime(n)
 end
 
 function findcircular(N)
-    i, circprimeseq = Int128(2), Int[]
+    i, circprimeseq = 2, Int[]
     while length(circprimeseq) < N
-i % 1000 == 0 && println(i)
         if iscircularprime(i)
-println(i)
             push!(circprimeseq, i)
         end
         i += 1
@@ -25,21 +23,22 @@ println(i)
     return circprimeseq
 end
 
-println("The first 19 circular primes are: ", findcircular(19))
+function allonescircularprime()
+    for i in 6:60_000
+        n = BigInt(evalpoly(BigInt(10), ones(i)))
+        if isprime(n)
+            println("R($i)")
+        end
+    end
+end
 
-#=
- 
-say "\nThe next 4 circular primes, in repunit format, are:";
-loop ( my $i = 7, my $count = 0; $count < 4; $i++ ) {
-   my $target = 1 x $i;
-   if $target.is-prime  {
-      say "R($i)";
-      $count++
-   }
-}
- 
- 
-(5003, 9887, 15073, 25031, 35317, 49081).map: {
-    my $now = now;
-    say "R($_): Prime? ", ?is_prime("{1 x $_}"), "  {(now - $now).fmt: '%.2f'}"
-}
+println("The first 19 circular primes are:\n", findcircular(19))
+println("\nThe next 4 circular primes, in repunit format, are:")
+allonescircularprime()
+
+for i in [5003, 9887, 15073, 25031, 35317, 49081]
+    n = BigInt(evalpoly(BigInt(10), ones(i)))
+    if isprime(n)
+        println("R($i) is prime")
+    end
+end
