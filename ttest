@@ -1,42 +1,23 @@
-#=
-=={{header|Julia}}==
-Note that the evalpoly function used in the code was added in Julia 1.4
-<lang julia>
-=#
-using Lazy, Primes
+using GeometryTypes
 
-function iscircularprime(n)
-    !isprime(n) && return false
-    dig = digits(n)
-    return all(i -> (m = evalpoly(10, circshift(dig, i))) >= n && isprime(m), 1:length(dig)-1)
+@enum Direction None NE E SE S
+
+movedeltas = Dict(NE => Point2(1, -1), E => Point2(1, 0), 
+                  SE => Point2(1, 1), S => Point2(0, 1))
+
+offsets = Dict(-2 => 0:1:4, -1 => -1:1:3, 0 => -2:1:2 , +1 => -3:1:1, +2 => -4:1:0) 
+
+function linepoints(p::Point2, dir, offset)
+    return [Point(p[1] + dx, p[2] + dy) for (dx, dy) in 
+            map(d -> d .* movedeltas[dir], offsets[offset])]
 end
 
-filtcircular(n, r) = Int.(collect(take(n, filter(iscircularprime, r))))
-isprimerepunit(n) = isprime(evalpoly(BigInt(10), ones(Int, n)))
-filtrep(n, r) = collect(take(n, filter(isprimerepunit, r)))
+println(linepoints(Point2(24, 28), NE, -2) )
 
-println("The first 19 circular primes are:\n", filtcircular(19, Lazy.range(2)))
-print("\nThe next 4 circular primes, in repunit format, are: ",
-    mapreduce(n -> "R($n) ", *, filtrep(4, Lazy.range(6))))
-
-println("\n\nChecking larger repunits:")
-for i in [5003, 9887, 15073, 25031, 35317, 49081]
-    println("R($i) is ", isprimerepunit(i) ? "prime." : "not prime.")
+struct Pentasol
+    x::Int
+    y::Int
+    d::Direction
+    offset::Int
 end
-#=
-</lang>{{out}}
-<pre>
-The first 19 circular primes are:
-[2, 3, 5, 7, 11, 13, 17, 37, 79, 113, 197, 199, 337, 1193, 3779, 11939, 19937, 193939, 199933]
 
-The next 4 circular primes, in repunit format, are: R(19) R(23) R(317) R(1031)
-
-Checking larger repunits:
-R(5003) is not prime.
-R(9887) is not prime.
-R(15073) is not prime.
-R(25031) is not prime.
-R(35317) is not prime.
-
-</pre>
-=#
