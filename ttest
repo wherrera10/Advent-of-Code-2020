@@ -3,6 +3,33 @@
 Note that the evalpoly function used in the code was added in Julia 1.4
 <lang julia>
 =#
+using Lazy, Primes
+
+function iscircularprime(n)
+    !isprime(n) && return false
+    dig = digits(n)
+    return all(i -> (m = evalpoly(10, circshift(dig, i))) >= n && isprime(m), 1:length(dig)-1)
+end
+
+function next4circularprimes()
+    return mapreduce(j -> "R($j) ", *, 
+        filter(i -> isprime(evalpoly(BigInt(10), ones(Int, i))), 6:1100))
+end
+
+filtcircular(n, r) = collect(take(n, filter(iscircularprime, r)))
+filtrep(n, r) = collect(take(n, filter(i -> isprime(evalpoly(BigInt(10), ones(Int, i))), r)))
+
+println("The first 19 circular primes are:\n", filtcircular(19, Lazy.range(2)))
+print("\nThe next 4 circular primes, in repunit format, are: ", 
+    mapreduce(n -> "R($n) ", *, collect(take(filtrep(4, Lazy.range(6))))))
+
+println("\n\nChecking larger repunits:")
+for i in [5003, 9887, 15073, 25031, 35317, 49081]
+    println("R($i) is ", isprime(evalpoly(BigInt(10), ones(Int, i))) ? "prime." : "not prime.")
+end
+
+
+
 using Primes
 
 function iscircularprime(n)
