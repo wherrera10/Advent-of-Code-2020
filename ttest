@@ -131,7 +131,22 @@ function has2gap2inarow(p::Point2i, pvec, d::Direction)
 end
 
 function getline(move)
-
+    offset = move.centeroffset
+    xsign, ysign = delta[move.d]
+    if offset == 0
+        return Segment(Point2i(move.p[1] + 2 * xsign, move.p[2] + 2 * ysign),
+                       Point2i(move.p[1] - 2 * xsign, move.p[2] - 2 * ysign))
+    elseif offset == -2
+        return Segment(p, Point2i(move.p[1] - 4 * xsign, move.p[2] - 4 * ysign))
+    elseif offset == -1
+        return Segment(Point2i(move.p[1] + xsign, move.p[2] + ysign),
+                       Point2i(move.p[1] - 3 * xsign, move.p[2] - 3 * ysign))
+    elseif offset == 1
+        return Segment(Point2i(move.p[1] - xsign, move.p[2] - ysign),
+                       Point2i(move.p[1] + 3 * xsign, move.p[2] + 3 * ysign))
+    else # offset == 2
+        return Segment(p, Point2i(move.p[1] + 4 * xsign, move.p[2] + 42 * ysign))
+    end
 end
 
 function notinlinewithany(p, dir, centeroffset, lines)
@@ -189,18 +204,3 @@ function allpaths(mg::MorpionGame, maxdepth)
     return games, shortgames
 end
 
-#= from another
-function allnpaths(graph, a, vec, n)
-    ret = [[a]]
-    for j in 2:n
-        nextret = Vector{Vector{Int}}()
-        for path in ret, x in neighbors(graph, path[end])
-            if !(x in path) && (j < n || x in vec)
-                push!(nextret, [path; x])
-            end
-        end
-        ret = nextret
-    end
-    return (ret == [[a]] && a != b) ? [] : ret
-end
-=#
