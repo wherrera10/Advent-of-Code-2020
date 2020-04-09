@@ -1,23 +1,187 @@
 using GeometryTypes
+import Base.hash, Base.copy, Base.==, Base.push!
 
-@enum Direction None NE E SE S
+# Note:  Eastward and southward are positive directions. Grid coordinates in the
+# far left or upper areas may be negative.
 
-movedeltas = Dict(NE => Point2(1, -1), E => Point2(1, 0), 
-                  SE => Point2(1, 1), S => Point2(0, 1))
 
-offsets = Dict(-2 => 0:1:4, -1 => -1:1:3, 0 => -2:1:2 , +1 => -3:1:1, +2 => -4:1:0) 
+# The convention in the program is to normalize coordinates to the origin from
+# the point east of the top of the cross, north of the left of the cross:
+#
+#  R  XXXX
+#     X  X
+#     X  X
+#  XXXX  XXXX
+#  X        x
+#  X        x
+#  XXXX  XXXX
+#     X  X
+#     X  X
+#     XXXX
+# If R = (0,0), this is a Board(Point(0, 0), Point(0, 0), Point2[], Segment[])
+#
 
-function linepoints(p::Point2, dir, offset)
-    return [Point(p[1] + dx, p[2] + dy) for (dx, dy) in 
-            map(d -> d .* movedeltas[dir], offsets[offset])]
+#     XXXX
+#     X  X
+#     X  X
+#  XXXR  XXXX
+#  X        x
+#  X        x
+#  XXXX  XXXX
+#     X  X
+#     X  X
+#     XXXX
+# If R = (28,28), this is a Board(Point(25, 25), Point(28, 28), Point2[], Segment[])
+#
+
+
+@enum Direction None NE E SE S SW W NW N
+
+delta = Dict(NE => [+1, -1], E => [+1, 0], SE => [+1, +1], S => [0, +1],
+             SW => [-1, +1], W => [-1, 0], NW => [-1, -1], N => [0, -1], None => [0, 0])
+opposite = Dict(NE => SW, E => W, SE => NW, S => N, SW => NE, W => E, NW => SE, N => S)
+offset = Dict(-2 => 0:1:4, -1 => -1:1:3, 0 => -2:1:2 , +1 => -3:1:1, +2 => -4:1:0)
+
+function linepoints(p::Point2, dir, ofs)
+    return [Point2(p[1] + x, p[2] + y) for (x, y) in map(d -> d .* delta[dir], offset[ofs])]
 end
 
 println(linepoints(Point2(24, 28), NE, -2) )
 
-struct Pentasol
-    x::Int
-    y::Int
+struct Move
+    p::Point2
     d::Direction
-    offset::Int
+    centeroffset::Int
 end
 
+struct Segment
+    p1::Point2
+    p2::Point2
+    Segment(p1, p2) = p1 < p2 ? new(p1, p2) : new(p2, p1)
+end
+
+struct Board
+    reference_offset::Point2
+    reference_point::Point2
+    points::Vector{Point2}
+    lines::Vector{Segment}
+end
+
+struct MorpionGame
+    board::Board
+    moves::Vector{Move}
+end
+
+score(mg::MorpionGame) = length(mg.moves)
+
+function moveok(movepoint::Point2, lp::Vector{Point2}, b::Board)
+    movepoint in b && return false # have to use unused Point
+    for p in lp
+        if p != movepoint && !(p in b)
+            return false # all other points need to be used in board
+        end
+    end
+    return true
+end
+function moveok(m::Move, b::Board)
+    lp = linepoints(m.p, m.d, m.centeroffset)
+    return moveok(m.p, lp, b)
+end
+
+function addmove(m::Move, b::Board)
+    lp = linepoints(m.p, m.d, m.centeroffset)
+    if moveok(m.p, lp, b)
+        arr = sort(lp)
+        push!(b.points, m.p)
+        push!(b.lines, Segment(arr[1], arr[end]))
+    else
+        error("Bad move $move with board $b")
+    end
+end
+
+function surround(p)
+    x, y = p
+    delt = [-1, 0, +1]
+    return vec([Point(x + i, y + j) for i in delt, j in delt if (i !=0 || i != j)])
+end
+
+function adjacent(pvec)
+    points = Point[]
+    for p in pvec, adj in surround(p)
+        !(adj in pvec) && push!(points, adj)
+    end
+    return unique(points)
+end
+
+function has4inarow(p::Point2, pvec, d::Direction)
+    xsign, ysign = delta[d]
+    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, 1:4)
+end
+
+function has1gap3inarow(p::Point2, pvec, d::Direction)
+    # we have mirrored directions so no need to do 3gap1 case
+    xsign, ysign = delta[d]
+    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, [-1, 1, 2, 3])
+end
+
+function has2gap2inarow(p::Point2, pvec, d::Direction)
+    xsign, ysign = delta[d]
+    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, [-2, -1, 1, 2])
+end
+
+function movesfrompoint(p, pvec)
+    moves = Move[]
+    for d in [NE, E, SE, S, SW, W, NW, N]
+        if has4inarow(p, pvec, d)
+            dir, centeroffset = d in [SE, E, NE, S] ? (d, +2) : (opposite[d], -2)
+        elseif has1gap3inarow(p, pvec, d)
+            dir, centeroffset = d in [SE, E, NE, S] ? (d, +1) : (opposite[d], -1)
+        elseif has2gap2inarow
+            dir, centeroffset = d in [SE, E, NE, S] ? (d, 0) : (opposite[d], 0)
+        else
+            continue
+        end
+        push!(moves, Move(p, dir, centeroffset))
+    end
+    return moves
+end
+
+function breadthfirstmoves(pvec)
+    possiblemoves = Move[]
+    for p in pvec, newp in adjacent(p)
+        append!(possiblemoves, movesfrompoint(newp, pvec))
+    end
+    return unique(possiblemoves)
+end
+
+function nextdepth(pvec, moves, depth, maxdepth) # fixme-- unroll to 2 loops
+    nextmoves = breadthfirstmoves(pvec)
+    listings = Vector{Vector{Move}}()
+    if !isempty(nextmoves) && depth <= maxdepth
+        for move in nextmoves
+            newmoves = push!(deepcopy(moves), move)
+            newpvec = push!(deepcopy(pvec), move.p)
+            newlist = nextdepth(newpvec, newmoves, depth + 1, maxdepth)
+            if !isempty(newlist)
+                push!(listings, newlist)
+            end
+        end
+    end
+    return listings
+end
+
+#= from another
+function allnpaths(graph, a, vec, n)
+    ret = [[a]]
+    for j in 2:n
+        nextret = Vector{Vector{Int}}()
+        for path in ret, x in neighbors(graph, path[end])
+            if !(x in path) && (j < n || x in vec)
+                push!(nextret, [path; x])
+            end
+        end
+        ret = nextret
+    end
+    return (ret == [[a]] && a != b) ? [] : ret
+end
+=#
