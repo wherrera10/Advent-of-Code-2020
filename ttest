@@ -61,6 +61,11 @@ struct Segment
     Segment(p1, p2) = p1 < p2 ? new(p1, p2) : new(p2, p1)
 end
 
+function direction(s::Segment)
+    dx, dy = d.p2[1] - d.p2[1], d.p2[2] - d.p1[2]
+    return dx == 0 ? S : dy < 0 ? NE : dy > 0 ? SE : E
+end
+
 struct Board
     reference_offset::Point2i
     reference_point::Point2i
@@ -84,6 +89,7 @@ function moveok(movepoint::Point2i, lp::Vector{Point2i}, b::Board)
     end
     return true
 end
+
 function moveok(m::Move, b::Board)
     lp = linepoints(m.p, m.d, m.centeroffset)
     return moveok(m.p, lp, b)
@@ -150,7 +156,9 @@ function getline(move)
 end
 
 function notinlinewithany(p, dir, centeroffset, lines)
-
+    # Moves must not share any points with a segment which has the same direction.
+    for segment in lines
+        
 end
 
 function movesfrompoint(p, pvec, lines)
@@ -172,7 +180,7 @@ function movesfrompoint(p, pvec, lines)
     return moves
 end
 
-function breadthfirstmoves(pvec, lines)
+function legalnextmoves(pvec, lines)
     possiblemoves = Move[]
     for p in pvec, newp in adjacent(p)
         append!(possiblemoves, movesfrompoint(newp, pvec, lines))
@@ -186,7 +194,7 @@ function allpaths(mg::MorpionGame, maxdepth)
     for i in 1:maxdepth
         newgames = Vector{Game}()
         for g in games
-            moves = breadthfirstmoves(points, g.board.lines)
+            moves = legalnextmoves(points, g.board.lines)
             if isempty(moves)
                 push!(shortgames, g)
             else
@@ -203,4 +211,3 @@ function allpaths(mg::MorpionGame, maxdepth)
     end
     return games, shortgames
 end
-
