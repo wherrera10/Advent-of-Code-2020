@@ -1,213 +1,50 @@
-using GeometryTypes
-import Base.hash, Base.copy, Base.==, Base.push!
+function morpionapp()
+    win = GtkWindow("Morpion Solitaire", 800, 600)
+    can = GtkCanvas(:expand = true)
+    push!(win, can)
+    gridlength, gridwidth, boxoffset, r = 50, 50, 10, 10
 
-# Note:  Eastward and southward are positive directions. Grid coordinates in the
-# far left or upper areas may be negative.
-
-
-# The convention in the program is to normalize coordinates to the origin from
-# the point east of the top of the cross, north of the left of the cross:
-#
-#  R  XXXX
-#     X  X
-#     X  X
-#  XXXX  XXXX
-#  X        x
-#  X        x
-#  XXXX  XXXX
-#     X  X
-#     X  X
-#     XXXX
-# If R = (0,0), this is a Board(Point(0, 0), Point(0, 0), Point2i[], Segment[])
-#
-
-#     XXXX
-#     X  X
-#     X  X
-#  XXXR  XXXX
-#  X        x
-#  X        x
-#  XXXX  XXXX
-#     X  X
-#     X  X
-#     XXXX
-# If R = (28,28), this is a Board(Point(25, 25), Point(28, 28), Point2i[], Segment[])
-#
-
-Point2i = Point2{Int}
-
-@enum Direction None NE E SE S SW W NW N
-
-delta = Dict(NE => [+1, -1], E => [+1, 0], SE => [+1, +1], S => [0, +1],
-             SW => [-1, +1], W => [-1, 0], NW => [-1, -1], N => [0, -1], None => [0, 0])
-opposite = Dict(NE => SW, E => W, SE => NW, S => N, SW => NE, W => E, NW => SE, N => S)
-offset = Dict(-2 => 0:1:4, -1 => -1:1:3, 0 => -2:1:2 , +1 => -3:1:1, +2 => -4:1:0)
-
-function linepoints(p::Point2i, dir, ofs)
-    return [Point2i(p[1] + x, p[2] + y) for (x, y) in map(d -> d .* delta[dir], offset[ofs])]
-end
-
-println(linepoints(Point2i(24, 28), NE, -2) )
-
-struct Move
-    p::Point2i
-    d::Direction
-    centeroffset::Int
-end
-
-struct Segment
-    p1::Point2i
-    p2::Point2i
-    Segment(p1, p2) = p1 < p2 ? new(p1, p2) : new(p2, p1)
-end
-
-function direction(s::Segment)
-    dx, dy = d.p2[1] - d.p2[1], d.p2[2] - d.p1[2]
-    return dx == 0 ? S : dy < 0 ? NE : dy > 0 ? SE : E
-end
-
-struct Board
-    reference_offset::Point2i
-    reference_point::Point2i
-    points::Vector{Point2i}
-    lines::Vector{Segment}
-end
-
-struct MorpionGame
-    board::Board
-    moves::Vector{Move}
-end
-
-score(mg::MorpionGame) = length(mg.moves)
-
-function moveok(movepoint::Point2i, lp::Vector{Point2i}, b::Board)
-    movepoint in b && return false # have to use unused Point
-    for p in lp
-        if p != movepoint && !(p in b)
-            return false # all other points need to be used in board
-        end
-    end
-    return true
-end
-
-function moveok(m::Move, b::Board)
-    lp = linepoints(m.p, m.d, m.centeroffset)
-    return moveok(m.p, lp, b)
-end
-
-function addmove(m::Move, b::Board)
-    lp = linepoints(m.p, m.d, m.centeroffset)
-    if moveok(m.p, lp, b)
-        arr = sort(lp)
-        push!(b.points, m.p)
-        push!(b.lines, Segment(arr[1], arr[end]))
-    else
-        error("Bad move $move with board $b")
-    end
-end
-
-function surround(p)
-    x, y = p
-    delt = [-1, 0, +1]
-    return vec([Point(x + i, y + j) for i in delt, j in delt if (i !=0 || i != j)])
-end
-
-function adjacent(pvec)
-    points = Point[]
-    for p in pvec, adj in surround(p)
-        !(adj in pvec) && push!(points, adj)
-    end
-    return unique(points)
-end
-
-function has4inarow(p::Point2i, pvec, d::Direction)
-    xsign, ysign = delta[d]
-    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, 1:4)
-end
-
-function has1gap3inarow(p::Point2i, pvec, d::Direction)
-    # we have mirrored directions so no need to do 3gap1 case
-    xsign, ysign = delta[d]
-    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, [-1, 1, 2, 3])
-end
-
-function has2gap2inarow(p::Point2i, pvec, d::Direction)
-    xsign, ysign = delta[d]
-    return all(i -> Point(p[1] + xsign * i, p[2] + ysign * i) in pvec, [-2, -1, 1, 2])
-end
-
-function getline(move)
-    offset = move.centeroffset
-    xsign, ysign = delta[move.d]
-    if offset == 0
-        return Segment(Point2i(move.p[1] + 2 * xsign, move.p[2] + 2 * ysign),
-                       Point2i(move.p[1] - 2 * xsign, move.p[2] - 2 * ysign))
-    elseif offset == -2
-        return Segment(p, Point2i(move.p[1] - 4 * xsign, move.p[2] - 4 * ysign))
-    elseif offset == -1
-        return Segment(Point2i(move.p[1] + xsign, move.p[2] + ysign),
-                       Point2i(move.p[1] - 3 * xsign, move.p[2] - 3 * ysign))
-    elseif offset == 1
-        return Segment(Point2i(move.p[1] - xsign, move.p[2] - ysign),
-                       Point2i(move.p[1] + 3 * xsign, move.p[2] + 3 * ysign))
-    else # offset == 2
-        return Segment(p, Point2i(move.p[1] + 4 * xsign, move.p[2] + 42 * ysign))
-    end
-end
-
-function notinlinewithany(p, dir, centeroffset, lines)
-    # Moves must not share any points with a segment which has the same direction.
-    for segment in lines
-        
-end
-
-function movesfrompoint(p, pvec, lines)
-    moves = Move[]
-    for d in [NE, E, SE, S, SW, W, NW, N]
-        if has4inarow(p, pvec, d)
-            dir, centeroffset = d in [SE, E, NE, S] ? (d, +2) : (opposite[d], -2)
-        elseif has1gap3inarow(p, pvec, d)
-            dir, centeroffset = d in [SE, E, NE, S] ? (d, +1) : (opposite[d], -1)
-        elseif has2gap2inarow
-            dir, centeroffset = d in [SE, E, NE, S] ? (d, 0) : (opposite[d], 0)
-        else
-            continue
-        end
-        if notinlinewithany(p, dir, cenetroffset, lines)
-            push!(moves, Move(p, dir, centeroffset))
-        end
-    end
-    return moves
-end
-
-function legalnextmoves(pvec, lines)
-    possiblemoves = Move[]
-    for p in pvec, newp in adjacent(p)
-        append!(possiblemoves, movesfrompoint(newp, pvec, lines))
-    end
-    return unique(possiblemoves)
-end
-
-function allpaths(mg::MorpionGame, maxdepth)
-    games = [[mg]]
-    shortgames = Vector{Game}()
-    for i in 1:maxdepth
-        newgames = Vector{Game}()
-        for g in games
-            moves = legalnextmoves(points, g.board.lines)
-            if isempty(moves)
-                push!(shortgames, g)
-            else
-                for move in moves
-                    newgame = deepcopy(g)
-                    push!(g.board.points, move.p)
-                    push!(g.board.lines, getline(move))
-                    push!(g.moves, move)
-                    push!(newgames, newgame)
+    @guarded draw(can) do widget
+        ctx = Gtk.getgc(can)
+        select_font_face(ctx, "Courier", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD)
+        fontpointsize = 12
+        set_font_size(ctx, fontpointsize)
+        # print black box graphic
+        for i in 1:gridlength, j in 1:gridwidth
+            set_source(ctx, colorant"wheat")
+            move_to(ctx, boxoffsetx + i * r, boxoffsety + j * r)
+            rectangle(ctx, boxoffsetx + i * r, boxoffsety + j * r, r, r)
+            fill(ctx)
+            # show current points with an x char
+            for p in game.board.points
+                if p[1] == i - div(gridlength, 2) && p[2] == j - div(gridwidth, 2)
+                    set_source(ctx, colorant"black")
+                    move_to(ctx, boxoffsetx + i * r + 2, boxoffsety + j * r + fontpointsize)
+                    show_text(ctx, "x")
+                    stroke(ctx)
                 end
             end
         end
-        games = newgames
+        # draw dividing lines
+        set_line_width(ctx, 1)
+        set_source(ctx, colorant"navy")
+        for i in 1:boxlength + 1
+            move_to(ctx, boxoffsetx + i * r, boxoffsety + 3 * r)
+            line_to(ctx, boxoffsetx + i * r, boxoffsety + (boxlength + 3) * r)
+            stroke(ctx)
+        end
+        for j in 1:boxwidth + 1
+            move_to(ctx, boxoffsetx + 3 * r, boxoffsety + j * r)
+            line_to(ctx, boxoffsetx + (boxlength + 3) * r, boxoffsety + j * r)
+            stroke(ctx)
+        end
+        # draw line segments through 5 X points, as formed by game moves
+        # print move record at the same time by sending lines to the label listing
+        for (i, move) in game.moves
+            set_source(ctx, linecolors[i])
+            move_to(ctx, )
+            line_to(ctx, )
+            stroke(ctx)
+        end
+        Gtk.showall(win)
     end
-    return games, shortgames
-end
