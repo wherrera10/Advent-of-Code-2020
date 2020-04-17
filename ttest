@@ -1,50 +1,6 @@
-function morpionapp()
-    win = GtkWindow("Morpion Solitaire", 800, 600)
-    can = GtkCanvas(:expand = true)
-    push!(win, can)
-    gridlength, gridwidth, boxoffset, r = 50, 50, 10, 10
+@enum Direction N=-4 SW=-3 W=-2 NW=-1 None=0 SE E NE S
+opposite(d::Direction) = Direction(-Int(d))
+delta = Dict[N => [0, -1], SW => [-1, 1], W => [-1, 0], NW => [-1, -1], 
+             SE => [1, 1], E => [1, 0], NE => [1, -1], S => [0, 1]]
 
-    @guarded draw(can) do widget
-        ctx = Gtk.getgc(can)
-        select_font_face(ctx, "Courier", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD)
-        fontpointsize = 12
-        set_font_size(ctx, fontpointsize)
-        # print black box graphic
-        for i in 1:gridlength, j in 1:gridwidth
-            set_source(ctx, colorant"wheat")
-            move_to(ctx, boxoffsetx + i * r, boxoffsety + j * r)
-            rectangle(ctx, boxoffsetx + i * r, boxoffsety + j * r, r, r)
-            fill(ctx)
-            # show current points with an x char
-            for p in game.board.points
-                if p[1] == i - div(gridlength, 2) && p[2] == j - div(gridwidth, 2)
-                    set_source(ctx, colorant"black")
-                    move_to(ctx, boxoffsetx + i * r + 2, boxoffsety + j * r + fontpointsize)
-                    show_text(ctx, "x")
-                    stroke(ctx)
-                end
-            end
-        end
-        # draw dividing lines
-        set_line_width(ctx, 1)
-        set_source(ctx, colorant"navy")
-        for i in 1:boxlength + 1
-            move_to(ctx, boxoffsetx + i * r, boxoffsety + 3 * r)
-            line_to(ctx, boxoffsetx + i * r, boxoffsety + (boxlength + 3) * r)
-            stroke(ctx)
-        end
-        for j in 1:boxwidth + 1
-            move_to(ctx, boxoffsetx + 3 * r, boxoffsety + j * r)
-            line_to(ctx, boxoffsetx + (boxlength + 3) * r, boxoffsety + j * r)
-            stroke(ctx)
-        end
-        # draw line segments through 5 X points, as formed by game moves
-        # print move record at the same time by sending lines to the label listing
-        for (i, move) in game.moves
-            set_source(ctx, linecolors[i])
-            move_to(ctx, )
-            line_to(ctx, )
-            stroke(ctx)
-        end
-        Gtk.showall(win)
-    end
+
