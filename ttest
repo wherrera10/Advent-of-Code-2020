@@ -1,1 +1,2 @@
 
+gtk_window_fullscreen(GTK_WINDOW(window));
