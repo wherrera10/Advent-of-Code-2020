@@ -1,2 +1,33 @@
+using Colors, FileIO
+using Weave
 
-gtk_window_fullscreen(GTK_WINDOW(window));
+function getFloat64withprompt(prompt)
+    s = ""
+    while (x = tryparse(Float64, s)) == nothing
+        print("\n", prompt, ": -> ")
+        s = strip(readline())
+    end
+    return x
+end
+
+dpi = getFloat64withprompt("Printer DPI (dots per inch)")
+pwidth = getFloat64withprompt("Printer width (inches)")
+plength = 10
+
+img = RGB(pwidth, plength)
+
+imgwidth, imglength = pwidth * dpi, plength * dpi
+
+for rows in 1:10, i in 1:dpi, j in 1:div(imgwidth, rows), k in 1:rows
+    img[k, i + 10 * (rows - 1)] = isodd(j) ? colorant"black" : colorant"white"
+end
+
+
+Weave.set_chunk_defaults(Dict(
+    "dpi"=> dpi, 
+    "fig_width" => figure_width, 
+    "fig_height" => 10, 
+    "out_width" = "100%",
+    "out_height" => "100%"
+)
+
