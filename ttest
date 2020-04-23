@@ -1,15 +1,8 @@
-var palette = [
-    0x0, # black
-    0xFF0000, # red
-    0x00FF00, # green
-    0x0000FF, # blue
-    0xFF00FF, # magenta
-    0x00FFFF, # cyan
-    0xFFFF00, # yellow
-    0xFF, # white
+using Colors, FileIO
 
-using FileIO, ImageIO
- 
+const colors = [colorant"black", colorant"red", colorant"green", colorant"blue",
+                colorant"magenta", colorant"cyan", colorant"yellow", colorant"white"]
+
 function getnumberwithprompt(prompt, t::Type)
     s = ""
     while (x = tryparse(t, s)) == nothing
@@ -18,56 +11,25 @@ function getnumberwithprompt(prompt, t::Type)
     end
     return x
 end
- 
-dpi = getnumberwithprompt("Printer DPI (dots per inch)", Int)
-pwidth = getnumberwithprompt("Printer width (inches)", Float64)
-plength = 10.0
- 
-imgwidth, imgheight = Int(round(pwidth * dpi)), Int(round(plength * dpi))
- 
-img = zeros(UInt8, Int(round(imgheight)), Int(round(imgwidth)))
- 
-for row in 1:imgheight, col in 1:imgwidth
-    stripewidth = div(row, dpi) + 1
-    img[row, col] = rem(col, stripewidth * 2) < stripewidth ? 0 : 255
-end
- 
-save("temp.png", img)
-run(`print temp.png`)  # the run statement may need to be set up for the installed device
- 
 
+function colorstripepng(filename)
+    dpi = getnumberwithprompt("Printer DPI (dots per inch)", Int)
+    pwidth = getnumberwithprompt("Printer width (inches)", Float64)
+    plength, colorindex = 10, 1
+    imgwidth, imgheight = Int(round(pwidth * dpi)), plength * dpi
+    img = fill(colorant"black", Int(round(imgheight)), Int(round(imgwidth)))
 
-
-using Colors, FileIO
-using Weave
-
-function getFloat64withprompt(prompt)
-    s = ""
-    while (x = tryparse(Float64, s)) == nothing
-        print("\n", prompt, ": -> ")
-        s = strip(readline())
+    for row in 1:imgheight
+        stripenum, stripewidth = 1, div(row, dpi) + 1
+        for col in 1:imgwidth
+            img[row, col] = colors[colorindex]
+            if (stripenum += 1) % stripewidth == 0
+                colorindex = mod1(colorindex + 1, length(colors))
+            end
+        end
     end
-    return x
+    save(filename, img)
 end
 
-dpi = getFloat64withprompt("Printer DPI (dots per inch)")
-pwidth = getFloat64withprompt("Printer width (inches)")
-plength = 10
-
-img = RGB(pwidth, plength)
-
-imgwidth, imglength = pwidth * dpi, plength * dpi
-
-for rows in 1:10, i in 1:dpi, j in 1:div(imgwidth, rows), k in 1:rows
-    img[k, i + 10 * (rows - 1)] = isodd(j) ? colorant"black" : colorant"white"
-end
-
-
-Weave.set_chunk_defaults(Dict(
-    "dpi"=> dpi, 
-    "fig_width" => figure_width, 
-    "fig_height" => 10, 
-    "out_width" = "100%",
-    "out_height" => "100%"
-)
-
+colorstripepng("temp.png")
+run(`print temp.png`)  # the run statement may need to be set up for the installed device
