@@ -1,35 +1,36 @@
-using Colors, FileIO
+function savegametofile(w)
+    filename = filedialog(win)
+    write(filename, prod(["""
+    #
+    #  R  XXXX
+    #     X  X
+    #     X  X
+    #  XXXX  XXXX
+    #  X        X
+    #  X        X
+    #  XXXX  XXXX
+    #     X  X
+    #     X  X
+    #     XXXX
+    #
+    # R = reference point
+    # List of moves starts with reference point (col,row)  i.e. (12,8) below
+    #
+    # Annotations:
+    # Lines are
+    #    (col,row) <direction> <center>
+    #    direction   -      +
+    #       |        up     down
+    #       -        left   right
+    #       \\        left   right
+    #       /        left   right
+    #    center is the distance -2, -1, ..., +2 from
+    #    the move coordinate to the center of the line being drawn
+    #
+    (25,25)
+    """; [pentasol(m) * "\n" for m in game.moves]])
 
-const colors = [colorant"black", colorant"red", colorant"green", colorant"blue",
-                colorant"magenta", colorant"cyan", colorant"yellow", colorant"white"]
-
-function getnumberwithprompt(prompt, t::Type)
-    s = ""
-    while (x = tryparse(t, s)) == nothing
-        print("\n", prompt, ": -> ")
-        s = strip(readline())
-    end
-    return x
 end
 
-function colorstripepng(filename)
-    dpi = getnumberwithprompt("Printer DPI (dots per inch)", Int)
-    pwidth = getnumberwithprompt("Printer width (inches)", Float64)
-    plength, colorindex = 10, 1
-    imgwidth, imgheight = Int(round(pwidth * dpi)), plength * dpi
-    img = fill(colorant"black", Int(round(imgheight)), Int(round(imgwidth)))
+savegametofile(0)
 
-    for row in 1:imgheight
-        stripenum, stripewidth = 1, div(row, dpi) + 1
-        for col in 1:imgwidth
-            img[row, col] = colors[colorindex]
-            if (stripenum += 1) % stripewidth == 0
-                colorindex = mod1(colorindex + 1, length(colors))
-            end
-        end
-    end
-    save(filename, img)
-end
-
-colorstripepng("temp.png")
-run(`print temp.png`)  # the run statement may need to be set up for the installed device
