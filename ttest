@@ -26,7 +26,7 @@ const affectedcubies = [
 function applymove(move, state)
     state2, oldstate2 = deepcopy(state), zeros(Int, length(state))
     face, turns = divrem(move, 3) .+ 1
-    for i in turns:-1:1
+    while (turns -= 1) != 0
         oldstate2 .= state2
         for i in 1:8
             iscorner = i > 4
@@ -36,7 +36,7 @@ function applymove(move, state)
             orientationdelta = i < 5 ? Int(face in [3, 4]) : face < 3 ? 0 : 2 - ((i-1) & 1)
             state2[target] = oldstate2[killer]
             state2[target + 20] = oldstate2[killer + 20] + orientationdelta
-            (turns == 1) && (state2[target + 20] %= 2 + iscorner)
+            (turns == 0) && (state2[target + 20] %= 2 + iscorner)
         end
     end
     return state2
@@ -52,7 +52,7 @@ function id(state::Vector{Int}, phase::Int)
     #-- Phase 2: Corner orientations, E slice edges.
         result =  state[32:40]
         for e in 1:12
-            result[1] |= (state[e] ÷ 8) << e
+            result[1] |= ((state[e] ÷ 8) << e)
         end
         return result
     elseif phase < 4
@@ -66,7 +66,7 @@ function id(state::Vector{Int}, phase::Int)
             temp = ((state[c + 12 + 1] - 12) & 5) << (3 * c)
             result[2] |= temp
         end
-        for i in 13:18, j in i+1:20
+        for i in 13:18, j in i+1:19
             result[3] ⊻= Int(state[i] > state[j])
         end
         return result
@@ -89,7 +89,6 @@ function pochmann(fname)
         inputs = split(line)
         linecount += 1
         totalmoves = 0
-
         #--- Prepare current (start) and goal state.
         state, goalstate, phase = zeros(Int, 40), zeros(Int, 40), 0
         for i in 1:20
@@ -99,15 +98,16 @@ function pochmann(fname)
             #--- Current (start) state.
             cubie = inputs[i]
             while true
-                state[i] = something(findfirst(x -> x == cubie, goal), 21) - 1
+                state[i] = something(findfirst(x -> x .== cubie, goal), 21) - 1
                 (state[i] != 20) && break
                 cubie = cubie[2:end] * cubie[1]
                 state[i + 20] += 1
             end
         end
+#println("state is $state")
         #--- Dance the funky Thistlethwaite...
     @label nextphase    # preserves phase value, but restarts while loop
-        while (phase +=1) < 5
+        while (phase += 1) < 5
             #--- Compute ids for current and goal state, skip phase if equal.
             currentid = id(state, phase)
             goalid = id(goalstate, phase)
@@ -115,7 +115,6 @@ function pochmann(fname)
 
             #--- Initialize the BFS queue.
             q = [state, goalstate]
-
             #--- Initialize the BFS tables.
             predecessor = Dict{Vector{Int}, Vector{Int}}()
             direction = Dict{Vector{Int}, Int}()
@@ -128,7 +127,7 @@ function pochmann(fname)
                 #--- Get state from queue, compute its ID and get its direction.
                 oldstate = popfirst!(q)
                 oldid = id(oldstate, phase)
-                olddir = direction[oldid]
+                olddir = get!(direction, oldid, 0)
 
                 #--- Apply all applicable moves to it and handle the new state.
                 move = 0
@@ -152,12 +151,12 @@ function pochmann(fname)
                             #--- Reconstruct the connecting algorithm.
                             algorithm = [move]
                             while oldid != currentid
-                                pushfirst!(algorithm, lastmove[oldid])
-                                oldid = predecessor[oldid]
+                                pushfirst!(algorithm, get(lastmove, oldid, 0))
+                                oldid = get!(predecessor, oldid, Int[])
                             end
                             while newid != goalid
-                                push!(algorithm, inverse(lastmove[newid]))
-                                newid = predecessor(newid)
+                                push!(algorithm, inverse(get!(lastmove, newid, 0)))
+                                newid = get!(predecessor, newid, Int[])
                             end
 
                             #--- Print and apply the algorithm.
