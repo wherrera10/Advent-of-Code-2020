@@ -12,20 +12,15 @@ The weather routing problem, conversely, is to determine the path which results 
 
 using DelimitedFiles, GeometryTypes
 
-XYT = Point3f0
-
 struct SeaParameters
-    xyt::XYT
-    windradians::Float32
-    windvelocity::Float32
-    currentradians::Float32
-    currentvelocity::Float32
+    winddegrees::Float32
+    windknots::Float32
+    currentdegrees::Float32
+    currentknots::Float32
 end
 
-struct PolarData
-    pointofsail::Float64
-    windvelocity::Float64
-    VMG::Float64  # velocity made good
+function getSeaParameters(longitude, latitude, seatime)
+
 end
 
 function getpolardata(filename)
@@ -36,12 +31,14 @@ function getpolardata(filename)
     return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
 end
 
-function bestboatspeed(winds, degrees, speeds, pointofsail, windspeed)
+const filename = "polar.csv"
+const winds, degrees, speeds = getpolardata(filename)
+
+function bestboatspeed(pointofsail, windspeed)
     udeg = findlast(t -> t <= pointofsail, degrees)
     odeg = findfirst(t -> t >= pointofsail, degrees)
     uvel = findlast(t -> t <= windspeed, winds)
     ovel = findfirst(t -> t >= windspeed, winds)
-println([udeg, odeg, uvel, ovel])
     if any(t -> t == nothing, [udeg, odeg, uvel, ovel])
         error("Out of range values in $([udeg, odeg, uvel, ovel])")
     end
@@ -53,9 +50,59 @@ println([udeg, odeg, uvel, ovel])
     return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
 end
 
+function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
+    pointofsail = (dirtravel - dirwind) % 360
+    pointofsail = pointofsail < 0 ? pointofsail + 360 : pointofsail
+    pointofsail = if pointofsail > 180 ? 360 - pointofsail : pointofsail
+    VMG = bestboatspeed(pointofsail, windspeed)
+    dx, dy = VMG * sin(2 * dirtravel / pi), VMG * cos(2 * dirtravel / pi)
+    curx, cury = velcur * sin(2 * dircur / pi), velcur * cos(2 * dircur / pi)
+    return atan(dy + cury, dx + curx), sqrt((dy + cury)^2 + (dx + curx)^2)
+end
 
-w, d, s = getpolardata("polar.csv")
+function haversine_distance(lat1, lon1, lat2, lon2)
+    return 2 * 6372.8 * asin(sqrt(sind((lat2 - lat1) / 2) ^ 2 +
+        cosd(lat1) * cosd(lat2) * sind((lon2 - lon1) / 2) ^ 2))
+end
 
-@show bestboatspeed(w, d, s, 90, 19.0)
-@show bestboatspeed(w, d, s, 95, 19.0)
-@show bestboatspeed(w, d, s, 100, 19.0)
+function initial_bearing(lat1, lon1, lat2, lon2)
+    φ1, φ2, λ1, λ2 = [lat1, lon1, lat2, lon2] .* pi ./ 180
+    y = sin(λ2 - λ1) * cos(φ2)
+    x = cos(φ1) * sin(φ2) - sin(φ1) * cos(φ2) * cos(λ2 - λ1)
+    return ((atan(y, x) + 360) * 180 / pi) % 360  # back to return in degrees
+end
+
+function chooseheading(curlong, curlat, destlong, destlat)
+    direction = initial_bearing(curlong, curlat, destlong, destlat)
+    nextpoint = ()
+
+
+
+JavaScript:	HAversine formula
+const R = 6371e3; // metres
+const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+const φ2 = lat2 * Math.PI/180;
+const Δφ = (lat2-lat1) * Math.PI/180;
+const Δλ = (lon2-lon1) * Math.PI/180;
+
+const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+const d = R * c; // in metres
+
+
+
+
+knots_to_mps(knots) = knots * 0.514444444
+meterpersecond_to_knots(mps) =  mps * 1.94384449
+
+
+
+
+
+
+@show bestboatspeed(90, 19.0)
+@show bestboatspeed(95, 19.0)
+@show bestboatspeed(100, 19.0)
