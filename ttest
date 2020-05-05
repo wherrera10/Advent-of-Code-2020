@@ -6,11 +6,11 @@ an expected surface current direction and speed, at increments of longitude, lat
 'polar data' describing maximum speed of a sailboat at points of sail for a given speed of wind over water
 regions for sailing (the open ocean) and not (the land, shallows, restricted areas, etc.)
 a starting location and time, and a destination
-Given the above information and a specific path, progress and arrival time are determined. 
+Given the above information and a specific path, progress and arrival time are determined.
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using GeometryTypes
+using DelimitedFiles, GeometryTypes
 
 XYT = Point3f0
 
@@ -27,3 +27,35 @@ struct PolarData
     windvelocity::Float64
     VMG::Float64  # velocity made good
 end
+
+function getpolardata(filename)
+    datacells, headercells = readdlm(filename, ';', header=true)
+    winds = map(x -> parse(Float32, x), headercells[2:end])
+    degrees = datacells[:, 1]
+    speeds = datacells[:, 2:end]
+    return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
+end
+
+function bestboatspeed(winds, degrees, speeds, pointofsail, windspeed)
+    udeg = findlast(t -> t <= pointofsail, degrees)
+    odeg = findfirst(t -> t >= pointofsail, degrees)
+    uvel = findlast(t -> t <= windspeed, winds)
+    ovel = findfirst(t -> t >= windspeed, winds)
+println([udeg, odeg, uvel, ovel])
+    if any(t -> t == nothing, [udeg, odeg, uvel, ovel])
+        error("Out of range values in $([udeg, odeg, uvel, ovel])")
+    end
+    frac = (odeg == udeg && uvel == ovel) ? 1.0 :
+            (odeg == udeg) ? (windspeed - winds[uvel]) / (winds[ovel] - winds[uvel]) :
+            (uvel == ovel) ? (pointofsail - degrees[udeg]) / (degrees[odeg] - degrees[udeg]) :
+            ((pointofsail - degrees[udeg]) / (degrees[odeg] - degrees[udeg]) +
+            (windspeed - winds[uvel]) / (winds[ovel] - winds[uvel])) / 2
+    return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
+end
+
+
+w, d, s = getpolardata("polar.csv")
+
+@show bestboatspeed(w, d, s, 90, 19.0)
+@show bestboatspeed(w, d, s, 95, 19.0)
+@show bestboatspeed(w, d, s, 100, 19.0)
