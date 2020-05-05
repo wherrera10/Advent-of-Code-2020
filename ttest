@@ -10,7 +10,27 @@ Given the above information and a specific path, progress and arrival time are d
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using DelimitedFiles, GeometryTypes
+using CoordinateTransformations, DelimitedFiles, GeographicLib
+
+const sealevelradius = 6370000  # meters
+const filename = "polar.csv"
+const winds, degrees, speeds = getpolardata(filename)
+
+deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π 
+rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
+
+knots2meterspersecond(knots) = knots * 0.514444444
+meterpersecond2knots(mps) =  mps * 1.94384449
+
+function haversine_bearing(lat1, lon1, lat2, lon2)
+    azi, baz, dist, angle = GeographicLib.inverse(lon1, lat1, lon2, lat2)
+    return dist, angle
+end
+
+function inverse_haversine(lat1, lon1, distance, direction)
+    lon, lat, baz, dist, angle = GeographicLib.forward(WGS84, lon1, lat1, direction, distance)
+    return lat, lon
+end
 
 struct SailingParameters
     winddeg::Float32
@@ -31,8 +51,7 @@ function getpolardata(filename)
     return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
 end
 
-const filename = "polar.csv"
-const winds, degrees, speeds = getpolardata(filename)
+
 
 function bestboatspeed(pointofsail, windspeed)
     udeg = findlast(t -> t <= pointofsail, degrees)
@@ -52,47 +71,37 @@ end
 
 function relativeboatspeed(destdirection, pointofsail, windspeed)
     VMG = bestboatspeed(pointofsail, windspeed)
-    return VMG * cos(abs(pointofsail - windspeed) * pi / 180)
+    return read2deg(VMG * cos(abs(pointofsail - windspeed)))
 end
 
 function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
-    pointofsail = (dirtravel - dirwind) % 360
-    pointofsail = pointofsail < 0 ? pointofsail + 360 : pointofsail
-    pointofsail = if pointofsail > 180 ? 360 - pointofsail : pointofsail
+    pointofsail = (dirtravel - dirwind) % 360.0
+    pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
+    pointofsail = if pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
     VMG = bestboatspeed(pointofsail, windspeed)
     other, idx = findmax([relativeboatspeed(pointofsail, x, windspeed) for x in degrees])
     if other > VMG
         pointofsail = degrees[idx]
         VMG = other
     end
-    dirchosen = (dirwind + pointofsail) % 360
-    windx, windy = VMG * sin(2 * dirchosen / pi), VMG * cos(2 * dirchosen / pi)
-    curx, cury = velcur * sin(2 * dircur / pi), velcur * cos(2 * dircur / pi)
+    dirchosen = deg2rad(dirwind + pointofsail)
+    windx, windy = VMG * sin(dirchosen), VMG * cos(dirchosen)
+    curx, cury = velcur * sin(deg2rad(dircur)), velcur * cos(deg2rad(dircur))
     return windx + curx, windy + cury
 end
 
-function haversine_distance(lat1, lon1, lat2, lon2)
-    return 2 * 6372.8 * asin(sqrt(sind((lat2 - lat1) / 2) ^ 2 +
-        cosd(lat1) * cosd(lat2) * sind((lon2 - lon1) / 2) ^ 2))
-end
 
-function initial_bearing(lat1, lon1, lat2, lon2)
-    φ1, φ2, λ1, λ2 = [lat1, lon1, lat2, lon2] .* pi ./ 180
-    y = sin(λ2 - λ1) * cos(φ2)
-    x = cos(φ1) * sin(φ2) - sin(φ1) * cos(φ2) * cos(λ2 - λ1)
-    return ((atan(y, x) + 360) * 180 / pi) % 360  # back to return in degrees
-end
 
 function sailsegment(seatime, duration, curlong, curlat, destlong, destlat)
-    direction = initial_bearing(curlong, curlat, destlong, destlat)
+    distance, dirtravel = haversine_bearing(curlong, curlat, destlong, destlat)
     p = sailingparameters(seatime, curlong, curlat)
-    dx, dy = boatvector(dirtravel, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
+    vx, vy = boatvector(dirtravel, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
+    dx, dy = vx * duration, dy * duration
+    direction, distance = CartesianFromPolar()
+    lon2, lat2 = inverse_haversine(lat1, lon1, distance, direction)
     
 end
 
-
-knots_to_mps(knots) = knots * 0.514444444
-meterpersecond_to_knots(mps) =  mps * 1.94384449
 
 
 
