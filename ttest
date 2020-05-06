@@ -10,7 +10,7 @@ Given the above information and a specific path, progress and arrival time are d
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using CoordinateTransformations, DelimitedFiles, GeographicLib, JuMP
+using DelimitedFiles, GeographicLib, JuMP
 
 const sealevelradius = 6370000  # meters
 const filename = "polar.csv"
@@ -18,6 +18,8 @@ const winds, degrees, speeds = getpolardata(filename)
 
 deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π 
 rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
+cartesian2polar(x, y) = sqrt(x * x + y * y), atan(x, y)
+polar2cartesian(r, deg) = (θ = deg2rad(deg); r .* sincos(θ))
 
 knots2meterspersecond(knots) = knots * 0.514444444
 meterpersecond2knots(mps) =  mps * 1.94384449
