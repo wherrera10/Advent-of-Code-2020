@@ -10,9 +10,17 @@ Given the above information and a specific path, progress and arrival time are d
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using DelimitedFiles, GeographicLib, JuMP
+using DelimitedFiles, JuMP
 
-const sealevelradius = 6370000  # meters
+function getpolardata(filename)
+    datacells, headercells = readdlm(filename, ';', header=true)
+    winds = map(x -> parse(Float32, x), headercells[2:end])
+    degrees = datacells[:, 1]
+    speeds = datacells[:, 2:end]
+    return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
+end
+
+const R = 6372800  # earth approximate radius in meters
 const filename = "polar.csv"
 const winds, degrees, speeds = getpolardata(filename)
 
@@ -21,14 +29,22 @@ rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
 cartesian2polar(x, y) = sqrt(x * x + y * y), atand(x, y)
 polar2cartesian(r, deg) = r .* sincosd(deg)
 
-function haversine_bearing(lat1, lon1, lat2, lon2)
-    azi, baz, dist, angle = GeographicLib.inverse(lon1, lat1, lon2, lat2)
-    return azi, dist
+function haversine(lon1, lat1, lon2, lat2)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sind(dlat / 2)^2 + cosd(lat1) * cosd(lat2) * sind(dlon / 2)^2
+    c = 2.0 * asind(sqrt(a))
+    theta = atand(sind(dlon) * cosd(lat2), 
+        cosd(lat1) * sind(lat2) - sind(lat1) * cosd(lat2) * cosd(dlon))
+    theta = (theta + 360) % 360
+    return R * c * 0.5399565, theta
 end
 
-function inverse_haversine(lat1, lon1, distance, direction)
-    lon, lat, baz, dist, angle = GeographicLib.forward_deg(lon1, lat1, direction, distance)
-    return lat, lon
+function inverse_haversine(lon1, lat2, distance, direction)
+    lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(d / R) * cosd(direction)
+    lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1), 
+                       cos(distance / R) - sind(lat1) * sind(lat2))
+    return lon2, lat2
 end
 
 knots2meterspersecond(knots) = knots * 0.514444444
@@ -43,14 +59,6 @@ end
 
 function sailingparameters(seatime, longitude, latitude)
 
-end
-
-function getpolardata(filename)
-    datacells, headercells = readdlm(filename, ';', header=true)
-    winds = map(x -> parse(Float32, x), headercells[2:end])
-    degrees = datacells[:, 1]
-    speeds = datacells[:, 2:end]
-    return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
 end
 
 function bestboatspeed(pointofsail, windspeed)
@@ -88,14 +96,15 @@ function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
 end
 
 function sailsegment(seatime, duration, curlong, curlat, destlong, destlat)
-    distance, dir = haversine_bearing(curlong, curlat, destlong, destlat)
+    dir = haversine(curlong, curlat, destlong, destlat)[2]
     p = sailingparameters(seatime, curlong, curlat)
     dir2, distance = boatvector(dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
-    lon2, lat2 = inverse_haversine(lat1, lon1, distance, dir2)
+    lon2, lat2 = inverse_haversine(lon1, lat1, distance, dir2)
 end
 
 
 @show bestboatspeed(90, 19.0)
 @show bestboatspeed(95, 19.0)
 @show bestboatspeed(100, 19.0)
+
 
