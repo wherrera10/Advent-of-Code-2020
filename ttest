@@ -10,7 +10,7 @@ Given the above information and a specific path, progress and arrival time are d
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using CoordinateTransformations, DelimitedFiles, GeographicLib
+using CoordinateTransformations, DelimitedFiles, GeographicLib, JuMP
 
 const sealevelradius = 6370000  # meters
 const filename = "polar.csv"
@@ -85,27 +85,17 @@ function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
         VMG = other
     end
     dirchosen = deg2rad(dirwind + pointofsail)
-    windx, windy = VMG * sin(dirchosen), VMG * cos(dirchosen)
+    wx, wy = VMG * sin(dirchosen), VMG * cos(dirchosen)
     curx, cury = velcur * sin(deg2rad(dircur)), velcur * cos(deg2rad(dircur))
-    return windx + curx, windy + cury
+    return rad2deg(atan(wy + cury, wx + curx)), sqrt((wx + curx)^2 + (wy + cury)^2)
 end
-
-
 
 function sailsegment(seatime, duration, curlong, curlat, destlong, destlat)
-    distance, dirtravel = haversine_bearing(curlong, curlat, destlong, destlat)
+    distance, dir = haversine_bearing(curlong, curlat, destlong, destlat)
     p = sailingparameters(seatime, curlong, curlat)
-    vx, vy = boatvector(dirtravel, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
-    dx, dy = vx * duration, dy * duration
-    direction, distance = CartesianFromPolar()
-    lon2, lat2 = inverse_haversine(lat1, lon1, distance, direction)
-    
+    dir2, distance = boatvector(dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
+    lon2, lat2 = inverse_haversine(lat1, lon1, distance, dir2)
 end
-
-
-
-
-
 
 
 @show bestboatspeed(90, 19.0)
