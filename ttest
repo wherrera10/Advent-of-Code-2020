@@ -18,21 +18,21 @@ const winds, degrees, speeds = getpolardata(filename)
 
 deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π 
 rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
-cartesian2polar(x, y) = sqrt(x * x + y * y), atan(x, y)
-polar2cartesian(r, deg) = (θ = deg2rad(deg); r .* sincos(θ))
-
-knots2meterspersecond(knots) = knots * 0.514444444
-meterpersecond2knots(mps) =  mps * 1.94384449
+cartesian2polar(x, y) = sqrt(x * x + y * y), atand(x, y)
+polar2cartesian(r, deg) = r .* sincosd(deg)
 
 function haversine_bearing(lat1, lon1, lat2, lon2)
     azi, baz, dist, angle = GeographicLib.inverse(lon1, lat1, lon2, lat2)
-    return dist, angle
+    return azi, dist
 end
 
 function inverse_haversine(lat1, lon1, distance, direction)
-    lon, lat, baz, dist, angle = GeographicLib.forward(WGS84, lon1, lat1, direction, distance)
+    lon, lat, baz, dist, angle = GeographicLib.forward(lon1, lat1, direction, distance)
     return lat, lon
 end
+
+knots2meterspersecond(knots) = knots * 0.514444444
+meterpersecond2knots(mps) =  mps * 1.94384449
 
 struct SailingParameters
     winddeg::Float32
@@ -53,8 +53,6 @@ function getpolardata(filename)
     return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
 end
 
-
-
 function bestboatspeed(pointofsail, windspeed)
     udeg = findlast(t -> t <= pointofsail, degrees)
     odeg = findfirst(t -> t >= pointofsail, degrees)
@@ -71,17 +69,14 @@ function bestboatspeed(pointofsail, windspeed)
     return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
 end
 
-function relativeboatspeed(destdirection, pointofsail, windspeed)
-    VMG = bestboatspeed(pointofsail, windspeed)
-    return read2deg(VMG * cos(abs(pointofsail - windspeed)))
-end
+sailingspeed(azimuth, dir, ws) = bestboatspeed(dir, ws) * cosd(abs(dir - azimuth))
 
 function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
     pointofsail = (dirtravel - dirwind) % 360.0
     pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
     pointofsail = if pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
     VMG = bestboatspeed(pointofsail, windspeed)
-    other, idx = findmax([relativeboatspeed(pointofsail, x, windspeed) for x in degrees])
+    other, idx = findmax([sailingspeed(pointofsail, x, windspeed) for x in degrees])
     if other > VMG
         pointofsail = degrees[idx]
         VMG = other
