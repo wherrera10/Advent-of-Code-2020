@@ -27,7 +27,7 @@ function haversine_bearing(lat1, lon1, lat2, lon2)
 end
 
 function inverse_haversine(lat1, lon1, distance, direction)
-    lon, lat, baz, dist, angle = GeographicLib.forward(lon1, lat1, direction, distance)
+    lon, lat, baz, dist, angle = GeographicLib.forward_deg(lon1, lat1, direction, distance)
     return lat, lon
 end
 
