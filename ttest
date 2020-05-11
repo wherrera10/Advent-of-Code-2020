@@ -1,4 +1,3 @@
-
 #=
 The weather routing problem has the following parts:
 
@@ -13,7 +12,7 @@ The weather routing problem, conversely, is to determine the path which results 
 
 module SailingPolars
 
-using DelimitedFiles
+using DelimitedFiles, GeometryTypes
 
 export SailingPolar, getpolardata, bestboatspeed, boatvector, sailsegment
 
@@ -107,10 +106,11 @@ struct SurfaceParameters
 end
 
 # NB:  latitude (y) first then longitude (x) as per ISO 6709
-struct Position
-    lat::Float64
-    lon::Float64
-end
+
+Point = Point2{Int}
+Position = Point2f0
+lat(p::Point2f0) = p[1]
+lon(p::Point2f0) = p[2]
 
 struct GridPoint
     pt::Position
@@ -152,9 +152,9 @@ const forbidden = [
     [18, 19], [18, 20], [19, 19], [19, 20],[20, 19], [20, 20],
 ]
 
-function surround(x, y, mat)
+function surround(x, y, mat, excluded)
     xmax, ymax = size(mat)
-    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in forbidden),
+    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in excluded),
         [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
 end
 
@@ -169,7 +169,7 @@ function surfacebylongitude(lon)
                           SurfaceParameters(60.0, 40, 150, 0.2)
 end
 
-const gpoints = map(pt -> GridPoint(pt, surfacebylongitude(pt.lon)), pmat)
+const gpoints = map(pt -> GridPoint(pt, surfacebylongitude(lon(pt))), pmat)
 
 using .SailingPolars
 
@@ -185,10 +185,10 @@ TimeSlice = Matrix{GridPoint}
 mutable struct RoutingProblem
     timeinterval::Float64 # seconds between timeframe slices
     timeframe::Vector{TimeSlice}
+    obstacleindices::Vector
     startindex::Int
     start::Position
     finish::Position
 end
 
 const routeprob = RoutingProblem(600, fill(gpoints, 200), 1, startpos, endpos)
-
