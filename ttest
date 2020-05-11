@@ -1,145 +1,4 @@
 
-Uses the LightGraphs package.
-
- 
-using LightGraphs
- 
-const grid = reshape(Vector{UInt8}(replace("""
-         00000         
-      00003130000      
-    000321322221000    
-   00231222432132200   
-  0041433223233211100  
-  0232231612142618530  
- 003152122326114121200 
- 031252235216111132210 
- 022211246332311115210 
-00113232262121317213200
-03152118212313211411110
-03231234121132221411410
-03513213411311414112320
-00427534125412213211400
- 013322444412122123210 
- 015132331312411123120 
- 003333612214233913300 
-  0219126511415312570  
-  0021321524341325100  
-   00211415413523200   
-    000122111322000    
-      00001120000      
-         00000         """, "\n" => "")), 23, 23)
- 
-const board = map(c -> c == UInt8(' ') ? -1 : c - UInt8('0'), grid)
-const startingpoints = [i for i in 1:529 if board[i] > 0]
-const safety = [i for i in 1:529 if board[i] == 0]
-const legalendpoints = [i for i in 1:529 if board[i] >= 0]
- 
-function adjacent(i)
-    k, ret = board[i], Int[]
-    row, col = divrem(i - 1, 23) .+ 1
-    col > k && push!(ret, i - k)
-    23 - col >= k && push!(ret, i + k)
-    row > k && push!(ret, i - 23 * k)
-    row + k <= 23 && push!(ret, i + 23 * k)
-    row > k && col > k && push!(ret, i - 24 * k)
-    row + k <= 23 && (23 - col >= k) && push!(ret, i + 24 * k)
-    row > k && (23 - col >= k) && push!(ret, i - 22 * k)
-    row + k <= 23 && col > k && push!(ret, i + 22 * k)
-    ret
-end
- 
-const graph = SimpleDiGraph(529)
- 
-for i in 1:529
-    if board[i] > 0
-        for p in adjacent(i)
-            if board[p] >= 0
-                add_edge!(graph, i, p)
-            end
-        end
-    end
-end
- 
-"""
-    allnpaths(graph, a, b, vec, n)
- 
-Return a vector of int vectors, each of which is a path from a to a member of
-vec and where n is the length of each path and the nodes in a path do not repeat.
-"""
-function allnpaths(graph, a, vec, n)
-    ret = [[a]]
-    for j in 2:n
-        nextret = Vector{Vector{Int}}()
-        for path in ret, x in neighbors(graph, path[end])
-            if !(x in path) && (j < n || x in vec)
-                push!(nextret, [path; x])
-            end
-        end
-        ret = nextret
-    end
-    return (ret == [[a]] && a != b) ? [] : ret
-end
- 
-function pathtostring(path)
-    ret = ""
-    for node in path
-        c = CartesianIndices(board)[node]
-        ret *= "($(c[2]-1), $(c[1]-1)) "
-    end
-    ret
-end
- 
-function pathlisting(paths)
-    join([pathtostring(p) for p in paths], "\n")
-end
- 
-println("Part 1:")
-let
-    start = 23 * 11 + 12
-    pathsfromcenter = dijkstra_shortest_paths(graph, start)
-    safepaths = filter(p -> length(p) > 1, enumerate_paths(pathsfromcenter, safety))
-    safelen = mapreduce(length, min, safepaths)
-    paths = unique(allnpaths(graph, start, safety, safelen))
-    println("The $(length(paths)) shortest paths to safety are:\n",
-        pathlisting(paths))
-end
- 
-println("\nPart 2:")
-let
-    p = enumerate_paths(bellman_ford_shortest_paths(graph, 21 * 23 + 12), 23 + 12)
-    println("One shortest route from (21, 11) to (1, 11): ", pathtostring(p))
- 
-    p = enumerate_paths(bellman_ford_shortest_paths(graph, 23 + 12), 21 * 23 + 12)
-    println("\nOne shortest route from (1, 11) to (21, 11): ", pathtostring(p))
- 
-    allshortpaths = [enumerate_paths(bellman_ford_shortest_paths(graph, 23 + 12), p) for p in startingpoints]
-    maxlen, idx = findmax(map(length, allshortpaths))
-    println("\nLongest Shortest Route (length $(maxlen - 1)) is: ", pathtostring(allshortpaths[idx]))
-end
- 
-println("\nExtra Credit Questions:")
-let
-    println("\nIs there any cell in the country that can not be reached from HQ (11, 11)?")
-    frombase = bellman_ford_shortest_paths(graph, 11 * 23 + 12)
-    unreached = Int[]
-    for pt in legalendpoints
-        path = enumerate_paths(frombase, pt)
-        if isempty(path) && pt != 11 * 23 + 12
-            push!(unreached, pt)
-        end
-    end
-    print("There are $(length(unreached)): ")
-    println(pathtostring(unreached))
- 
-    println("\nWhich cells will it take longest to send reinforcements to from HQ (11, 11)?")
-    p = [enumerate_paths(frombase, x) for x in legalendpoints]
-    maxlen = mapreduce(length, max, p)
-    allmax = [path for path in p if length(path) == maxlen]
-    println("There are $(length(allmax)) of length $(maxlen - 1):")
-    println(pathlisting(allmax))
-end
- 
-
 #=
 The weather routing problem has the following parts:
 
@@ -152,58 +11,52 @@ Given the above information and a specific path, progress and arrival time are d
 The weather routing problem, conversely, is to determine the path which results in the earliest arrival time.
 =#
 
-using DelimitedFiles, JuMP
+module SailingPolars
+
+using DelimitedFiles
+
+export SailingPolar, getpolardata, bestboatspeed, boatvector, sailsegment
+
+struct SailingPolar
+    winds::Vector{Float32}
+    degrees::Vector{Float32}
+    speeds::Matrix{Float32} # speeds[wind direction degrees, windspeed knots]
+end
 
 function getpolardata(filename)
     datacells, headercells = readdlm(filename, ';', header=true)
     winds = map(x -> parse(Float32, x), headercells[2:end])
     degrees = datacells[:, 1]
     speeds = datacells[:, 2:end]
-    return winds, degrees, speeds  # speeds indexed by [wind degrees, windspeed knots]
+    return SailingPolar(winds, degrees, speeds)
 end
 
 const R = 6372800  # earth approximate radius in meters
-const filename = "polar.csv"
-const winds, degrees, speeds = getpolardata(filename)
-
-deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π 
+deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π
 rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
 cartesian2polar(x, y) = sqrt(x * x + y * y), atand(x, y)
 polar2cartesian(r, deg) = r .* sincosd(deg)
 
-function haversine(lon1, lat1, lon2, lat2)
+function haversine(lat1, lat2, lon1, lon2)
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = sind(dlat / 2)^2 + cosd(lat1) * cosd(lat2) * sind(dlon / 2)^2
     c = 2.0 * asind(sqrt(a))
-    theta = atand(sind(dlon) * cosd(lat2), 
+    theta = atand(sind(dlon) * cosd(lat2),
         cosd(lat1) * sind(lat2) - sind(lat1) * cosd(lat2) * cosd(dlon))
     theta = (theta + 360) % 360
     return R * c * 0.5399565, theta
 end
 
-function inverse_haversine(lon1, lat2, distance, direction)
-    lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(d / R) * cosd(direction)
-    lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1), 
+function inverse_haversine(lat1, lon1, distance, direction)
+    lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(d / R) * cosd(direction))
+    lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1),
                        cos(distance / R) - sind(lat1) * sind(lat2))
     return lon2, lat2
 end
 
-knots2meterspersecond(knots) = knots * 0.514444444
-meterpersecond2knots(mps) =  mps * 1.94384449
-
-struct SailingParameters
-    winddeg::Float32
-    windkts::Float32
-    currentdeg::Float32
-    currentkts::Float32
-end
-
-function sailingparameters(seatime, longitude, latitude)
-
-end
-
-function bestboatspeed(pointofsail, windspeed)
+function bestboatspeed(sp::SailingPolar, pointofsail, windspeed)
+    winds, degrees, speeds = sp.winds, sp.degrees, sp.speeds
     udeg = findlast(t -> t <= pointofsail, degrees)
     odeg = findfirst(t -> t >= pointofsail, degrees)
     uvel = findlast(t -> t <= windspeed, winds)
@@ -219,14 +72,14 @@ function bestboatspeed(pointofsail, windspeed)
     return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
 end
 
-sailingspeed(azimuth, dir, ws) = bestboatspeed(dir, ws) * cosd(abs(dir - azimuth))
+sailingspeed(sp, azimuth, dir, ws) = bestboatspeed(sp, dir, ws) * cosd(abs(dir - azimuth))
 
-function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
+function boatvector(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, velcur)
     pointofsail = (dirtravel - dirwind) % 360.0
     pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
-    pointofsail = if pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
-    VMG = bestboatspeed(pointofsail, windspeed)
-    other, idx = findmax([sailingspeed(pointofsail, x, windspeed) for x in degrees])
+    pointofsail = pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
+    VMG = bestboatspeed(sp, pointofsail, windspeed)
+    other, idx = findmax([sailingspeed(sp, pointofsail, x, windspeed) for x in degrees])
     if other > VMG
         pointofsail = degrees[idx]
         VMG = other
@@ -237,16 +90,105 @@ function boatvector(dirtravel, dirwind, windspeed, dircur, velcur)
     return rad2deg(atan(wy + cury, wx + curx)), sqrt((wx + curx)^2 + (wy + cury)^2)
 end
 
-function sailsegment(seatime, duration, curlong, curlat, destlong, destlat)
+function sailsegment(sp::SailingPolar, seatime, duration, curlong, curlat, destlong, destlat)
     dir = haversine(curlong, curlat, destlong, destlat)[2]
-    p = sailingparameters(seatime, curlong, curlat)
-    dir2, distance = boatvector(dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
+    p = sailingparameters(sp, seatime, curlong, curlat)
+    dir2, distance = boatvector(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
     lon2, lat2 = inverse_haversine(lon1, lat1, distance, dir2)
 end
 
+end # module
 
-@show bestboatspeed(90, 19.0)
-@show bestboatspeed(95, 19.0)
-@show bestboatspeed(100, 19.0)
+struct SurfaceParameters
+    winddeg::Float32
+    windkts::Float32
+    currentdeg::Float32
+    currentkts::Float32
+end
 
+# NB:  latitude (y) first then longitude (x) as per ISO 6709
+struct Position
+    lat::Float64
+    lon::Float64
+end
+
+struct GridPoint
+    pt::Position
+    sp::SurfaceParameters
+end
+
+# data is at 10 minute (600 second) intervals for 20 x 20 matrix map below.
+# Spacing is in 1/60 of a degree (1 minute) for lat and lon
+#=
+.  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  x  x
+.  .  .  .  .  .  .  .  .  F  .  .  .  .  .  .  .  .  x  x
+.  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  x  x
+.  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+.  .  x  x  .  .  .  .  .  .  x  .  .  .  .  .  .  .  .  .
+.  .  x  x  .  .  .  .  .  x  x  x  .  .  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  x  x  x  x  x  .  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  x  x  x  x  x  .  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  x  x  x  x  x  .  .  .  .  .  .
+.  .  .  x  x  .  .  .  .  .  x  x  x  x  .  .  .  .  .  .
+.  .  .  x  x  .  .  .  .  .  .  x  x  x  x  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  .  x  x  x  x  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  .  x  x  x  x  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  x  x  x  x  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  x  x  x  x  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  .  x  x  x  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  .  x  x  .  .  .  .  .  .  .
+.  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+.  .  .  .  .  S  .  .  .  .  .  .  .  .  .  .  .  .  .  x
+.  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  x  x
+=#
+
+const forbidden = [
+    [1, 19], [1,20], [2, 20], [4, 12], [4, 13], [5, 12], [5, 13], [5, 14], [6, 11], [6, 12],
+    [6, 13], [6, 14], [7, 11], [7, 12], [7, 13], [7, 14], [8, 12], [8, 13], [8, 14], [8, 15],
+    [9, 12], [9, 13], [9, 14], [9, 15], [10, 4], [10, 5], [10, 12], [10, 13], [10, 14],
+    [10, 15], [11, 4], [11, 5], [11, 11], [11, 12], [11, 13], [11, 14], [12, 10], [12, 11],
+    [12, 12], [12, 13], [13, 9], [13, 10], [13, 11], [13, 12], [14, 9], [14, 10], [14, 11],
+    [14, 12], [15, 3], [15, 4], [15, 10], [15, 11], [15, 12], [16, 3], [16, 4], [16, 11],
+    [18, 19], [18, 20], [19, 19], [19, 20],[20, 19], [20, 20],
+]
+
+function surround(x, y, mat)
+    xmax, ymax = size(mat)
+    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in forbidden),
+        [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
+end
+
+const startpos = Position(19.780000, -155.000000)
+const endpos = Position(19.78 + 17/60, -155.0 + 4/60)
+const pmat  = [Position(19.78 - 1/60 + i/60, -155.0 - 5/60 + j/60) for i in 0:19, j in 0:19]
+
+function surfacebylongitude(lon)
+    return lon < -155.1 ? SurfaceParameters(170.0, 30, 150, 0.5) :
+           lon < -154.9 ? SurfaceParameters(165.0, 10, 150, 0.4) :
+           lon < -154.8 ? SurfaceParameters(40.0, 30, 150, 0.3) :
+                          SurfaceParameters(60.0, 40, 150, 0.2)
+end
+
+const gpoints = map(pt -> GridPoint(pt, surfacebylongitude(pt.lon)), pmat)
+
+using .SailingPolars
+
+const filename = "polar.csv"
+const sp = getpolardata(filename)
+
+@show bestboatspeed(sp, 90, 19.0)
+@show bestboatspeed(sp, 95, 19.0)
+@show bestboatspeed(sp, 100, 19.0)
+
+TimeSlice = Matrix{GridPoint}
+
+mutable struct RoutingProblem
+    timeinterval::Float64 # seconds between timeframe slices
+    timeframe::Vector{TimeSlice}
+    startindex::Int
+    start::Position
+    finish::Position
+end
+
+const routeprob = RoutingProblem(600, fill(gpoints, 200), 1, startpos, endpos)
 
