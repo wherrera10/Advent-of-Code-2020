@@ -12,14 +12,22 @@ The weather routing problem, conversely, is to determine the path which results 
 
 module SailingPolars
 
-using DelimitedFiles, GeometryTypes
+using DelimitedFiles
 
-export SailingPolar, getpolardata, bestboatspeed, boatvector, sailsegment
+export SailingPolar, SurfaceParameters, getpolardata
+export boatspeed, bestvectorspeed, sailsegmenttime
 
 struct SailingPolar
     winds::Vector{Float32}
     degrees::Vector{Float32}
     speeds::Matrix{Float32} # speeds[wind direction degrees, windspeed knots]
+end
+
+struct SurfaceParameters
+    winddeg::Float32
+    windkts::Float32
+    currentdeg::Float32
+    currentkts::Float32
 end
 
 function getpolardata(filename)
@@ -36,7 +44,7 @@ rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
 cartesian2polar(x, y) = sqrt(x * x + y * y), atand(x, y)
 polar2cartesian(r, deg) = r .* sincosd(deg)
 
-function haversine(lat1, lat2, lon1, lon2)
+function haversine(lat1, lon1, lat2, lon2)
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = sind(dlat / 2)^2 + cosd(lat1) * cosd(lat2) * sind(dlon / 2)^2
@@ -51,10 +59,10 @@ function inverse_haversine(lat1, lon1, distance, direction)
     lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(d / R) * cosd(direction))
     lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1),
                        cos(distance / R) - sind(lat1) * sind(lat2))
-    return lon2, lat2
+    return lat2, lon2
 end
 
-function bestboatspeed(sp::SailingPolar, pointofsail, windspeed)
+function boatspeed(sp::SailingPolar, pointofsail, windspeed)
     winds, degrees, speeds = sp.winds, sp.degrees, sp.speeds
     udeg = findlast(t -> t <= pointofsail, degrees)
     odeg = findfirst(t -> t >= pointofsail, degrees)
@@ -71,13 +79,13 @@ function bestboatspeed(sp::SailingPolar, pointofsail, windspeed)
     return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
 end
 
-sailingspeed(sp, azimuth, dir, ws) = bestboatspeed(sp, dir, ws) * cosd(abs(dir - azimuth))
+sailingspeed(sp, azimuth, dir, ws) = boatspeed(sp, dir, ws) * cosd(abs(dir - azimuth))
 
-function boatvector(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, velcur)
+function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, velcur)
     pointofsail = (dirtravel - dirwind) % 360.0
     pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
     pointofsail = pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
-    VMG = bestboatspeed(sp, pointofsail, windspeed)
+    VMG = boatspeed(sp, pointofsail, windspeed)
     other, idx = findmax([sailingspeed(sp, pointofsail, x, windspeed) for x in degrees])
     if other > VMG
         pointofsail = degrees[idx]
@@ -89,33 +97,32 @@ function boatvector(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, vel
     return rad2deg(atan(wy + cury, wx + curx)), sqrt((wx + curx)^2 + (wy + cury)^2)
 end
 
-function sailsegment(sp::SailingPolar, seatime, duration, curlong, curlat, destlong, destlat)
-    dir = haversine(curlong, curlat, destlong, destlat)[2]
-    p = sailingparameters(sp, seatime, curlong, curlat)
-    dir2, distance = boatvector(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
-    lon2, lat2 = inverse_haversine(lon1, lat1, distance, dir2)
+function sailsegmenttime(sp::SailingPolar, p::SurfaceParameters, lat1, lon1, lat2, lon2)
+    dir, distance = haversine(lat1, lon1, lat2, lon2)
+    dir2, vel = bestvectorspeed(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
+    endlat2, endlon2 = inverse_haversine(lat1, lon1, distance, dir2)
+println("plan: $lat2, $lon2   actual: $endlat2, endlon2")
+    return distance / vel
 end
+
 
 end # module
 
-struct SurfaceParameters
-    winddeg::Float32
-    windkts::Float32
-    currentdeg::Float32
-    currentkts::Float32
-end
+
+using GeometryTypes
+using .SailingPolars
 
 # NB:  latitude (y) first then longitude (x) as per ISO 6709
-
-Point = Point2{Int}
 Position = Point2f0
-lat(p::Point2f0) = p[1]
-lon(p::Point2f0) = p[2]
+lat(p::Position) = p[1]
+lon(p::Position) = p[2]
 
 struct GridPoint
     pt::Position
     sp::SurfaceParameters
 end
+
+closestpoint(p, mat) = findmin(gp -> haversine(p[1], p[2], gp.pt[1], gp.pt[2])[1], mat)[2]
 
 # data is at 10 minute (600 second) intervals for 20 x 20 matrix map below.
 # Spacing is in 1/60 of a degree (1 minute) for lat and lon
@@ -158,8 +165,8 @@ function surround(x, y, mat, excluded)
         [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
 end
 
-const startpos = Position(19.780000, -155.000000)
-const endpos = Position(19.78 + 17/60, -155.0 + 4/60)
+const startpos = Point2{Int}(1, 6)
+const endpos = Point2{Int}(19, 10)
 const pmat  = [Position(19.78 - 1/60 + i/60, -155.0 - 5/60 + j/60) for i in 0:19, j in 0:19]
 
 function surfacebylongitude(lon)
@@ -171,24 +178,57 @@ end
 
 const gpoints = map(pt -> GridPoint(pt, surfacebylongitude(lon(pt))), pmat)
 
-using .SailingPolars
-
 const filename = "polar.csv"
 const sp = getpolardata(filename)
 
-@show bestboatspeed(sp, 90, 19.0)
-@show bestboatspeed(sp, 95, 19.0)
-@show bestboatspeed(sp, 100, 19.0)
+@show boatspeed(sp, 90, 19.0)
+@show boatspeed(sp, 95, 19.0)
+@show boatspeed(sp, 100, 19.0)
 
 TimeSlice = Matrix{GridPoint}
 
 mutable struct RoutingProblem
     timeinterval::Float64 # seconds between timeframe slices
     timeframe::Vector{TimeSlice}
-    obstacleindices::Vector
+    obstacleindices::Vector{Point2{Int}}
     startindex::Int
-    start::Position
-    finish::Position
+    start::Point2{Int}
+    finish::Point2{Int}
 end
 
-const routeprob = RoutingProblem(600, fill(gpoints, 200), 1, startpos, endpos)
+mutable struct TimedPath
+    duration::Float64
+    path::Vector{Point2{Int}}
+end
+
+const routeprob = RoutingProblem(600.0, fill(gpoints, 200), forbidden, 1, startpos, endpos)
+
+function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar, )
+    timedpaths = [TimedPath(0.0, [start])]
+    mintime, minpath = 10_000_000.0, TimedPath(10_000_000.0, [])
+    for (timeframe, i) in enumerate(rp.timeframe)
+        newpaths = TimedPath[]
+        for tpath in timedpaths
+            if tpath.path[end] == rp.finish
+                if tpath.duration < mintime
+                    mintime = tpath.duration
+                    minpath = tpath
+                end
+            else
+                p1 = tpath.path[end]
+                for p2 in surround(p1)
+                    gp1, gp2 = timeframe[p1[1], p1[2]], timeframe[p2[1], p2[2]]
+                    lat1, lon1, lat2, lon2 = gp1.pt[1], gp1.pt[2], gp2.pt[1], gp2.pt[2]
+                    t = sailsegmenttime(sp, gp1.sp, lat1, lon1, lat2, lon2)
+                    push!(newpaths, TimedPath(path.duration + t, [path; point]))
+                end
+            end
+        end
+        paths = newpaths
+        if all(p -> p.duration >= mintime, paths)
+            break
+        end
+    end
+    return minpath
+end
+
