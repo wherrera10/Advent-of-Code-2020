@@ -109,8 +109,11 @@ end
 end # module
 
 
+module SailingNavigation
+
+export Position, lat, lon, GridPoint, TimeSlice, RoutingProblem, minimumtimeroute, surfacebylongitude
 using GeometryTypes
-using .SailingPolars
+using ..SailingPolars
 
 # NB:  latitude (y) first then longitude (x) as per ISO 6709
 Position = Point2f0
@@ -122,7 +125,70 @@ struct GridPoint
     sp::SurfaceParameters
 end
 
+TimeSlice = Matrix{GridPoint}
+
+mutable struct RoutingProblem
+    timeinterval::Float64 # seconds between timeframe slices
+    timeframe::Vector{TimeSlice}
+    obstacleindices::Vector{Point2{Int}}
+    startindex::Int
+    start::Point2{Int}
+    finish::Point2{Int}
+end
+
+mutable struct TimedPath
+    duration::Float64
+    path::Vector{Point2{Int}}
+end
+
 closestpoint(p, mat) = findmin(gp -> haversine(p[1], p[2], gp.pt[1], gp.pt[2])[1], mat)[2]
+
+function surround(x, y, mat, excluded)
+    xmax, ymax = size(mat)
+    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in excluded),
+        [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
+end
+
+function surfacebylongitude(lon)
+    return lon < -155.1 ? SurfaceParameters(170.0, 30, 150, 0.5) :
+           lon < -154.9 ? SurfaceParameters(165.0, 10, 150, 0.4) :
+           lon < -154.8 ? SurfaceParameters(40.0, 30, 150, 0.3) :
+                          SurfaceParameters(60.0, 40, 150, 0.2)
+end
+
+function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
+    timedpaths = [TimedPath(0.0, [start])]
+    mintime, minpath = 10_000_000.0, TimedPath(10_000_000.0, [])
+    for (timeframe, i) in enumerate(rp.timeframe)
+        newpaths = TimedPath[]
+        for tpath in timedpaths
+            if tpath.path[end] == rp.finish
+                if tpath.duration < mintime
+                    mintime = tpath.duration
+                    minpath = tpath
+                end
+            else
+                p1 = tpath.path[end]
+                for p2 in surround(p1)
+                    gp1, gp2 = timeframe[p1[1], p1[2]], timeframe[p2[1], p2[2]]
+                    lat1, lon1, lat2, lon2 = gp1.pt[1], gp1.pt[2], gp2.pt[1], gp2.pt[2]
+                    t = sailsegmenttime(sp, gp1.sp, lat1, lon1, lat2, lon2)
+                    push!(newpaths, TimedPath(path.duration + t, [path; point]))
+                end
+            end
+        end
+        paths = newpaths
+        if all(p -> p.duration >= mintime, paths)
+            break
+        end
+    end
+    return minpath
+end
+
+end # module
+
+using GeometryTypes
+using .SailingNavigation, .SailingPolars
 
 # data is at 10 minute (600 second) intervals for 20 x 20 matrix map below.
 # Spacing is in 1/60 of a degree (1 minute) for lat and lon
@@ -159,24 +225,11 @@ const forbidden = [
     [18, 19], [18, 20], [19, 19], [19, 20],[20, 19], [20, 20],
 ]
 
-function surround(x, y, mat, excluded)
-    xmax, ymax = size(mat)
-    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in excluded),
-        [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
-end
-
 const startpos = Point2{Int}(1, 6)
 const endpos = Point2{Int}(19, 10)
 const pmat  = [Position(19.78 - 1/60 + i/60, -155.0 - 5/60 + j/60) for i in 0:19, j in 0:19]
-
-function surfacebylongitude(lon)
-    return lon < -155.1 ? SurfaceParameters(170.0, 30, 150, 0.5) :
-           lon < -154.9 ? SurfaceParameters(165.0, 10, 150, 0.4) :
-           lon < -154.8 ? SurfaceParameters(40.0, 30, 150, 0.3) :
-                          SurfaceParameters(60.0, 40, 150, 0.2)
-end
-
 const gpoints = map(pt -> GridPoint(pt, surfacebylongitude(lon(pt))), pmat)
+const routeprob = RoutingProblem(600.0, fill(gpoints, 200), forbidden, 1, startpos, endpos)
 
 const filename = "polar.csv"
 const sp = getpolardata(filename)
@@ -184,51 +237,4 @@ const sp = getpolardata(filename)
 @show boatspeed(sp, 90, 19.0)
 @show boatspeed(sp, 95, 19.0)
 @show boatspeed(sp, 100, 19.0)
-
-TimeSlice = Matrix{GridPoint}
-
-mutable struct RoutingProblem
-    timeinterval::Float64 # seconds between timeframe slices
-    timeframe::Vector{TimeSlice}
-    obstacleindices::Vector{Point2{Int}}
-    startindex::Int
-    start::Point2{Int}
-    finish::Point2{Int}
-end
-
-mutable struct TimedPath
-    duration::Float64
-    path::Vector{Point2{Int}}
-end
-
-const routeprob = RoutingProblem(600.0, fill(gpoints, 200), forbidden, 1, startpos, endpos)
-
-function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar, )
-    timedpaths = [TimedPath(0.0, [start])]
-    mintime, minpath = 10_000_000.0, TimedPath(10_000_000.0, [])
-    for (timeframe, i) in enumerate(rp.timeframe)
-        newpaths = TimedPath[]
-        for tpath in timedpaths
-            if tpath.path[end] == rp.finish
-                if tpath.duration < mintime
-                    mintime = tpath.duration
-                    minpath = tpath
-                end
-            else
-                p1 = tpath.path[end]
-                for p2 in surround(p1)
-                    gp1, gp2 = timeframe[p1[1], p1[2]], timeframe[p2[1], p2[2]]
-                    lat1, lon1, lat2, lon2 = gp1.pt[1], gp1.pt[2], gp2.pt[1], gp2.pt[2]
-                    t = sailsegmenttime(sp, gp1.sp, lat1, lon1, lat2, lon2)
-                    push!(newpaths, TimedPath(path.duration + t, [path; point]))
-                end
-            end
-        end
-        paths = newpaths
-        if all(p -> p.duration >= mintime, paths)
-            break
-        end
-    end
-    return minpath
-end
 
