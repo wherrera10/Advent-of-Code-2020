@@ -56,7 +56,7 @@ function haversine(lat1, lon1, lat2, lon2)
 end
 
 function inverse_haversine(lat1, lon1, distance, direction)
-    lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(d / R) * cosd(direction))
+    lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(distance / R) * cosd(direction))
     lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1),
                        cos(distance / R) - sind(lat1) * sind(lat2))
     return lat2, lon2
@@ -86,9 +86,9 @@ function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur
     pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
     pointofsail = pointofsail > 180.0 ? 360.0 - pointofsail : pointofsail
     VMG = boatspeed(sp, pointofsail, windspeed)
-    other, idx = findmax([sailingspeed(sp, pointofsail, x, windspeed) for x in degrees])
+    other, idx = findmax([sailingspeed(sp, pointofsail, x, windspeed) for x in sp.degrees])
     if other > VMG
-        pointofsail = degrees[idx]
+        pointofsail = sp.degrees[idx]
         VMG = other
     end
     dirchosen = deg2rad(dirwind + pointofsail)
@@ -101,7 +101,7 @@ function sailsegmenttime(sp::SailingPolar, p::SurfaceParameters, lat1, lon1, lat
     dir, distance = haversine(lat1, lon1, lat2, lon2)
     dir2, vel = bestvectorspeed(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
     endlat2, endlon2 = inverse_haversine(lat1, lon1, distance, dir2)
-println("plan: $lat2, $lon2   actual: $endlat2, endlon2")
+#println("plan: $lat2, $lon2   actual: $endlat2, $endlon2")
     return distance / vel
 end
 
@@ -143,10 +143,11 @@ end
 
 closestpoint(p, mat) = findmin(gp -> haversine(p[1], p[2], gp.pt[1], gp.pt[2])[1], mat)[2]
 
-function surround(x, y, mat, excluded)
-    xmax, ymax = size(mat)
-    return filter(0 <= p[1] <= xmax && 0 <= p[2] <= ymax && !(p in excluded),
-        [[-1, -1], [-1, 0], [-1, 1], [0. -1], [0, 1], [1, -1], [1, 0], [1, 1]] .+ [x, y])
+function surround(p, mat, excluded)
+    neighbors = Point2{Int}[(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+    (xmax, ymax) = size(mat)
+    return filter(q -> 1 <= q[1] <= xmax && 1 <= q[2] <= ymax && !(q in excluded),
+        [x + p for x in neighbors])
 end
 
 function surfacebylongitude(lon)
@@ -157,9 +158,9 @@ function surfacebylongitude(lon)
 end
 
 function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
-    timedpaths = [TimedPath(0.0, [start])]
+    timedpaths = [TimedPath(0.0, [rp.start])]
     mintime, minpath = 10_000_000.0, TimedPath(10_000_000.0, [])
-    for (timeframe, i) in enumerate(rp.timeframe)
+    for (i, timeframe) in enumerate(rp.timeframe)
         newpaths = TimedPath[]
         for tpath in timedpaths
             if tpath.path[end] == rp.finish
@@ -169,11 +170,11 @@ function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
                 end
             else
                 p1 = tpath.path[end]
-                for p2 in surround(p1)
+                for p2 in surround([p1[1], p1[2]], timeframe, rp.obstacleindices)
                     gp1, gp2 = timeframe[p1[1], p1[2]], timeframe[p2[1], p2[2]]
                     lat1, lon1, lat2, lon2 = gp1.pt[1], gp1.pt[2], gp2.pt[1], gp2.pt[2]
                     t = sailsegmenttime(sp, gp1.sp, lat1, lon1, lat2, lon2)
-                    push!(newpaths, TimedPath(path.duration + t, [path; point]))
+                    push!(newpaths, TimedPath(tpath.duration + t, [tpath.path; p2]))
                 end
             end
         end
@@ -215,15 +216,15 @@ using .SailingNavigation, .SailingPolars
 .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  x  x
 =#
 
-const forbidden = [
+const forbidden = Point2{Int}.([
     [1, 19], [1,20], [2, 20], [4, 12], [4, 13], [5, 12], [5, 13], [5, 14], [6, 11], [6, 12],
     [6, 13], [6, 14], [7, 11], [7, 12], [7, 13], [7, 14], [8, 12], [8, 13], [8, 14], [8, 15],
     [9, 12], [9, 13], [9, 14], [9, 15], [10, 4], [10, 5], [10, 12], [10, 13], [10, 14],
     [10, 15], [11, 4], [11, 5], [11, 11], [11, 12], [11, 13], [11, 14], [12, 10], [12, 11],
     [12, 12], [12, 13], [13, 9], [13, 10], [13, 11], [13, 12], [14, 9], [14, 10], [14, 11],
     [14, 12], [15, 3], [15, 4], [15, 10], [15, 11], [15, 12], [16, 3], [16, 4], [16, 11],
-    [18, 19], [18, 20], [19, 19], [19, 20],[20, 19], [20, 20],
-]
+    [18, 19], [18, 20], [19, 19], [19, 20],[20, 19], [20, 20]
+])
 
 const startpos = Point2{Int}(1, 6)
 const endpos = Point2{Int}(19, 10)
@@ -238,3 +239,4 @@ const sp = getpolardata(filename)
 @show boatspeed(sp, 95, 19.0)
 @show boatspeed(sp, 100, 19.0)
 
+@show minimumtimeroute(routeprob, sp)
