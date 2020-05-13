@@ -6,12 +6,27 @@ export SailingPolar, SurfaceParameters, getpolardata, deg2rad, rad2deg, cartesia
 export polar2cartesian, haversine, inverse_haversine, boatspeed, bestvectorspeed
 export sailingspeed, sailsegmenttime
 
+"""
+    Structure to represent a polar CSV file's data. 
+    
+speeds is a matrix of sailing speeds indexed by angle to wind (degrees) and windspeed (knots)
+winds is a list of wind spees, degrees of angles for wind direction 
+Note 0.0 degrees is directly into the wind.
+"""
 struct SailingPolar
     winds::Vector{Float32}
     degrees::Vector{Float32}
     speeds::Matrix{Float32} # speeds[wind direction degrees, windspeed knots]
 end
 
+"""
+    Structure to represent wind and surface current direction and vlocity for a given position
+    
+winddeg is direction from the wind in degrees
+windkts is wind velocity in knots
+currentdeg is direction from the current in degrees (0 is into the current)
+currentkts is current velocity in knots
+"""
 struct SurfaceParameters
     winddeg::Float32
     windkts::Float32
@@ -19,6 +34,14 @@ struct SurfaceParameters
     currentkts::Float32
 end
 
+"""
+    Read a sailing polar csv file
+    
+A sailing polar file is a CSV file, with ';' used as the comma separator instead of a comma.
+The first line comtains labels for the wind velocities that make up columns
+The first entry on each column is angle of sailing direction from wind in degrees
+0.0 angle is directly upwind, 180 degrees is directly downwind
+"""
 function getpolardata(filename)
     datacells, headercells = readdlm(filename, ';', header=true)
     winds = map(x -> parse(Float32, x), headercells[2:end])
@@ -27,12 +50,50 @@ function getpolardata(filename)
     return SailingPolar(winds, degrees, speeds)
 end
 
-const R = 6372800  # earth approximate radius in meters
-deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π
-rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
-cartesian2polar(x, y) = sqrt(x * x + y * y), atand(x, y)
-polar2cartesian(r, deg) = r .* sincosd(deg)
 
+const R = 6372800  # Earth's approximate radius in meters
+
+"""
+    deg2rad(deg)
+    
+Convert degrees to radians
+"""
+deg2rad(deg) = (deg * π / 180.0 + 2π) % 2π
+
+"""
+    rad2deg(rad)
+    
+Convert radians to degrees
+"""
+rad2deg(rad) = (rad * (180.0 / π) + 360.0) % 360.0
+
+"""
+    cartesian2polard(x, y) 
+    
+Convert x, y coordinates to polar coordinates with angle in degrees
+"""
+cartesian2polard(x, y) = sqrt(x * x + y * y), atand(x, y)
+
+"""
+    polard2cartesuan(r, deg) 
+    
+Convert polar coordinates in degrees to cartesian x, y coordinates
+"""
+polard2cartesian(r, deg) = r .* sincosd(deg)
+
+"""
+    function haversine(lat1, lon1, lat2, lon2)
+    
+Haversine function
+
+Sailing navigation function.
+
+Arguments for point 1 (lat1, lon1) and point 2 (lat2, lon2)
+
+Given two latitude and longitude points indexed on the Earth in degrees, 
+get distance in meters and the initial direction of travel in degrees for 
+movement from point 1 to point 2
+"""
 function haversine(lat1, lon1, lat2, lon2)
     dlat = lat2 - lat1
     dlon = lon2 - lon1
@@ -44,6 +105,18 @@ function haversine(lat1, lon1, lat2, lon2)
     return R * c * 0.5399565, theta
 end
 
+"""
+    function inverse_haversine(lat1, lon1, distance, direction)
+    
+Inverse haversine function
+
+Sailing navigation function
+
+Takes the point of origin in degrees (latitude, longitude), distance in meters, and 
+initial direction in degrees
+
+returns latitude and longitude of endpoint in degrees after traveling that distance
+"""
 function inverse_haversine(lat1, lon1, distance, direction)
     lat2 = asind(sind(lat1) * cos(distance / R) + cosd(lat1) * sin(distance / R) * cosd(direction))
     lon2 = lon1 + atand(sind(direction) * sin(distance / R) * cosd(lat1),
@@ -51,6 +124,13 @@ function inverse_haversine(lat1, lon1, distance, direction)
     return lat2, lon2
 end
 
+"""
+    function boatspeed(sp::SailingPolar, pointofsail, windspeed)
+
+Given sailing polar data, a desired point of sail in degrees, and wind speed in knots
+return the expected sailing speed at in the specified direction in knots
+NB: sailing too far into the wind, near 0 degrees, will result in a return value of 0.0
+"""
 function boatspeed(sp::SailingPolar, pointofsail, windspeed)
     winds, degrees, speeds = sp.winds, sp.degrees, sp.speeds
     udeg = findlast(t -> t <= pointofsail, degrees)
@@ -68,8 +148,26 @@ function boatspeed(sp::SailingPolar, pointofsail, windspeed)
     return speeds[udeg, uvel] + frac * (speeds[odeg, ovel] - speeds[udeg, uvel])
 end
 
+
+"""
+    sailingspeed(sp, azimuth, dir, ws)
+    
+given polar data, a compass direction of travel in degrees, a compasss direction
+of the wind in degrees, and a wind speed relative to the Earth, return the expected 
+boat speed in the desired direction (not the actual boat speed in its actual direction)
+"""
 sailingspeed(sp, azimuth, dir, ws) = boatspeed(sp, dir, ws) * cosd(abs(dir - azimuth))
 
+
+"""
+    function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, velcur)
+
+Sailing navigation function
+Given a saling polar, a direction of travel in degrees from north, the wind direction in 
+degrees from north, wind velocity in knots, surface current direction in degrees, and 
+current velocity in knots, return direction and velocity of sailing ship.
+
+"""
 function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur, velcur)
     pointofsail = (dirtravel - dirwind) % 360.0
     pointofsail = pointofsail < 0 ? pointofsail + 360.0 : pointofsail
@@ -86,6 +184,13 @@ function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur
     return rad2deg(atan(wy + cury, wx + curx)), sqrt((wx + curx)^2 + (wy + cury)^2)
 end
 
+"""
+    function sailsegmenttime(sp::SailingPolar, p::SurfaceParameters, lat1, lon1, lat2, lon2)
+    
+Given sailing polar data, a set of surface parameters for the location for wind and current, 
+the starting latitude and longitude in degrees, and the destination latitude and 
+longitude in degrees, calculate the trip time in minutes to the destination.
+"""
 function sailsegmenttime(sp::SailingPolar, p::SurfaceParameters, lat1, lon1, lat2, lon2)
     distance, dir = haversine(lat1, lon1, lat2, lon2)
     dir2, vel = bestvectorspeed(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
@@ -106,18 +211,44 @@ export RoutingProblem, minimumtimeroute
 using GeometryTypes
 using ..SailingPolars
 
-# NB:  latitude (y) first then longitude (x) as per ISO 6709
+# NB:  latitude (often considered to be y) first then longitude (often considered to be x).
+# Latitude then longitude ordering is as per ISO 6709 (en.wikipedia.org/wiki/ISO_6709)
+
+# Position is a Float32 2-tuple of latitude and longitude in degrees
 Position = Point2f0
+
+# latitude from Position
 lat(p::Position) = p[1]
+
+# longitude from Position
 lon(p::Position) = p[2]
 
+# A GridPoint id a Position with the SurfaceParameters of wind and current at the Position
 struct GridPoint
     pt::Position
     sp::SurfaceParameters
 end
 
+"""
+    TimeSlice
+    
+A TimeSlice is a matrix of GridPoints, each Position point with their SurfaceParameters
+A Vector of TimeSlice can give the surface characteristics for an ocean region over time.
+"""
 TimeSlice = Matrix{GridPoint}
 
+"""
+    mutable struct RoutingProblem
+
+timeinterval: the seconds duration for each TimeSlice
+timeframe: a vector of sequntial timeslices for the ocean region
+obstacleindices: the Cartesian indices in each timeslice for
+    obstacles, such as land or shoals, where the ship may not go
+startindex: the timeslice position for time of starting
+start: starting location on grid of GridPoints
+finish: destination / finish location on grid of GridPoints
+allowrepeatvisits: whether the vessel may overlap its prior path, usually false
+"""
 mutable struct RoutingProblem
     timeinterval::Float64 # seconds between timeframe slices
     timeframe::Vector{TimeSlice}
@@ -133,6 +264,8 @@ mutable struct TimedPath
     path::Vector{Point2{Int}}
 end
 
+const verbose = [true]
+
 closestpoint(p, mat) = findmin(gp -> haversine(p[1], p[2], gp.pt[1], gp.pt[2])[1], mat)[2]
 
 function surround(p, mat, excluded)
@@ -147,7 +280,7 @@ function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
     completed, mintime, minpath = false, 10_000_000.0, TimedPath(10_000_000.0, [])
     for (i, timeframe) in enumerate(rp.timeframe)
         newpaths = TimedPath[]
-        println("Checking ", length(timedpaths), " paths of length ",
+        verbose[1] && println("Checking ", length(timedpaths), " paths of length ",
             length(timedpaths[1].path) - 1)
         for tpath in timedpaths
             if tpath.path[end] == rp.finish
@@ -171,7 +304,7 @@ function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
             mindur = minimum(map(x -> x.duration, timedpaths))
             finished = filter(x -> x.path[end] == rp.finish, timedpaths)
             minfindur, idx = findmin(map(x -> x.duration, finished))
-            println("Current finished minimum: ", finished[idx], ", others $mindur")
+            verbose[1] && println("Current finished minimum: ", finished[idx], ", others $mindur")
             if mindur == minfindur
                 minpath = finished[idx]
                 break
