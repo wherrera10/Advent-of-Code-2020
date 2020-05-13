@@ -87,10 +87,11 @@ function bestvectorspeed(sp::SailingPolar, dirtravel, dirwind, windspeed, dircur
 end
 
 function sailsegmenttime(sp::SailingPolar, p::SurfaceParameters, lat1, lon1, lat2, lon2)
-    dir, distance = haversine(lat1, lon1, lat2, lon2)
+    distance, dir = haversine(lat1, lon1, lat2, lon2)
     dir2, vel = bestvectorspeed(sp, dir, p.winddeg, p.windkts, p.currentdeg, p.currentkts)
     endlat2, endlon2 = inverse_haversine(lat1, lon1, distance, dir2)
-    return distance / vel
+    # minutes/s * m / (knots * (m/s / knot)) = minutes
+    return (1 / 60) * distance / (vel * 1.94384)
 end
 
 
@@ -216,5 +217,7 @@ const routeprob = RoutingProblem(600.0, fill(gpoints, 200), forbidden, 1, startp
 
 const filename = "polar.csv"
 const sp = getpolardata(filename)
+
+@show haversine(1,1,1,2)
 
 @show minimumtimeroute(routeprob, sp)
