@@ -259,13 +259,24 @@ mutable struct RoutingProblem
     allowrepeatvisits::Bool
 end
 
+"""
+    mutable struct TimedPath
+
+duration: minutes total to travel the path
+path: vector of Cartesian indices of points in grid for path to travel 
+"""
 mutable struct TimedPath
     duration::Float64
     path::Vector{Point2{Int}}
 end
 
-const verbose = [true]
-
+"""
+    closestpoint(p, mat)
+    
+Get the closest GridPoint in matrix mat to a given position p.
+p: Cartesian indices of a Position (latitude, longitude in degrees) in grid of GridPoints
+mat: matrix of Gridpoints
+"""
 closestpoint(p, mat) = findmin(gp -> haversine(p[1], p[2], gp.pt[1], gp.pt[2])[1], mat)[2]
 
 function surround(p, mat, excluded)
@@ -275,12 +286,12 @@ function surround(p, mat, excluded)
         [x + p for x in neighbors])
 end
 
-function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
+function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar, verbose=true)
     timedpaths = [TimedPath(0.0, [rp.start])]
     completed, mintime, minpath = false, 10_000_000.0, TimedPath(10_000_000.0, [])
     for (i, timeframe) in enumerate(rp.timeframe)
         newpaths = TimedPath[]
-        verbose[1] && println("Checking ", length(timedpaths), " paths of length ",
+        verbose && println("Checking ", length(timedpaths), " paths of length ",
             length(timedpaths[1].path) - 1)
         for tpath in timedpaths
             if tpath.path[end] == rp.finish
@@ -304,7 +315,7 @@ function minimumtimeroute(rp::RoutingProblem, sp::SailingPolar)
             mindur = minimum(map(x -> x.duration, timedpaths))
             finished = filter(x -> x.path[end] == rp.finish, timedpaths)
             minfindur, idx = findmin(map(x -> x.duration, finished))
-            verbose[1] && println("Current finished minimum: ", finished[idx], ", others $mindur")
+            verbose && println("Current finished minimum: ", finished[idx], ", others $mindur")
             if mindur == minfindur
                 minpath = finished[idx]
                 break
