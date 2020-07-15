@@ -7,16 +7,16 @@ end
 
 const HMAX = 3
 
-function canonicalize!(s::Sandpile)
+function canonicalize!(s::Sandpile, lim=HMAX)
     nrows, ncols = size(s)
-    while any(x -> x > HMAX, s)
+    while any(x -> x > lim, s)
         for j in 1:ncols, i in 1:nrows
-            if s[i, j] > HMAX
+            if s[i, j] > lim
                 i > 1 && (s[i - 1, j] += 1)
                 i < nrows && (s[i + 1, j] += 1)
                 j > 1 && (s[i, j - 1] += 1)
                 j < ncols && (s[i, j + 1] += 1)
-                s[i, j] -= (HMAX + 1)
+                s[i, j] -= (lim + 1)
             end
         end
     end
