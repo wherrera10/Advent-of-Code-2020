@@ -1,1 +1,28 @@
 
+import Base.+, Base.print
+
+struct Sandpile 
+    pile::Matrix{UInt8}
+end
+
+const HMAX = 3
+
+function canonicalize!(s::Sandpile)
+    nrows, ncols = size(s)
+    while any(x -> x > HMAX, s)
+        for j in 1:ncols, i in 1:nrows
+            if s[i, j] > HMAX
+                i > 1 && (s[i - 1, j] += 1)
+                i < nrows && (s[i + 1, j] += 1)
+                j > 1 && (s[i, j - 1] += 1)
+                j < ncols && (s[i, j + 1] += 1)
+                s[i, j] -= (HMAX + 1)
+            end
+        end
+    end
+    s
+end
+
++(s1::Sandpile, s2::Sandpile) = canonicalize!(Sandpile((s1.pile + s2.pile)))
+
+print(io::IO, s::Sandpile) = print(io, s.pile)
