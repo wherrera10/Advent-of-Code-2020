@@ -25,4 +25,7 @@ end
 
 +(s1::Sandpile, s2::Sandpile) = canonicalize!(Sandpile((s1.pile + s2.pile)))
 
-print(io::IO, s::Sandpile) = print(io, s.pile)
+function print(io::IO, s::Sandpile)
+    print(io, MIME"text/plain"(), s.pile)
+end
+
