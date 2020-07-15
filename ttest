@@ -1,8 +1,13 @@
-
 import Base.+, Base.print
 
 struct Sandpile 
     pile::Matrix{UInt8}
+end
+
+function Sandpile(s::String)
+    arr = [parse(UInt8, x.match) for x in eachmatch(r"\d+", s)]
+    siz = Int(round(sqrt(length(arr))))
+    return Sandpile(reshape(UInt8.(arr), siz, siz)')
 end
 
 const HMAX = 3
@@ -26,6 +31,17 @@ end
 +(s1::Sandpile, s2::Sandpile) = canonicalize!(Sandpile((s1.pile + s2.pile)))
 
 function print(io::IO, s::Sandpile)
-    print(io, MIME"text/plain"(), s.pile)
+    for row in 1:size(s.pile)[1]
+        for col in 1:size(s.pile)[2]
+            print(io, lpad(s.pile[row, col], 4))
+        end
+        println()
+    end
 end
 
+s1 = Sandpile("""
+    1 2 3
+    4 5 6 
+    7 8 9""")
+
+println(s1)
