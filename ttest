@@ -12,23 +12,23 @@ end
 
 const HMAX = 3
 
-function canonicalize!(s::Sandpile, lim=HMAX)
-    nrows, ncols = size(s)
-    while any(x -> x > lim, s)
+function avalanche!(s::Sandpile, lim=HMAX)
+    nrows, ncols = size(s.pile)
+    while any(x -> x > lim, s.pile)
         for j in 1:ncols, i in 1:nrows
-            if s[i, j] > lim
-                i > 1 && (s[i - 1, j] += 1)
-                i < nrows && (s[i + 1, j] += 1)
-                j > 1 && (s[i, j - 1] += 1)
-                j < ncols && (s[i, j + 1] += 1)
-                s[i, j] -= (lim + 1)
+            if s.pile[i, j] > lim
+                i > 1 && (s.pile[i - 1, j] += 1)
+                i < nrows && (s.pile[i + 1, j] += 1)
+                j > 1 && (s.pile[i, j - 1] += 1)
+                j < ncols && (s.pile[i, j + 1] += 1)
+                s.pile[i, j] -= (lim + 1)
             end
         end
     end
     s
 end
 
-+(s1::Sandpile, s2::Sandpile) = canonicalize!(Sandpile((s1.pile + s2.pile)))
++(s1::Sandpile, s2::Sandpile) = avalanche!(Sandpile((s1.pile + s2.pile)))
 
 function print(io::IO, s::Sandpile)
     for row in 1:size(s.pile)[1]
@@ -39,9 +39,25 @@ function print(io::IO, s::Sandpile)
     end
 end
 
-s1 = Sandpile("""
-    1 2 3
-    4 5 6 
-    7 8 9""")
+const s3 = Sandpile("""
+    3 3 3
+    3 3 3 
+    3 3 3""")
+    
+const s3_id = Sandpile("""
+    2 1 2  
+    1 0 1  
+    2 1 2""")
+    
+const s3a = Sandpile("""
+    4 3 3 
+    3 1 2 
+    0 2 3""")
+    
+println("Before:\n", s3a)
+println("After:\n", avalanche!(s3a), "\n")
 
-println(s1)
+println("Addition:\n", s3, "   +\n", s3_id, "   =\n", s3 + s3_id, "\n")
+
+println(s3_id, "   +\n", s3_id, "   =\n", s3_id + s3_id, "\n")
+
