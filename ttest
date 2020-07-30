@@ -1,63 +1,232 @@
-import Base.+, Base.print
+"""
+{{draft task|Jaro-Winkler Distance}}
 
-struct Sandpile 
-    pile::Matrix{UInt8}
-end
+The Jaro distance is a measure of similarity between two strings.
 
-function Sandpile(s::String)
-    arr = [parse(UInt8, x.match) for x in eachmatch(r"\d+", s)]
-    siz = Int(round(sqrt(length(arr))))
-    return Sandpile(reshape(UInt8.(arr), siz, siz)')
-end
+The higher the Jaro distance for two strings is, the more similar the strings are.
 
-const HMAX = 3
+The score is normalized such that &nbsp; '''0''' &nbsp; equates to no similarity and &nbsp; '''1''' &nbsp; is an exact match.
 
-function avalanche!(s::Sandpile, lim=HMAX)
-    nrows, ncols = size(s.pile)
-    while any(x -> x > lim, s.pile)
-        for j in 1:ncols, i in 1:nrows
-            if s.pile[i, j] > lim
-                i > 1 && (s.pile[i - 1, j] += 1)
-                i < nrows && (s.pile[i + 1, j] += 1)
-                j > 1 && (s.pile[i, j - 1] += 1)
-                j < ncols && (s.pile[i, j + 1] += 1)
-                s.pile[i, j] -= (lim + 1)
+
+;;Definition
+
+The Jaro distance &nbsp; <math>d_j</math> &nbsp; of two given strings &nbsp; <math>s_1</math> &nbsp; and &nbsp; <math>s_2</math> &nbsp; is
+
+: <math>d_j = \left\{
+
+\begin{array}{l l}
+  0 & \text{if }m = 0\\
+  \frac{1}{3}\left(\frac{m}{|s_1|} + \frac{m}{|s_2|} + \frac{m-t}{m}\right) & \text{otherwise} \end{array} \right.</math>
+
+Where:
+
+* <math>m</math> &nbsp; is the number of ''matching characters'';
+* <math>t</math> &nbsp; is half the number of ''transpositions''.
+
+
+Two characters from &nbsp; <math>s_1</math> &nbsp; and &nbsp; <math>s_2</math> &nbsp; respectively, are considered ''matching'' only if they are the same and not farther than &nbsp; <math>\left\lfloor\frac{\max(|s_1|,|s_2|)}{2}\right\rfloor-1</math>.
+
+Each character of &nbsp; <math>s_1</math> &nbsp; is compared with all its matching
+characters in &nbsp; <math>s_2</math>.
+
+The number of matching (but different sequence order) characters
+divided by 2 defines the number of ''transpositions''.
+
+
+;;Example
+
+Given the strings &nbsp; <math>s_1</math> &nbsp; ''DWAYNE'' &nbsp; and &nbsp; <math>s_2</math> &nbsp; ''DUANE'' &nbsp; we find:
+
+* <math>m = 4</math>
+* <math>|s_1| = 6</math>
+* <math>|s_2| = 5</math>
+* <math>t = 0</math>
+
+
+We find a Jaro score of:
+
+: <math>d_j = \frac{1}{3}\left(\frac{4}{6} + \frac{4}{5} + \frac{4-0}{4}\right) = 0.822</math>
+
+
+;Task
+
+Implement the Jaro-distance algorithm and show the distances for each of the following pairs:
+
+* ("MARTHA", "MARHTA")
+* ("DIXON", "DICKSONX")
+* ("JELLYFISH", "SMELLYFISH")
+
+
+; See also
+* [[wp:Jaro-Winkler_distance|Jaro–Winkler distance]] on Wikipedia.
+<br><br>
+
+The Jaro-Winkler distance is a metric for measuring the edit distance between words.
+It is similar to the more basic Levenstein distance but the Jaro distance also accounts
+for transpositions between adjacent letters. With the Winkler modification to the Jaro
+metric, the Jaro-Winkler distance also adds an increase in similarity four words which
+start with the same letters (prefix).
+
+
+To calculate the Jaro-Winkler distance, the Jaro similarity is first calculated according to the formula
+
+
+The Jaro similarity is near 1.0 when the distance between the two words is small.
+The Jaro distance is thus defined as 1 - the Jaro similarity:
+
+
+
+The Jaro distance is 0.0 if the words are identical and 1.0 if the words do not share
+any common letters.
+
+
+
+The Winkler modification is based upon the number of common letters at the start of the two words,
+times a constant for the strength of the addition, which Winkler originally set at 0.1,
+which is then multiplied by the gyro distance. This product is then added to the original Jaro similarity.
+
+
+Finally, the Jaro-WInkler distance is defined a 1.0 minus the Jaro-Winkler similarity:
+
+
+
+String metrics such as Jaro-Winkler distance are useful in applications such as spelling checkers,
+because letter transpositions are common typing errors and humans tend to misspell the middle portions
+of words more often than their beginnings.  This may help a spelling checker program to generate
+better alternatives for misspelled word replacement.
+
+The task:
+
+Using a dictionary of your choice and the following list of commonly misspelled words:
+
+1. Calculate the Jaro-Winkler distance between the misspelled word and words in the dictionary.
+
+2. Use this distance to list close alternatives (at least two per word) to the misspelled words.
+
+3. Show the calculated distances between the misspelled words and their potential replacements.
+
+
+"""
+
+# https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance
+
+# download from users.cs.duke.edu/~ola/ap/linuxwords
+const words = read("linuxwords.txt", String) |> split .|> strip .|> lowercase
+const misspellings = ["accomodate​", "definately​", "goverment​", "occured", "publically",
+    "recieve​", "seperate", "untill​", "wich​"]
+
+function jarowinklerdistance(s1, s2)
+    if s1 < s2
+        s1, s2 = s2, s1
+    end
+    len1, len2 = length(s1), length(s2)
+    len2 == 0 && return 0.0
+    d = max(0, len2 ÷ 2 - 1)
+    flag = fill(false, len2)  # flags for possible transpositions
+    ch1_match = Vector{eltype(s1)}()
+    for (i1, ch1) in enumerate(s1)
+        for (i2, ch2) in enumerate(s2)
+            if (i2 <= i1 + d) && (i2 >= i1 - d) && (ch1 == ch2) && !flag[i2]
+                flag[i2] = true
+                push!(ch1_match, ch1)
+                break
             end
         end
     end
-    s
+    matches = length(ch1_match)
+    matches == 0 && return 1.0
+    transpositions, i1 = 0, 0
+    for (i2, ch2) in enumerate(s2)
+        if flag[i2]
+            i1 += 1
+            transpositions += (ch2 != ch1_match[i1])
+        end
+    end
+    jaro = (matches / len1 + matches / len2 + (matches - transpositions/2) / matches) / 3.0
+    commonprefix = something(findfirst(i -> s1[i] != s2[i], 1:len2), 1) - 1
+    return 1.0 - (jaro + commonprefix * 0.10 * (1 - jaro))
 end
 
-+(s1::Sandpile, s2::Sandpile) = avalanche!(Sandpile((s1.pile + s2.pile)))
+function closewords(s, maxdistance, maxtoreturn)
+    arr = filter(w -> jarowinklerdistance(s, w) <= maxdistance, words)
+    sort!(arr, lt=(x, y) -> jarowinklerdistance(s, x) < jarowinklerdistance(s, y))
+    return length(arr) <= maxtoreturn ? arr : arr[1:maxtoreturn]
+end
 
-function print(io::IO, s::Sandpile)
-    for row in 1:size(s.pile)[1]
-        for col in 1:size(s.pile)[2]
-            print(io, lpad(s.pile[row, col], 4))
-        end
-        println()
+for str in strip.(misspellings)
+    println("\nClose dictionary words (using Jaro-Winkler distance) to '$str' are:")
+    println("    Word      |  Distance")
+    for w in closewords(str, 0.15, 5)
+        println(rpad(w, 14), "| ", Float16(jarowinklerdistance(str, w)))
     end
 end
 
-const s3 = Sandpile("""
-    3 3 3
-    3 3 3 
-    3 3 3""")
-    
-const s3_id = Sandpile("""
-    2 1 2  
-    1 0 1  
-    2 1 2""")
-    
-const s3a = Sandpile("""
-    4 3 3 
-    3 1 2 
-    0 2 3""")
-    
-println("Before:\n", s3a)
-println("After:\n", avalanche!(s3a), "\n")
+"""
+Close dictionary words (using Jaro-Winkler distance) to 'accomodate​' are:
+    Word      |  Distance
+accommodate   | 0.0303
+accommodated  | 0.04294
+accommodates  | 0.04294
+accommodating | 0.0816
+accommodation | 0.0816
 
-println("Addition:\n", s3, "   +\n", s3_id, "   =\n", s3 + s3_id, "\n")
+Close dictionary words (using Jaro-Winkler distance) to 'definately​' are:
+    Word      |  Distance
+definitely    | 0.04697
+defiantly     | 0.0586
+definable     | 0.0679
+define        | 0.07574
+definite      | 0.0814
 
-println(s3_id, "   +\n", s3_id, "   =\n", s3_id + s3_id, "\n")
+Close dictionary words (using Jaro-Winkler distance) to 'goverment​' are:
+    Word      |  Distance
+government    | 0.0611
+govern        | 0.06665
+governments   | 0.07477
+governmental  | 0.0861
+governs       | 0.09045
 
+Close dictionary words (using Jaro-Winkler distance) to 'occured' are:
+    Word      |  Distance
+occurred      | 0.02083
+occurs        | 0.0754
+occupied      | 0.07855
+occurrence    | 0.09045
+occur         | 0.0952
+
+Close dictionary words (using Jaro-Winkler distance) to 'publically' are:
+    Word      |  Distance
+publicly      | 0.02667
+publication   | 0.06635
+publicity     | 0.06964
+publications  | 0.07166
+publicize     | 0.0978
+
+Close dictionary words (using Jaro-Winkler distance) to 'recieve​' are:
+    Word      |  Distance
+receive       | 0.0625
+received      | 0.0917
+receiver      | 0.0917
+receives      | 0.0917
+relieve       | 0.10474
+
+Close dictionary words (using Jaro-Winkler distance) to 'seperate' are:
+    Word      |  Distance
+desperate     | 0.0787
+separate      | 0.0917
+separated     | 0.1144
+separates     | 0.1144
+temperate     | 0.1157
+
+Close dictionary words (using Jaro-Winkler distance) to 'untill​' are:
+    Word      |  Distance
+until         | 0.0952
+untie         | 0.1257
+untimely      | 0.1322
+
+Close dictionary words (using Jaro-Winkler distance) to 'wich​' are:
+    Word      |  Distance
+witch         | 0.1067
+which         | 0.12
+wichita       | 0.1257
+"""
