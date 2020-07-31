@@ -4,7 +4,7 @@
 The Jaro-Winkler distance is a metric for measuring the edit distance between words.
 It is similar to the more basic Levenstein distance but the Jaro distance also accounts
 for transpositions between letters in the words. With the Winkler modification to the Jaro
-metric, the Jaro-Winkler distance also adds an increase in similarity four words which
+metric, the Jaro-Winkler distance also adds an increase in similarity for words which
 start with the same letters (prefix).
 
 The Jaro-Winkler distance is a modification of the Jaro similarity metric, which
@@ -23,14 +23,14 @@ The Jaro similarity of two strings, <math>sim\sub{j}</math>, is defined as
 
 Where:
 
-* <math>m</math> &nbsp; is the number of ''matching characters'';
-* <math>t</math> &nbsp; is half the number of ''transpositions (shared characters in different positions in the word)''.
+* <math>m</math> &nbsp; is the number of ''matching characters (the same character in the same position)'';
+* <math>t</math> &nbsp; is half the number of ''transpositions (a shared character placed in different positions)''.
 
 If we define the number of initial (prefix) characters in common as
 
 <math>L</math> = the length of a common prefix between strings, up to 4 characters
 
-and select a parameter to define the amount a common beginning influences the similarity
+and select a parameter to define the fraction to which common beginning influences the similarity,
 which Winkler suggests to be 0.1:
 
 <math> p </math> &nbsp; = &nbsp; 0.1
@@ -60,20 +60,22 @@ where
 The Jaro similarity is near 1.0 when the distance between the two words is small.
 The Jaro distance is thus defined as 1 - the Jaro similarity:
 
+<math> 1 - sin\sub{j}</math>
 
 
 The Jaro distance is 0.0 if the words are identical and 1.0 if the words do not share
 any common letters.
 
 
-
 The Winkler modification is based upon the number of common letters at the start of the two words,
 times a constant for the strength of the addition, which Winkler originally set at 0.1,
 which is then multiplied by the gyro distance. This product is then added to the original Jaro similarity.
 
+<math>similarity{w} = similarity{j} + lp(1 - sim\sub{j})</math>
 
-Finally, the Jaro-WInkler distance is defined a 1.0 minus the Jaro-Winkler similarity:
+Finally, the Jaro-Winkler distance is defined a 1.0 minus the Jaro-Winkler similarity:
 
+<math>distance\sub{w} = 1 - similarity{w}</math>
 
 String metrics such as Jaro-Winkler distance are useful in applications such as spelling checkers,
 because letter transpositions are common typing errors and humans tend to misspell the middle portions
@@ -155,7 +157,7 @@ for str in strip.(misspellings)
 end
 
 """
-Close dictionary words (using Jaro-Winkler distance) to 'accomodate​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'accomodate​' are:
     Word      |  Distance
 accommodate   | 0.0303
 accommodated  | 0.04294
@@ -163,7 +165,7 @@ accommodates  | 0.04294
 accommodating | 0.0816
 accommodation | 0.0816
 
-Close dictionary words (using Jaro-Winkler distance) to 'definately​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'definately​' are:
     Word      |  Distance
 definitely    | 0.04697
 defiantly     | 0.0586
@@ -171,55 +173,52 @@ definable     | 0.0679
 define        | 0.07574
 definite      | 0.0814
 
-Close dictionary words (using Jaro-Winkler distance) to 'goverment​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'goverment​' are:
     Word      |  Distance
 government    | 0.0611
 govern        | 0.06665
 governments   | 0.07477
+movement      | 0.085
 governmental  | 0.0861
-governs       | 0.09045
 
-Close dictionary words (using Jaro-Winkler distance) to 'occured' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'occured' are:
     Word      |  Distance
 occurred      | 0.02083
+occur         | 0.05713
+concurred     | 0.073
 occurs        | 0.0754
-occupied      | 0.07855
-occurrence    | 0.09045
-occur         | 0.0952
+accursed      | 0.07855
 
-Close dictionary words (using Jaro-Winkler distance) to 'publically' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'publically' are:
     Word      |  Distance
 publicly      | 0.02667
 publication   | 0.06635
 publicity     | 0.06964
 publications  | 0.07166
-publicize     | 0.0978
+public        | 0.08
 
-Close dictionary words (using Jaro-Winkler distance) to 'recieve​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'recieve​' are:
     Word      |  Distance
-receive       | 0.0625
-received      | 0.0917
-receiver      | 0.0917
-receives      | 0.0917
-relieve       | 0.10474
+receive       | 0.05356
+received      | 0.07855
+receiver      | 0.07855
+receives      | 0.07855
+relieve       | 0.07855
 
-Close dictionary words (using Jaro-Winkler distance) to 'seperate' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'seperate' are:
     Word      |  Distance
-desperate     | 0.0787
-separate      | 0.0917
-separated     | 0.1144
-separates     | 0.1144
-temperate     | 0.1157
+desperate     | 0.0472
+temperate     | 0.06946
+separate      | 0.07855
+desperately   | 0.0795
+repartee      | 0.09283
 
-Close dictionary words (using Jaro-Winkler distance) to 'untill​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'untill​' are:
     Word      |  Distance
-until         | 0.0952
-untie         | 0.1257
-untimely      | 0.1322
+until         | 0.05713
 
-Close dictionary words (using Jaro-Winkler distance) to 'wich​' are:
+Close dictionary words ( distance < 0.1 using Jaro-Winkler distance) to 'wich​' are:
     Word      |  Distance
-witch         | 0.1067
-which         | 0.12
-wichita       | 0.1257
+which         | 0.08
+witch         | 0.08
 """
