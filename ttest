@@ -1,85 +1,67 @@
-using Formatting
+abstract type Entry end
 
-mutable struct DecimalWithPrecision
-	isneg::Bool
-	coef::Int
-	q::Int
+mutable struct OutlineEntry
+    level::Int
+    text::String
+    parent::Union{Entry, Nothing}
+    children::Vector{Entry}
 end
 
-function Base.parse(::Type{Decimal}, str::AbstractString)
-    if 'e' in str
-        return parse(Decimal, scinote(str))
+rootentry() = OutlineEntry(0, "", Nothing, [])
+
+mutable struct Outline
+    root::OutlineEntry
+    entries::Vector{OutlineEntry}
+    baseindent::String
+end
+
+indentchar(ch) = ch == ' ' || ch == '\t'
+firstnonindent(lin) = something(findfirst(!indentchar, lin), length(lin) + 1)
+
+function splitline(lin)
+    i = firstnonindent(lin)
+    return i == 1 ? ("", lin) : (lin[1:i-1], lin[i:end])
+end
+
+function firstindent(lines, default = "        ")
+    for lin in lines
+        s1, s2 = splitline(lin)
+        s != "" && return s1
     end
-    c, q = parameters(('.' in str) ? split(str, '.') : str)
-    normalize(Decimal((str[1] == '-') ? 1 : 0, c, q))
+    return default
 end
 
-decimal(str::AbstractString) = parse(Decimal, str)
-
-# Convert a number to a decimal
-Decimal(num::Real) = parse(Decimal, string(num))
-Base.convert(::Type{Decimal}, num::Real) = Decimal(num::Real)
-decimal(x::Real) = Decimal(x)
-Decimal(x::Decimal) = x
-
-# Get Decimal constructor parameters from string
-parameters(x::AbstractString) = (abs(parse(BigInt, x)), 0)
-
-# Get Decimal constructor parameters from array
-function parameters(x::Array)
-    c = parse(BigInt, join(x))
-    (abs(c), -length(x[2]))
-end
-
-# Get decimal() argument from scientific notation
-function scinote(str::AbstractString)
-    s = (str[1] == '-') ? "-" : ""
-    n, expo = split(str, 'e')
-    n = split(n, '.')
-    if s == "-"
-        n[1] = n[1][2:end]
-    end
-    if parse(Int64, expo) > 0
-        shift = parse(Int64, expo) - ((length(n) == 2) ? length(n[2]) : 0)
-        s * join(n) * repeat("0", shift)
-    else
-        shift = -parse(Int64, expo) - ((length(n) == 2) ? length(n[1]) : length(n))
-        s * "0." * repeat("0", shift) * join(n)
-    end
-end
-
-# Convert a decimal to a string
-function Base.print(io::IO, x::Decimal)
-    c = string(x.c)
-    negative = (x.s == 1) ? "-" : ""
-    if x.q > 0
-        print(io, negative, c, repeat("0", x.q))
-    elseif x.q < 0
-        shift = x.q + length(c)
-        if shift > 0
-            print(io, negative, c[1:shift], ".", c[(shift+1):end])
-        else
-            print(io, negative, "0.", repeat("0", -shift), c)
+function Outline(str::String)
+    entries, lines = OutlineEntry[], filter(x -> x != "", split(text, r"\r\n|\n|\r"))
+    root, indent, parentindex, lastindents = rootentry(), firstindent(lines), 0, 0
+    indentlen, indentregex = length(indent), Regex(indent)
+    for (i, lin) in enumerate(lines)
+        header, txt = splitline(lin)
+        indentcount = length(collect(eachmatch(indentregex, header)))
+        (indentcount * indentlen < length(header)) && throw("Error: bad indent <$header>")
+        if indentcount > lastindents
+            parentindex = i > 1 ? i - 1 : 0
+        elseif indentcount < lastindents
+            parentindex = something(findlast(x -> x.level == indexcount, entries), 0)
         end
-    else
-        print(io, negative, c)
+        lastindents = indentcount
+        ent = OutlineEntry(indentcount, txt, parentindex == 0 ? root : 
+            entries[parentindex], Entry[])
+        push!(ent.parent.children, ent)
+        push!(entries, ent)
     end
+    return Outline(root, entries, indent)
 end
 
-# Zero/one value
-Base.zero(::Type{Decimal}) = Decimal(0,0,0)
-Base.one(::Type{Decimal}) = Decimal(0,1,0)
-
-# convert a decimal to any subtype of Real
-(::Type{T})(x::Decimal) where {T<:Real} = parse(T, string(x))
-
-# Convert a decimal to an integer if possible, a float if not
-function number(x::Decimal)
-    ix = (str = string(x) ; fx = parse(Float64, str); round(Int64, fx))
-    (ix == fx) ? ix : fx
+function sorttree!(ent::OutlineEntry, rev=false)
+    sort!(ent.children, lt=(x, y) -> x.text < y.text, rev=rev)
+    for child in ent.children
+        sorttree!(child, rev)
+    end
+    return ent
 end
 
-# sign
-Base.signbit(x::Decimal) = x.s != 0
+sorted(o::Outline, r=false) = (x = deepcopy(o); for e in x.entries sorttree!(e, r); end; x)
+
 
 
