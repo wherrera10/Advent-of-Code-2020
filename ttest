@@ -7,21 +7,16 @@ mutable struct OutlineEntry <: Entry
     children::Vector{Entry}
 end
 
-rootentry() = OutlineEntry(0, "", nothing, [])
-
 mutable struct Outline
     root::OutlineEntry
     entries::Vector{OutlineEntry}
     baseindent::String
 end
 
+rootentry() = OutlineEntry(0, "", nothing, [])
 indentchar(ch) = ch == ' ' || ch == '\t'
-firstnonindent(lin) = something(findfirst(!indentchar, lin), length(lin) + 1)
-
-function splitline(lin)
-    i = firstnonindent(lin)
-    return i == 1 ? ("", lin) : (lin[1:i-1], lin[i:end])
-end
+firsttext(s) = something(findfirst(!indentchar, s), length(s) + 1)
+splitline(s) = begin i = firsttext(s); i == 1 ? ("", s) : (s[1:i-1], s[i:end]) end
 
 function firstindent(lines, default = "        ")
     for lin in lines
