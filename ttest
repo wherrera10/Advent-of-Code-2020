@@ -1,3 +1,5 @@
+import Base.print, Base.sort!
+
 abstract type Entry end
 
 mutable struct OutlineEntry <: Entry
@@ -17,6 +19,21 @@ rootentry() = OutlineEntry(0, "", nothing, [])
 indentchar(ch) = ch == ' ' || ch == '\t'
 firsttext(s) = something(findfirst(!indentchar, s), length(s) + 1)
 splitline(s) = begin i = firsttext(s); i == 1 ? ("", s) : (s[1:i-1], s[i:end]) end
+
+const _indents = ["        "]
+
+function Base.print(io::IO, oe::OutlineEntry)
+    println(io, _indents[end]^oe.level, oe.text)
+    for child in oe.children
+        print(io, child)
+    end
+end
+
+function Base.print(io::IO, o::Outline)
+    push!(_indents, o.baseindent)
+    print(io, o.root)
+    pop!(_indents)
+end
 
 function firstindent(lines, default = "        ")
     for lin in lines
@@ -48,30 +65,37 @@ function Outline(str::String)
 end
 
 function sorttree!(ent::OutlineEntry, rev=false)
-    sort!(ent.children, lt=(x, y) -> x.text < y.text, rev=rev)
+print(ent.children, " --> ")
     for child in ent.children
         sorttree!(child, rev)
     end
+    sort!(ent.children, lt=(x, y) -> x.text < y.text, rev=rev)
+println(ent.children)
     return ent
 end
 
-sorted(o::Outline, r=false) = (x = deepcopy(o); for e in x.entries sorttree!(e, r); end; x)
+sort!(o::Outline, rev=false) = begin sorttree!(o.root, rev); o end
 
-println(Outline("""
-topic is topical
-    A.
-        3.
-        1.
-        2.
-        4.
-    B.
-        2.
-        4.
-        3.
-        1.
+outl = Outline("""
+This topic is topical
     C.
-another topic
-    c.
+        3.
+        1.
+        2.
+        4.
+    B.
+        2.
+        4.
+        3.
+        1.
+    A.
+Second, another topic
+    C.
     A.
     B.
-Done"""))
+Done""")
+
+println(outl)
+println(sort!(outl))
+println(sort!(outl, true))
+println(sort!(outl))
