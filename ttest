@@ -52,9 +52,9 @@ function Outline(str::String)
         indentcount = length(collect(eachmatch(indentregex, header)))
         (indentcount * indentlen < length(header)) && throw("Error: bad indent <$header>")
         if indentcount > lastindents
-            parentindex = i > 1 ? i - 1 : 0
+            parentindex = i - 1
         elseif indentcount < lastindents
-            parentindex = something(findlast(x -> x.level == indentcount, arr), 0)
+            parentindex = something(findlast(x -> x.level == indentcount - 1, arr), 0)
         end
         lastindents = indentcount
         ent = OutlineEntry(indentcount, txt, parentindex == 0 ? root : arr[parentindex], [])
@@ -65,37 +65,37 @@ function Outline(str::String)
 end
 
 function sorttree!(ent::OutlineEntry, rev=false)
-print(ent.children, " --> ")
     for child in ent.children
         sorttree!(child, rev)
     end
     sort!(ent.children, lt=(x, y) -> x.text < y.text, rev=rev)
-println(ent.children)
     return ent
 end
 
 sort!(o::Outline, rev=false) = begin sorttree!(o.root, rev); o end
 
-outl = Outline("""
-This topic is topical
-    C.
+const outl = Outline("""
+This topic is topical at last.
+    B.
         3.
         1.
         2.
         4.
-    B.
+    C.
         2.
         4.
         3.
         1.
     A.
-Second, another topic
+Next part is off topic
     C.
     A.
     B.
-Done""")
+First part""")
 
+println("Unsorted")
 println(outl)
+println("sorted")
 println(sort!(outl))
 println(sort!(outl, true))
 println(sort!(outl))
