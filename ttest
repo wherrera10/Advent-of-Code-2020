@@ -50,7 +50,8 @@ function Outline(str::String)
     for (i, lin) in enumerate(lines)
         header, txt = splitline(lin)
         indentcount = length(collect(eachmatch(indentregex, header)))
-        (indentcount * indentlen < length(header)) && throw("Error: bad indent <$header>")
+        (indentcount * indentlen < length(header)) && 
+			throw("Error: bad indent <$header> ($(UInt8.([c for c in header])))")
         if indentcount > lastindents
             parentindex = i - 1
         elseif indentcount < lastindents
@@ -72,30 +73,73 @@ function sorttree!(ent::OutlineEntry, rev=false)
     return ent
 end
 
-sort!(o::Outline, rev=false) = begin sorttree!(o.root, rev); o end
+sort!(ol::Outline, rev=false) = begin sorttree!(ol.root, rev); ol end
 
-const outl = Outline("""
-This topic is topical at last.
-    B.
-        3.
-        1.
-        2.
-        4.
-    C.
-        2.
-        4.
-        3.
-        1.
-    A.
-Next part is off topic
-    C.
-    A.
-    B.
-First part""")
+const outline4s = Outline("""
+zeta
+    beta
+    gamma
+        lambda
+        kappa
+        mu
+    delta
+alpha
+    theta
+    iota
+    epsilon""")
+    
+const outlinet1 = Outline("""
+zeta
+	gamma
+		mu
+		lambda
+		kappa
+	delta
+	beta
+alpha
+	theta
+	iota
+	epsilon""")
 
-println("Unsorted")
-println(outl)
-println("sorted")
-println(sort!(outl))
-println(sort!(outl, true))
-println(sort!(outl))
+println(outline4s)
+println(sort!(outline4s))
+println(sort!(outline4s, true))
+
+println(outlinet1)
+println(sort!(outlinet1))
+println(sort!(outlinet1, true))
+
+try 
+outlinebad1 = Outline("""
+alpha
+    epsilon
+	iota
+    theta
+zeta
+    beta
+    delta
+    gamma
+    	kappa
+        lambda
+        mu""")
+catch y
+	println(y)
+end
+
+try
+outlinebad2 = Outline("""
+zeta
+    beta
+   gamma
+        lambda
+         kappa
+        mu
+    delta
+alpha
+    theta
+    iota
+    epsilon""")
+catch y
+	println(y)
+end
+
