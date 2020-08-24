@@ -2,10 +2,11 @@ const MAXCHAR = [128]
  
 mutable struct ChainEnd
     ending::Int
+    ChainEnd(ending=-1) = new(ending)
 end
 
 abstract struct Nod end
- 
+
 struct NilNode <: Nod end
 const NILNODE = NilNode()
  
@@ -13,39 +14,35 @@ mutable struct Node
     children::Vector{Nod}
     suffixlink::Union{Nod, Nothing}
     start::Int
-    ending::
+    ending::ChainEnd
+    suffixindex::Int
+    Node() = new([], nothing, -1, ChainEnd(), -1)
+end
+
+mutable struct SuffixTree
+    text::String
+    root::Nod
+    lastnewnode::Nod
+    activenode::Nod
+    activeedge::Int
+    activelength::Int
+    remainingsuffixcount::Int
+    leafend::Int
+    rootend::ChainEnd
+    splitend::ChainEnd
+    size::Int
+    maxchar::Int
+end
  
-type Node struct {
-    children    []*Node
-    suffixLink  *Node
-    start       int
-    end         *int
-    suffixIndex int
-}
- 
-var (
-    text                 string
-    root                 *Node
-    lastNewNode          *Node
-    activeNode           *Node
-    activeEdge           = -1
-    activeLength         = 0
-    remainingSuffixCount = 0
-    leafEnd              = -1
-    rootEnd              *int
-    splitEnd             *int
-    size                 = -1
-)
- 
-func newNode(start int, end *int) *Node {
-    node := new(Node)
-    node.children = make([]*Node, maxChar)
-    node.suffixLink = root
+function Node(st::SuffixTree, start::Int, ending::ChainEnd)
+    node = Node()
+    node.children = [node() for _ in 1:st.maxchar]
+    node.suffixlink = st.root
     node.start = start
-    node.end = end
-    node.suffixIndex = -1
+    node.ending = ending
+    node.suffixindex = -1
     return node
-}
+end
  
 func edgeLength(n *Node) int {
     if n == root {
