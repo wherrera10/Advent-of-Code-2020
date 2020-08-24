@@ -1,7 +1,5 @@
-const MAXCHAR = [128]
- 
 mutable struct ChainEnd
-    ending::Int
+    n::Int
     ChainEnd(ending=-1) = new(ending)
 end
 
@@ -22,7 +20,7 @@ end
 mutable struct SuffixTree
     text::String
     root::Nod
-    lastnewnode::Nod
+    lastnewnode::Union{Nod, Nothing}
     activenode::Nod
     activeedge::Int
     activelength::Int
@@ -35,39 +33,31 @@ mutable struct SuffixTree
 end
  
 Node(st::SuffixTree, start::Int, ending::ChainEnd) = Node([node() for _ in 1:st.maxchar], st.root, start, ending, -1)
+edgelength(st, n) = n == st.root ? 0 : n.ending.n - n.start + 1
  
-func edgeLength(n *Node) int {
-    if n == root {
-        return 0
-    }
-    return *(n.end) - n.start + 1
-}
- 
-func walkDown(currNode *Node) bool {
-    if activeLength >= edgeLength(currNode) {
-        activeEdge += edgeLength(currNode)
-        activeLength -= edgeLength(currNode)
-        activeNode = currNode
-        return true
-    }
-    return false
-}
- 
-func extendSuffixTree(pos int) {
-    leafEnd = pos
-    remainingSuffixCount++
-    lastNewNode = nil
-    for remainingSuffixCount > 0 {
-        if activeLength == 0 {
-            activeEdge = pos
-        }
-        if activeNode.children[text[activeEdge]] == nil {
-            activeNode.children[text[activeEdge]] = newNode(pos, &leafEnd)
-            if lastNewNode != nil {
-                lastNewNode.suffixLink = activeNode
-                lastNewNode = nil
-            }
-        } else {
+function walkdown(st, currnode)
+    st.activelength < edgelength(currnode) && return false
+    st.activeedge += edgelength(currnode)
+    st.activelength -= edgelength(currnode)
+    st.activenode = currnode
+    return true
+end
+
+function extendsuffixtree(st, pos)
+    st.leafend = pos
+    st.remainingsuffixcount += 1
+    st.lastnewnode = nothing
+    while st.remainingsuffixcount > 0
+        if st.activelength == 0
+            st.activeedge = pos
+        end
+        if st.activenode.children[Int(text[st.activeedge]) + 1] == nothing
+            st.activenode.children[Int(text[activeedge]) + 1] = Node(pos, ChainEnd(st.leafend))
+            if st.lastnewnode != nothing
+                st.lastnewnode.suffixlink = activenode
+                st.lastnewnode = nothing
+            end
+        else
             next := activeNode.children[text[activeEdge]]
             if walkDown(next) {
                 continue
