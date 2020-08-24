@@ -19,9 +19,9 @@ end
 
 mutable struct SuffixTree
     text::String
-    root::Nod
+    root::Union{Nod, Nothing}
     lastnewnode::Union{Nod, Nothing}
-    activenode::Nod
+    activenode::Union{Nod, Nothing}
     activeedge::Int
     activelength::Int
     remainingsuffixcount::Int
@@ -30,6 +30,7 @@ mutable struct SuffixTree
     splitend::ChainEnd
     size::Int
     maxchar::Int
+    SuffixTree(txt) = new(txt, nothing, nothing, nothing, -1, -1, -1, -1, ChainEnd(), ChainEnd(), length(txt), 128)
 end
  
 Node(st::SuffixTree, start::Int, ending::ChainEnd) = Node([node() for _ in 1:st.maxchar], st.root, start, ending, -1)
@@ -107,19 +108,17 @@ function setsuffixindexbyDFS(st, n, labelheight, verbose=false)
     end
 end
 
- 
-func buildSuffixTree() {
-    size = len(text)
-    temp := -1
-    rootEnd = &temp
-    root = newNode(-1, rootEnd)
-    activeNode = root
-    for i := 0; i < size; i++ {
-        extendSuffixTree(i)
-    }
-    labelHeight := 0
-    setSuffixIndexByDFS(root, labelHeight)
-}
+function buildsuffixtree(text)
+    st = SuffixTree(text)
+    root = Node(-1, st.rootend)
+    st.activenode = st.root
+    for i in 0:size-1
+        extendsuffixtree(st, i)
+    end
+    labelheight = 0
+    setsuffixindexbyDFS(root, labelheight)
+    return st
+end
  
 func doTraversal(n *Node, labelHeight int, maxHeight, substringStartIndex *int) {
     if n == nil {
