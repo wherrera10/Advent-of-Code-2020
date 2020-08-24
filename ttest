@@ -90,31 +90,23 @@ function extendsuffixtree(st, pos)
     end
 end
 
-func setSuffixIndexByDFS(n *Node, labelHeight int) {
-    if n == nil {
-        return
-    }
-    if n.start != -1 {
-        // Uncomment line below to print suffix tree
-        // fmt.Print(text[n.start: *(n.end) +1])
-    }
-    leaf := 1
-    for i := 0; i < maxChar; i++ {
-        if n.children[i] != nil {
-            // Uncomment the 3 lines below to print suffix index
-            //if leaf == 1 && n.start != -1 {
-            //    fmt.Printf(" [%d]\n", n.suffixIndex)
-            //}
+function setsuffixindexbyDFS(st, n, labelheight, verbose=false)
+    n == nothing && return
+    verbose && n.start != -1 && print(st.text[n.start+1:n.ending.n+2])
+    leaf = 1
+    for i in 1:st.maxchar
+        if n.children[i] != nothing
+            verbose && leaf == 1 && n.start != -1 && println(" [$(n.suffixindex)]")
             leaf = 0
-            setSuffixIndexByDFS(n.children[i], labelHeight+edgeLength(n.children[i]))
-        }
-    }
-    if leaf == 1 {
-        n.suffixIndex = size - labelHeight
-        // Uncomment line below to print suffix index
-        //fmt.Printf(" [%d]\n", n.suffixIndex)
-    }
-}
+            setsuffixindexbyDFS(n.children[i], labelheight + st.edgelength(n.children[i]))
+        end
+    end
+    if leaf == 1
+        n.suffixindex = st.size - labelheight
+        verbose && println(" [$(n.suffixindex)]")
+    end
+end
+
  
 func buildSuffixTree() {
     size = len(text)
