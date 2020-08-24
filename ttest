@@ -138,27 +138,16 @@ function traversal(st, n, labelheight, maxheight::SharedIndex, substringstartind
     end
 end
 
-function getlongestrepeatedsubstring(st, s::String)
+function getlongestrepeatedsubstring(st, s, verbose=false)
     maxheight = SharedIndex(0)
     substringstartindex = SharedIndex(0)
     traversal(st, root, 0, maxheight, substringstartindex)
-    // Uncomment line below to print maxHeight and substringStartIndex
-    // fmt.Printf("maxHeight %d, substringStartIndex %d\n", maxHeight, substringStartIndex)
-    if s == "" {
-        fmt.Printf("  %s is: ", text)
-    } else {
-        fmt.Printf("  %s is: ", s)
-    }
-    k := 0
-    for ; k < maxHeight; k++ {
-        fmt.Printf("%c", text[k+substringStartIndex])
-    }
-    if k == 0 {
-        fmt.Print("No repeated substring")
-    }
-    fmt.Println()
-}
- 
+    verbose && println("maxheight $(maxheight.n), substringstartindex $(substringstartindex.n)")
+    print(s == "" ? "  $text is: " : "  $s is: ")
+    println(maxheight.n > 0 ? st.text[substringstartindex.n+1:substringstartindex.n+k+1] :
+        "No repeated substring")
+end
+
 func calculatePi() *big.Float {
     one := big.NewFloat(1)
     two := big.NewFloat(2)
