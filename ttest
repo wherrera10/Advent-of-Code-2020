@@ -51,25 +51,23 @@ function extendsuffixtree(st, pos)
         if st.activelength == 0
             st.activeedge = pos
         end
-        if st.activenode.children[Int(text[st.activeedge]) + 1] == nothing
-            st.activenode.children[Int(text[activeedge]) + 1] = Node(pos, ChainEnd(st.leafend))
+        if st.activenode.children[Int(st.text[st.activeedge]) + 1] == nothing
+            st.activenode.children[Int(st.text[st.activeedge]) + 1] = Node(pos, ChainEnd(st.leafend))
             if st.lastnewnode != nothing
-                st.lastnewnode.suffixlink = activenode
+                st.lastnewnode.suffixlink = st.activenode
                 st.lastnewnode = nothing
             end
         else
-            next := activeNode.children[text[activeEdge]]
-            if walkDown(next) {
-                continue
-            }
-            if text[next.start+activeLength] == text[pos] {
-                if lastNewNode != nil && activeNode != root {
-                    lastNewNode.suffixLink = activeNode
-                    lastNewNode = nil
-                }
-                activeLength++
+            next = st.activenode.children[Int(st.text[st.activeedge]) + 1]
+            walkdown(st, next) && continue
+            if st.text[next.start + st.activelength + 1] == st.text[pos + 1]
+                if st.lastnewnode != nothing && st.activenode != root
+                    st.lastnewnode.suffixlink = st.activenode
+                    st.lastnewnode = nothing
+                end
+                st.activelength += 1
                 break
-            }
+            end
             temp := next.start + activeLength - 1
             splitEnd = &temp
             split := newNode(next.start, splitEnd)
