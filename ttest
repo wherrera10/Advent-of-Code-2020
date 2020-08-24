@@ -34,15 +34,7 @@ mutable struct SuffixTree
     maxchar::Int
 end
  
-function Node(st::SuffixTree, start::Int, ending::ChainEnd)
-    node = Node()
-    node.children = [node() for _ in 1:st.maxchar]
-    node.suffixlink = st.root
-    node.start = start
-    node.ending = ending
-    node.suffixindex = -1
-    return node
-end
+Node(st::SuffixTree, start::Int, ending::ChainEnd) = Node([node() for _ in 1:st.maxchar], st.root, start, ending, -1)
  
 func edgeLength(n *Node) int {
     if n == root {
