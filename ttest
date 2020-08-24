@@ -132,16 +132,16 @@ function traversal(st, n, labelheight, maxheight::SharedIndex, substringstartind
                     maxheight, substringstartindex)
             end
         end
-    elseif n.suffixindex > -1 && (maxheight.n < labelheight - edgelength(n)) {
+    elseif n.suffixindex > -1 && (maxheight.n < labelheight - edgelength(n))
         maxheight.n = labelheight - edgelength(n)
         substringstartindex.n = n.suffixindex
     end
 end
 
-func getLongestRepeatedSubstring(s string) {
-    maxHeight := 0
-    substringStartIndex := 0
-    doTraversal(root, 0, &maxHeight, &substringStartIndex)
+function getlongestrepeatedsubstring(st, s::String)
+    maxheight = SharedIndex(0)
+    substringstartindex = SharedIndex(0)
+    traversal(st, root, 0, maxheight, substringstartindex)
     // Uncomment line below to print maxHeight and substringStartIndex
     // fmt.Printf("maxHeight %d, substringStartIndex %d\n", maxHeight, substringStartIndex)
     if s == "" {
