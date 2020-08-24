@@ -1,6 +1,6 @@
-mutable struct ChainEnd
+mutable struct SharedIndex
     n::Int
-    ChainEnd(ending=-1) = new(ending)
+    SharedIndex(ending=-1) = new(ending)
 end
 
 abstract struct Nod end
@@ -12,9 +12,9 @@ mutable struct Node
     children::Vector{Nod}
     suffixlink::Union{Nod, Nothing}
     start::Int
-    ending::ChainEnd
+    ending::SharedIndex
     suffixindex::Int
-    Node() = new([], nothing, -1, ChainEnd(), -1)
+    Node() = new([], nothing, -1, SharedIndex(), -1)
 end
 
 mutable struct SuffixTree
@@ -26,15 +26,30 @@ mutable struct SuffixTree
     activelength::Int
     remainingsuffixcount::Int
     leafend::Int
-    rootend::ChainEnd
-    splitend::ChainEnd
+    rootend::SharedIndex
+    splitend::SharedIndex
     size::Int
     maxchar::Int
-    SuffixTree(txt) = new(txt, nothing, nothing, nothing, -1, -1, -1, -1, ChainEnd(), ChainEnd(), length(txt), 128)
+    SuffixTree() = new("", nothing, nothing, nothing, -1, -1, -1, -1, SharedIndex(), SharedIndex(), 0, 128)
 end
- 
+
+function Suffixtree(text, maxchar=128)
+    st = SuffixTree()
+    st.text = text
+    st.size = length(text)
+    st.maxchar = maxchar
+    root = Node(-1, st.rootend)
+    st.activenode = st.root
+    for i in 0:size-1
+        extendsuffixtree(st, i)
+    end
+    labelheight = 0
+    setsuffixindexbyDFS(root, labelheight)
+    return st
+end
+
 Node(st::SuffixTree, start::Int, ending::ChainEnd) = Node([node() for _ in 1:st.maxchar], st.root, start, ending, -1)
-edgelength(st, n) = n == st.root ? 0 : n.ending.n - n.start + 1
+edgelength(st, n) = (n == st.root) ? 0 : n.ending.n - n.start + 1
  
 function walkdown(st, currnode)
     st.activelength < edgelength(currnode) && return false
@@ -53,7 +68,7 @@ function extendsuffixtree(st, pos)
             st.activeedge = pos
         end
         if st.activenode.children[Int(st.text[st.activeedge]) + 1] == nothing
-            st.activenode.children[Int(st.text[st.activeedge]) + 1] = Node(pos, ChainEnd(st.leafend))
+            st.activenode.children[Int(st.text[st.activeedge]) + 1] = Node(pos, SharedIndex(st.leafend))
             if st.lastnewnode != nothing
                 st.lastnewnode.suffixlink = st.activenode
                 st.lastnewnode = nothing
@@ -70,10 +85,10 @@ function extendsuffixtree(st, pos)
                 break
             end
             temp = next.start + st.activelength - 1
-            st.splitend = ChainEnd(temp)
+            st.splitend = SharedIndex(temp)
             split = Node(next.start, st.splitend)
             st.activenode.children[st.text[st.activeedge + 1] + 1] = split
-            split.children[st.text[pos + 1]] = Node(pos, ChainEnd(st.leafend))
+            split.children[st.text[pos + 1]] = Node(pos, SharedIndex(st.leafend))
             next.start += st.activelength
             split.children[st.text[next.start + 1] + 1] = next
             if st.lastnewnode != nothing
@@ -107,36 +122,22 @@ function setsuffixindexbyDFS(st, n, labelheight, verbose=false)
         verbose && println(" [$(n.suffixindex)]")
     end
 end
-
-function buildsuffixtree(text)
-    st = SuffixTree(text)
-    root = Node(-1, st.rootend)
-    st.activenode = st.root
-    for i in 0:size-1
-        extendsuffixtree(st, i)
+ 
+function traversal(st, n, labelheight, maxheight::SharedIndex, substringstartindex::SharedIndex)
+    n == nothing && return
+    if n.suffixindex == -1
+        for i in 1:st.maxchar
+            if n.children[i] != nothing
+                traversal(n.children[i], labelheight + edgelength(n.children[i]),
+                    maxheight, substringstartindex)
+            end
+        end
+    elseif n.suffixindex > -1 && (maxheight.n < labelheight - edgelength(n)) {
+        maxheight.n = labelheight - edgelength(n)
+        substringstartindex.n = n.suffixindex
     end
-    labelheight = 0
-    setsuffixindexbyDFS(root, labelheight)
-    return st
 end
- 
-func doTraversal(n *Node, labelHeight int, maxHeight, substringStartIndex *int) {
-    if n == nil {
-        return
-    }
-    if n.suffixIndex == -1 {
-        for i := 0; i < maxChar; i++ {
-            if n.children[i] != nil {
-                doTraversal(n.children[i], labelHeight+edgeLength(n.children[i]),
-                    maxHeight, substringStartIndex)
-            }
-        }
-    } else if n.suffixIndex > -1 && (*maxHeight < labelHeight-edgeLength(n)) {
-        *maxHeight = labelHeight - edgeLength(n)
-        *substringStartIndex = n.suffixIndex
-    }
-}
- 
+
 func getLongestRepeatedSubstring(s string) {
     maxHeight := 0
     substringStartIndex := 0
