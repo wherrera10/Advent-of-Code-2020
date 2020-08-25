@@ -1,184 +1,22 @@
-mutable struct SharedIndex
-    n::Int
-    SharedIndex(ending=-1) = new(ending)
-end
-
-abstract struct Nod end
-
-struct NilNode <: Nod end
-const NILNODE = NilNode()
- 
-mutable struct Node
-    children::Vector{Nod}
-    suffixlink::Union{Nod, Nothing}
-    start::Int
-    ending::SharedIndex
-    suffixindex::Int
-    Node() = new([], nothing, -1, SharedIndex(), -1)
-end
-
-mutable struct SuffixTree
-    text::String
-    root::Union{Nod, Nothing}
-    lastnewnode::Union{Nod, Nothing}
-    activenode::Union{Nod, Nothing}
-    activeedge::Int
-    activelength::Int
-    remainingsuffixcount::Int
-    leafend::Int
-    rootend::SharedIndex
-    splitend::SharedIndex
-    size::Int
-    maxchar::Int
-    SuffixTree() = new("", nothing, nothing, nothing, -1, -1, -1, -1, SharedIndex(), SharedIndex(), 0, 128)
-end
-
-function Suffixtree(text, maxchar=128)
-    st = SuffixTree()
-    st.text = text
-    st.size = length(text)
-    st.maxchar = maxchar
-    root = Node(-1, st.rootend)
-    st.activenode = st.root
-    for i in 0:size-1
-        extendsuffixtree(st, i)
+function torange(s)
+    components = split(s[2:end-1], "..")
+    delta = length(components) > 2 ? parse(Int, components[3]) : 1
+    if '0' <= components[1][1] <= '9' || components[1][1] == '-'
+        x, y = parse(Int, components[1]), parse(Int, components[2])
+    else
+        x, y = components[1][1], components[2][1]
     end
-    labelheight = 0
-    setsuffixindexbyDFS(root, labelheight)
-    return st
+    return collect(range(x, step=(x < y) ? delta : -delta, stop=y))
 end
 
-Node(st::SuffixTree, start::Int, ending::ChainEnd) = Node([node() for _ in 1:st.maxchar], st.root, start, ending, -1)
-edgelength(st, n) = (n == st.root) ? 0 : n.ending.n - n.start + 1
- 
-function walkdown(st, currnode)
-    st.activelength < edgelength(currnode) && return false
-    st.activeedge += edgelength(currnode)
-    st.activelength -= edgelength(currnode)
-    st.activenode = currnode
-    return true
+function getnextrange(s)
+	m = match(r"([^\{]*)(\{[^}]+\.\.[^\}]+\})(.*)", s)
+    m == nothing && return [s]
+    cap = m.captures
+    return [a * b for a in [cap[1] * string(x) for x in torange(cap[2])], 
+        b in getnextrange(cap[3])][:]
 end
 
-function extendsuffixtree(st, pos)
-    st.leafend = pos
-    st.remainingsuffixcount += 1
-    st.lastnewnode = nothing
-    while st.remainingsuffixcount > 0
-        if st.activelength == 0
-            st.activeedge = pos
-        end
-        if st.activenode.children[Int(st.text[st.activeedge]) + 1] == nothing
-            st.activenode.children[Int(st.text[st.activeedge]) + 1] = Node(pos, SharedIndex(st.leafend))
-            if st.lastnewnode != nothing
-                st.lastnewnode.suffixlink = st.activenode
-                st.lastnewnode = nothing
-            end
-        else
-            next = st.activenode.children[Int(st.text[st.activeedge]) + 1]
-            walkdown(st, next) && continue
-            if st.text[next.start + st.activelength + 1] == st.text[pos + 1]
-                if st.lastnewnode != nothing && st.activenode != root
-                    st.lastnewnode.suffixlink = st.activenode
-                    st.lastnewnode = nothing
-                end
-                st.activelength += 1
-                break
-            end
-            temp = next.start + st.activelength - 1
-            st.splitend = SharedIndex(temp)
-            split = Node(next.start, st.splitend)
-            st.activenode.children[st.text[st.activeedge + 1] + 1] = split
-            split.children[st.text[pos + 1]] = Node(pos, SharedIndex(st.leafend))
-            next.start += st.activelength
-            split.children[st.text[next.start + 1] + 1] = next
-            if st.lastnewnode != nothing
-                st.lastnewnode.suffixlink = split
-            end
-            st.lastnnewnode = split
-        end
-        st.remainingsuffixcount -= 1
-        if st.activenode == root && st.activelength > 0
-            st.activelength -= 1
-            st.activeedge = pos - remainingsuffixcount + 1
-        elseif st.activenode != root
-            st.activenode = st.activenode.suffixlink
-        end
-    end
-end
-
-function setsuffixindexbyDFS(st, n, labelheight, verbose=false)
-    n == nothing && return
-    verbose && n.start != -1 && print(st.text[n.start+1:n.ending.n+2])
-    leaf = 1
-    for i in 1:st.maxchar
-        if n.children[i] != nothing
-            verbose && leaf == 1 && n.start != -1 && println(" [$(n.suffixindex)]")
-            leaf = 0
-            setsuffixindexbyDFS(n.children[i], labelheight + st.edgelength(n.children[i]))
-        end
-    end
-    if leaf == 1
-        n.suffixindex = st.size - labelheight
-        verbose && println(" [$(n.suffixindex)]")
-    end
-end
- 
-function traversal(st, n, labelheight, maxheight::SharedIndex, substringstartindex::SharedIndex)
-    n == nothing && return
-    if n.suffixindex == -1
-        for i in 1:st.maxchar
-            if n.children[i] != nothing
-                traversal(n.children[i], labelheight + edgelength(n.children[i]),
-                    maxheight, substringstartindex)
-            end
-        end
-    elseif n.suffixindex > -1 && (maxheight.n < labelheight - edgelength(n))
-        maxheight.n = labelheight - edgelength(n)
-        substringstartindex.n = n.suffixindex
-    end
-end
-
-function getlongestrepeatedsubstring(st, s, verbose=false)
-    maxheight = SharedIndex(0)
-    substringstartindex = SharedIndex(0)
-    traversal(st, root, 0, maxheight, substringstartindex)
-    verbose && println("maxheight $(maxheight.n), substringstartindex $(substringstartindex.n)")
-    print(s == "" ? "  $text is: " : "  $s is: ")
-    println(maxheight.n > 0 ? st.text[substringstartindex.n+1:substringstartindex.n+k+1] :
-        "No repeated substring")
-end
-
-function testsuffix()
-    tests = [
-        "GEEKSFORGEEKS$",
-        "AAAAAAAAAA$",
-        "ABCDEFG$",
-        "ABABABA$",
-        "ATCGATCGA$",
-        "banana$",
-        "abcpqrabpqpq$",
-        "pqrpqpqabab$",
-    ]
-    println("Longest Repeated Substring in:\n")
-    for test in tests
-        st = SuffixTree(test)
-        getlongestrepeatedsubstring(st, "")
-    end
-    println()
-    sπ = ""
-    setprecision(Int(round((10100) * log(10)))) do 
-        sπ = string(BigFloat(π))[3:end]
-    end
-    numbers = [1e3, 1e4, 1e5]
-    maxchar = 58
-    for number in numbers
-        text = sπ[0:number] * "$"
-        st = SuffixTree(text)
-        @time getlongestrepeatedsubstring(st, "first $number d.p. of π")
-    end
-end
-
-textsuffix()
-
+println(getnextrange("23{4..1}t{a..y}{7..9}5"))
 
 
