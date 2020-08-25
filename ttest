@@ -149,11 +149,14 @@ function getlongestrepeatedsubstring(st, s, verbose=false)
 end
 
 function pidigits(ndig)
-    setprecision(Int(round((ndig + 1) * log(10))))
-    return string(BigFloat(pi))[3:end]
+    ret = ""
+    setprecision(Int(round((ndig + 1) * log(10)))) do 
+        ret = string(BigFloat(pi)) 
+    end
+    return ret[3:end]
 end
 
-funtion testmain()
+funtion testsuffix()
     tests = [
         "GEEKSFORGEEKS$",
         "AAAAAAAAAA$",
@@ -170,18 +173,17 @@ funtion testmain()
         getlongestrepeatedsubstring(st, "")
     end
     println()
-    pistr = pidigits(10000)
+    pistr = pidigits(10100)
     numbers = [1e3, 1e4, 1e5]
     maxchar = 58
     for number in numbers
-        start := time.Now()
-        text = piStr[0:number] + "$"
-        buildSuffixTree()
-        getLongestRepeatedSubstring(fmt.Sprintf("first %d d.p. of Pi", number))
-        elapsed := time.Now().Sub(start)
-        fmt.Printf("  (this took %s)\n\n", elapsed)
-    }
-}
+        text = pistr[0:number] * "$"
+        st = SuffixTree(text)
+        @time getlongestrepeatedsubstring(st, "first $number d.p. of Pi")
+    end
+end
+
+textsuffix()
 
 
 
