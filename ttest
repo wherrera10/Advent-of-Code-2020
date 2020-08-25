@@ -148,15 +148,7 @@ function getlongestrepeatedsubstring(st, s, verbose=false)
         "No repeated substring")
 end
 
-function pidigits(ndig)
-    ret = ""
-    setprecision(Int(round((ndig + 1) * log(10)))) do 
-        ret = string(BigFloat(pi)) 
-    end
-    return ret[3:end]
-end
-
-funtion testsuffix()
+function testsuffix()
     tests = [
         "GEEKSFORGEEKS$",
         "AAAAAAAAAA$",
@@ -173,13 +165,16 @@ funtion testsuffix()
         getlongestrepeatedsubstring(st, "")
     end
     println()
-    pistr = pidigits(10100)
+    sπ = ""
+    setprecision(Int(round((10100) * log(10)))) do 
+        sπ = string(BigFloat(π))[3:end]
+    end
     numbers = [1e3, 1e4, 1e5]
     maxchar = 58
     for number in numbers
-        text = pistr[0:number] * "$"
+        text = sπ[0:number] * "$"
         st = SuffixTree(text)
-        @time getlongestrepeatedsubstring(st, "first $number d.p. of Pi")
+        @time getlongestrepeatedsubstring(st, "first $number d.p. of π")
     end
 end
 
