@@ -148,41 +148,13 @@ function getlongestrepeatedsubstring(st, s, verbose=false)
         "No repeated substring")
 end
 
-func calculatePi() *big.Float {
-    one := big.NewFloat(1)
-    two := big.NewFloat(2)
-    four := big.NewFloat(4)
-    prec := uint(325 * 1024) // enough to calculate Pi to 100,182 decimal digits
- 
-    a := big.NewFloat(1).SetPrec(prec)
-    g := new(big.Float).SetPrec(prec)
- 
-    // temporary variables
-    t := new(big.Float).SetPrec(prec)
-    u := new(big.Float).SetPrec(prec)
- 
-    g.Quo(a, t.Sqrt(two))
-    sum := new(big.Float)
-    pow := big.NewFloat(2)
- 
-    for a.Cmp(g) != 0 {
-        t.Add(a, g)
-        t.Quo(t, two)
-        g.Sqrt(u.Mul(a, g))
-        a.Set(t)
-        pow.Mul(pow, two)
-        t.Sub(t.Mul(a, a), u.Mul(g, g))
-        sum.Add(sum, t.Mul(t, pow))
-    }
- 
-    t.Mul(a, a)
-    t.Mul(t, four)
-    pi := t.Quo(t, u.Sub(one, sum))
-    return pi
-}
- 
-func main() {
-    tests := []string{
+function pidigits(ndig)
+    setprecision(Int(round((ndig + 1) * log(10))))
+    return string(BigFloat(pi))[3:end]
+end
+
+funtion testmain()
+    tests = [
         "GEEKSFORGEEKS$",
         "AAAAAAAAAA$",
         "ABCDEFG$",
@@ -191,21 +163,17 @@ func main() {
         "banana$",
         "abcpqrabpqpq$",
         "pqrpqpqabab$",
-    }
-    fmt.Println("Longest Repeated Substring in:\n")
-    for _, test := range tests {
-        text = test
-        buildSuffixTree()
-        getLongestRepeatedSubstring("")
-    }
-    fmt.Println()
- 
-    pi := calculatePi()
-    piStr := fmt.Sprintf("%v", pi)
-    piStr = piStr[2:] // remove initial 3.
-    numbers := []int{1e3, 1e4, 1e5}
-    maxChar = 58
-    for _, number := range numbers {
+    ]
+    println("Longest Repeated Substring in:\n")
+    for test in tests
+        st = SuffixTree(test)
+        getlongestrepeatedsubstring(st, "")
+    end
+    println()
+    pistr = pidigits(10000)
+    numbers = [1e3, 1e4, 1e5]
+    maxchar = 58
+    for number in numbers
         start := time.Now()
         text = piStr[0:number] + "$"
         buildSuffixTree()
@@ -214,5 +182,6 @@ func main() {
         fmt.Printf("  (this took %s)\n\n", elapsed)
     }
 }
+
 
 
