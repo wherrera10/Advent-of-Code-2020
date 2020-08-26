@@ -1,12 +1,20 @@
-function torange(s)
-    components = split(s[2:end-1], "..")
-    delta = length(components) > 2 ? parse(Int, components[3]) : 1
-    if '0' <= components[1][1] <= '9' || components[1][1] == '-'
-        x, y = parse(Int, components[1]), parse(Int, components[2])
-    else
-        x, y = components[1][1], components[2][1]
+
+function torange(str)
+    s = split(str[2:end-1], "..")
+    len, z = length(s[1]), ""
+    if len > 1 && s[1][1] == '0'
+        z = "0" ^ (something(findfirst(x -> x != '0', s[1]), len) - 1)
     end
-    return collect(range(x, step=(x < y) ? delta : -delta, stop=y))
+    delta = (length(s) > 2) ? parse(Int, s[3]) : 1
+    if delta < 0
+        s[1], s[2], delta = s[2], s[1], -delta
+    end
+    if '0' <= s[1][1] <= '9' || s[1][1] == '-'
+        x, y = parse(Int, s[1]), parse(Int, s[2])
+    else
+        x, y = s[1][1], s[2][1]
+    end
+    return [z * string(x) for x in range(x, step=(x < y) ? delta : -delta, stop=y)]
 end
 
 function getnextrange(s)
@@ -17,6 +25,18 @@ function getnextrange(s)
         b in getnextrange(cap[3])][:]
 end
 
-println(getnextrange("23{4..1}t{a..y}{7..9}5"))
+println(getnextrange("23{04..1}t{a..y}{007..9}5"))
 
+tests = split("""
+ simpleNumberRising{1..3}.txt
+    simpleAlphaDescending-{Z..X}.txt
+    steppedDownAndPadded-{10..00..5}.txt
+    minusSignFlipsSequence{030..20..-5}.txt
+    combined-{Q..P}{2..1}.txt
+    li{teral
+    rangeless{}empty
+    rangeless{random}string""", r"\s+")
+for test in tests
+    println(getnextrange(test))
+end
 
