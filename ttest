@@ -1,41 +1,34 @@
-function torange(str)
-    s = split(str[2:end-1], "..")
-    len, z = length(s[1]), ""
-    if len > 1 && s[1][1] == '0'
-        z = "0" ^ (something(findfirst(x -> x != '0', s[1]), len) - 1)
-    end
-    delta = (length(s) > 2) ? parse(Int, s[3]) : 1
-    if delta < 0
-        s[1], s[2], delta = s[2], s[1], -delta
-    end
-    if '0' <= s[1][1] <= '9' || s[1][1] == '-'
-        x, y = parse(Int, s[1]), parse(Int, s[2])
-    else
-        x, y = s[1][end], s[2][end]
-        z = s[1][1:end-1]
-    end
-    return [z * string(x) for x in range(x, step=(x < y) ? delta : -delta, stop=y)]
+using LightXML
+
+struct XMLParseError{T<:AbstractString} <: XMLError
+    msg::T
 end
 
-function getnextrange(s)
-	m = match(r"([^\{]*)(\{[^}]+\.\.[^\}]+\})(.*)", s)
-    m == nothing && return [s]
-    cap = m.captures
-    return [a * b for a in [cap[1] * string(x) for x in torange(cap[2])], 
-        b in getnextrange(cap[3])][:]
+"""
+An XML Schema Document, produced by an XML document that is XML for the schema.
+"""
+mutable struct XMLSchema <: AbstractXMLNode
+    ptr::Xptr
+    schema::Xptr
+    function XMLSchemaDoc(ptr::Xptr)
+        schema = ccall((:XMLSchemaParse, libxml2), Xptr, (Xptr,), xsd.ptr)
+        return new(ptr, schema)
+    end
 end
 
-tests = split("""
- simpleNumberRising{1..3}.txt
-    simpleAlphaDescending-{Z..X}.txt
-    steppedDownAndPadded-{10..00..5}.txt
-    minusSignFlipsSequence{030..20..-5}.txt
-    combined-{Q..P}{2..1}.txt
-    li{teral
-    rangeless{}empty
-    rangeless{random}string""", r"\s+")
-for test in tests
-    println(getnextrange(test))
+
+function validatewith(schema::XMLSchema, xml::XMLDoc)
+    err = ccall((:XMLSchemaValidateDocuments, libxml2), CInt, (XPtr, XPtr), xsd.ptr, xml.ptr)
+    
 end
+
+
+
+function testXML(schema::XMLSchema, xmlfile)
+    xml = parse_file(xmlfile)
+    err = validatewith(schema, xml)
+    
+end
+
 
 
