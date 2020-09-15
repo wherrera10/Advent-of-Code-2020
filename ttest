@@ -10,20 +10,23 @@ const Xptr= LightXML.Xptr
 An XML Schema Document, produced by an XML document that is XML for the schema.
 """
 mutable struct XMLSchema <: AbstractXMLNode
-    ptr::Xptr
+    doc::XMLDocument
     schema::Xptr
-    function XMLSchemaDoc(ptr::Xptr)
-        schema = ccall((:XMLSchemaParse, libxml2), Xptr, (Xptr,), xsd.ptr)
-        return new(ptr, schema)
-    end
 end
 
+function XMLSchema(doc::XMLDocument)
+    schema = ccall((:xmlSchemaParse, LightXML.libxml2), Xptr, (Xptr,), doc.ptr)
+    schema != C_NULL || throw(LightXML.XMLNoRootError())
+    return new(doc, schema)
+end
+
+
 function validateswith(xml::XMLDocument, schema::XMLSchema, throwerrors=false)
-    err = ccall((:XMLSchemaValidateDocuments, libxml2), Cint, (Xptr, Xptr), xsd.ptr, xml.ptr)
+    err = ccall((:XMLSchemaValidateDocuments, LightXML.libxml2), Cint, (Xptr, Xptr), xsd.ptr, xml.ptr)
         if err
         if throwerrors
            y = ""
-           throw(XMLValidationError(y))  
+           throw(XMLValidationError(y))
         end
         return false
     end
@@ -36,4 +39,13 @@ function testXML(schema::XMLSchema, xmlfile)
     xml = parse_file(xmlfile)
     err = validatewith(schema, xml)
 end
+
+
+xdoc = parse_file("shiporder.xml")
+println("parsed:\n$xdoc")
+xsddoc = parse_file("shiporder.xsd")
+println("parsed:\n$xsddoc")
+dump(xsddoc)
+sch = XMLSchema(xsddoc)
+println("xsd: $sch")
 
