@@ -1,8 +1,10 @@
 using LightXML
 
-struct XMLParseError{T<:AbstractString} <: XMLError
+struct XMLValidationError{T<:AbstractString} <: LightXML.XMLError
     msg::T
 end
+
+const Xptr= LightXML.Xptr
 
 """
 An XML Schema Document, produced by an XML document that is XML for the schema.
@@ -16,10 +18,16 @@ mutable struct XMLSchema <: AbstractXMLNode
     end
 end
 
-
-function validatewith(schema::XMLSchema, xml::XMLDoc)
-    err = ccall((:XMLSchemaValidateDocuments, libxml2), CInt, (XPtr, XPtr), xsd.ptr, xml.ptr)
-    
+function validateswith(xml::XMLDocument, schema::XMLSchema, throwerrors=false)
+    err = ccall((:XMLSchemaValidateDocuments, libxml2), Cint, (Xptr, Xptr), xsd.ptr, xml.ptr)
+        if err
+        if throwerrors
+           y = ""
+           throw(XMLValidationError(y))  
+        end
+        return false
+    end
+    return true
 end
 
 
@@ -27,8 +35,5 @@ end
 function testXML(schema::XMLSchema, xmlfile)
     xml = parse_file(xmlfile)
     err = validatewith(schema, xml)
-    
 end
-
-
 
