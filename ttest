@@ -6,7 +6,7 @@ function npartitions(n::Int)
     (np = get(_npartitions, n, 0)) > 0 && return np
     np, sgn = 0, 1
     for k in 1:n
-        np += sgn * (npartitions(n - (k*(3k-1)) >> 1) + npartitions(n - (k*(3k+1)) >> 1
+        np += sgn * (npartitions(n - (k*(3k-1)) >> 1) + npartitions(n - (k*(3k+1)) >> 1)
         sgn = -sgn
     end
     _npartitions[n] = np
