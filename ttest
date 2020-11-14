@@ -1,50 +1,64 @@
-using GeometryBasics
+Point(x, y) = [BigFloat(x), BigFloat(y)]
+Triangle(a, b, c) = [a, b, c]
 
-side(x1, y1, x2, y2, x, y) = (y2 - y1) * (x - x1) + (-x2 + x1) * (y - y1)
+""" Determine which side of plane cut by line (p2, p3) p1 is on """
+side(p1, p2, p3) = (p1[1] - p3[1]) * (p2[2] - p3[2]) - (p2[1] - p3[1]) * (p1[2] - p3[2])
 
-function iswithin(x1, y1, x2, y2, x3, y3, x, y)
-    s1 = side(x1, y1, x2, y2, x, y)
-    s2 = side(x2, y2, x3, y3, x, y)
-    s3 = side(x3, y3, x1, y1, x, y)
-    ((s1 ≈ 0 || s1 < 0)  && (s2 ≈ 0 || s2 < 0) && (s3 ≈ 0 || s3 < 0)) && return true
-    ((s1 ≈ 0 || s1 > 0)  && (s2 ≈ 0 || s2 > 0) && (s3 ≈ 0 || s3 > 0)) && return true
-    return false
+"""
+Determine if point is within triangle formed by points p1, p2, p3.
+If so, the point will be on the same side of each of the half planes
+defined by vectors p1p2, p2p3, and p3p1. Each z is positive if outside,
+negative if inside such a plane. All should be positive or all negative
+if point is within the triangle.
+"""
+function iswithin(point, p1, p2, p3)
+    z1 = side(point, p1, p2)
+    z2 = side(point, p2, p3)
+    z3 = side(point, p3, p1)
+    notanyneg = z1 >= 0 && z2 >= 0 && z3 >= 0
+    notanypos = z1 <= 0 && z2 <= 0 && z3 <= 0
+    return notanyneg || notanypos
 end
 
-const POINTS = [Point(0, 0), Point(0, 1), Point(3, 1), Point(3/2, 12/5), 
-    Point(51/10, -31/10), Point(-19/5, 1.2), Point(1/10, 1/9), Point(100/8, 100/3),
-    Point(25, 100/9), Point(0.1 + (3/7) * (), )
+const POINTS = [Point(0 // 1, 0 // 1), Point(0 // 1, 1 // 1), Point(3 // 1, 1 // 1),
+    Point(1 // 10 + (3 // 7) * (100 // 8 - 1 // 10), 1 // 9 + (3 // 7) * (100 // 3 - 1 // 9)),
+    Point(3 // 2, 12 // 5), Point(51 // 100, -31 // 100), Point(-19 // 50, 6 // 5),
+    Point(1 // 10, 1 // 9), Point(25 / 2, 100 // 3), Point(25, 100 // 9),
+    Point(-25 // 2, 50 // 3)
 ]
 
 const TRI = [
-    Triangle(POINTS[4], POINTS[5], POINTS[6])
-    Triangle(),
+    Triangle(POINTS[5], POINTS[6], POINTS[7]),
+    Triangle(POINTS[8], POINTS[9], POINTS[10]),
+    Triangle(POINTS[8], POINTS[9], POINTS[11])
 ]
- 
-for (pt in pts) {
-    var x = pt[0]
-    var y = pt[1]
-    var within = accuratePointInTriangle.call(x1, y1, x2, y2, x3, y3, x, y)
-    System.print("Point %(pt) is within triangle ? %(within)")
-}
-System.print()
-tri = [ [1/10, 1/9], [100/8, 100/3], [100/4, 100/9] ]
-System.print("Triangle is %(tri)")
-x1 = tri[0][0]
-y1 = tri[0][1]
-x2 = tri[1][0]
-y2 = tri[1][1]
-x3 = tri[2][0]
-y3 = tri[2][1]
-var x = x1 + (3/7)*(x2 - x1)
-var y = y1 + (3/7)*(y2 - y1)
-var pt = [x, y]
-var within = accuratePointInTriangle.call(x1, y1, x2, y2, x3, y3, x, y)
-System.print("Point %(pt) is within triangle ? %(within)")
-System.print()
-tri = [ [1/10, 1/9], [100/8, 100/3], [-100/8, 100/6] ]
-System.print("Triangle is %(tri)")
-x3 = tri[2][0]
-y3 = tri[2][1]
-within = accuratePointInTriangle.call(x1, y1, x2, y2, x3, y3, x, y)
-System.print("Point %(pt) is within triangle ? %(within)")
+
+for tri in TRI
+    pstring(pt) = "[$(Float32(pt[1])), $(Float32(pt[2]))]"
+    println("\nUsing triangle [", join([pstring(x) for x in tri], ", "), "]:")
+    a, b, c = tri[1], tri[2], tri[3]
+    for p in POINTS[1:4]
+        isornot = iswithin(p, a, b, c) ? "is" : "is not"
+        println("Point $(pstring(p)) $isornot within the triangle.")
+    end
+end
+
+#=
+Using triangle [[1.5, 2.4], [0.51, -0.31], [-0.38, 1.2]]:
+Point [0.0, 0.0] is not within the triangle.
+Point [0.0, 1.0] is within the triangle.
+Point [3.0, 1.0] is not within the triangle.
+Point [5.4142857, 14.349206] is not within the triangle.
+
+Using triangle [[0.1, 0.11111111], [12.5, 33.333332], [25.0, 11.111111]]:
+Point [0.0, 0.0] is not within the triangle.
+Point [0.0, 1.0] is not within the triangle.
+Point [3.0, 1.0] is not within the triangle.
+Point [5.4142857, 14.349206] is within the triangle.
+
+Using triangle [[0.1, 0.11111111], [12.5, 33.333332], [-12.5, 16.666666]]:
+Point [0.0, 0.0] is not within the triangle.
+Point [0.0, 1.0] is within the triangle.
+Point [3.0, 1.0] is not within the triangle.
+Point [5.4142857, 14.349206] is within the triangle.
+=#
