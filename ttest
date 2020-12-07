@@ -1,64 +1,40 @@
-Point(x, y) = [BigFloat(x), BigFloat(y)]
-Triangle(a, b, c) = [a, b, c]
+using CSV, DataFrames, Statistics
 
-""" Determine which side of plane cut by line (p2, p3) p1 is on """
-side(p1, p2, p3) = (p1[1] - p3[1]) * (p2[2] - p3[2]) - (p2[1] - p3[1]) * (p1[2] - p3[2])
+# load data from csv files
+#df_patients = CSV.read("patients.csv", DataFrame)
+#df_visits = CSV.read("visits.csv", DataFrame)
 
-"""
-Determine if point is within triangle formed by points p1, p2, p3.
-If so, the point will be on the same side of each of the half planes
-defined by vectors p1p2, p2p3, and p3p1. Each z is positive if outside,
-negative if inside such a plane. All should be positive or all negative
-if point is within the triangle.
-"""
-function iswithin(point, p1, p2, p3)
-    z1 = side(point, p1, p2)
-    z2 = side(point, p2, p3)
-    z3 = side(point, p3, p1)
-    notanyneg = z1 >= 0 && z2 >= 0 && z3 >= 0
-    notanypos = z1 <= 0 && z2 <= 0 && z3 <= 0
-    return notanyneg || notanypos
+# create DataFrames from text that is hard coded, so use IOBuffer(String) as input
+str_patients = IOBuffer("""PATIENT_ID,LASTNAME
+1001,Hopper
+4004,Wirth
+3003,Kemeny
+2002,Gosling
+5005,Kurtz
+""")
+df_patients = CSV.read(str_patients, DataFrame)
+str_visits = IOBuffer("""PATIENT_ID,VISIT_DATE,SCORE
+2002,2020-09-10,6.8
+1001,2020-09-17,5.5
+4004,2020-09-24,8.4
+2002,2020-10-08,
+1001,,6.6
+3003,2020-11-12,
+4004,2020-11-05,7.0
+1001,2020-11-19,5.3
+""")
+df_visits = CSV.read(str_visits, DataFrame)
+
+# merge on PATIENT_ID, using an :outer join or we lose Kurtz, who has no data, sort by name
+df_merge = sort(join(df_patients, df_visits, on="PATIENT_ID", kind=:outer), (:LASTNAME,))
+
+fnonmissing(a, f) = isempty(a) ? [] : isempty(skipmissing(a)) ? a[1] : f(skipmissing(a))
+
+# group by patient id / last name and then aggregate to get latest visit and mean score
+df_result = by(df_merge, [:PATIENT_ID, :LASTNAME]) do df
+    DataFrame(LATEST_VISIT = fnonmissing(df[:VISIT_DATE], maximum),
+              SUM_SCORE = fnonmissing(df[:SCORE], sum),
+              MEAN_SCORE = fnonmissing(df[:SCORE], mean))
 end
 
-const POINTS = [Point(0 // 1, 0 // 1), Point(0 // 1, 1 // 1), Point(3 // 1, 1 // 1),
-    Point(1 // 10 + (3 // 7) * (100 // 8 - 1 // 10), 1 // 9 + (3 // 7) * (100 // 3 - 1 // 9)),
-    Point(3 // 2, 12 // 5), Point(51 // 100, -31 // 100), Point(-19 // 50, 6 // 5),
-    Point(1 // 10, 1 // 9), Point(25 / 2, 100 // 3), Point(25, 100 // 9),
-    Point(-25 // 2, 50 // 3)
-]
-
-const TRI = [
-    Triangle(POINTS[5], POINTS[6], POINTS[7]),
-    Triangle(POINTS[8], POINTS[9], POINTS[10]),
-    Triangle(POINTS[8], POINTS[9], POINTS[11])
-]
-
-for tri in TRI
-    pstring(pt) = "[$(Float32(pt[1])), $(Float32(pt[2]))]"
-    println("\nUsing triangle [", join([pstring(x) for x in tri], ", "), "]:")
-    a, b, c = tri[1], tri[2], tri[3]
-    for p in POINTS[1:4]
-        isornot = iswithin(p, a, b, c) ? "is" : "is not"
-        println("Point $(pstring(p)) $isornot within the triangle.")
-    end
-end
-
-#=
-Using triangle [[1.5, 2.4], [0.51, -0.31], [-0.38, 1.2]]:
-Point [0.0, 0.0] is not within the triangle.
-Point [0.0, 1.0] is within the triangle.
-Point [3.0, 1.0] is not within the triangle.
-Point [5.4142857, 14.349206] is not within the triangle.
-
-Using triangle [[0.1, 0.11111111], [12.5, 33.333332], [25.0, 11.111111]]:
-Point [0.0, 0.0] is not within the triangle.
-Point [0.0, 1.0] is not within the triangle.
-Point [3.0, 1.0] is not within the triangle.
-Point [5.4142857, 14.349206] is within the triangle.
-
-Using triangle [[0.1, 0.11111111], [12.5, 33.333332], [-12.5, 16.666666]]:
-Point [0.0, 0.0] is not within the triangle.
-Point [0.0, 1.0] is within the triangle.
-Point [3.0, 1.0] is not within the triangle.
-Point [5.4142857, 14.349206] is within the triangle.
-=#
+println(df_result)
