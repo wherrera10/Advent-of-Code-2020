@@ -5,21 +5,14 @@ function pseqs(minlen, maxlen, n)
         integer_partitions(len)) for len in n*minlen:n*maxlen)
 end
 
-function splitword(word, seq)
-    substrings, i = [], 1
-    for j in pseq
-        push!(substrings, word[i, j])
-        i = j + 1
-    end
-    return substrings
-end
+makeintervals(seq) = (a, i = Int[], 1; for j in seq push!(a, [i, j]); i = j + 1; end; a)
 
 minsumlen, maxsumlen = n * minlen, n * maxlen
 for word in wordlist
     len = length(word)
     minsumlen <= len <= maxsumlen || continue
     for seq in pseqs[len]
-        substrings = splitword(word, seq)
+        substrings = [word[n[1]:n[2]] for n in makeintervals(seq)]
         all(x -> x in set, substrings) && println(substrings, " => ", word)
     end
 end
