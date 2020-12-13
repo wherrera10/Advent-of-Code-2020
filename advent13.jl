@@ -6,17 +6,17 @@ input = """
 let
     line1, line2 = split(input, "\n")
     t0 = parse(Int, line1)
-    inservice = filter(x -> x != nothing, map(y -> tryparse(Int, y), split(line2, ",")))
     allservice = map(y -> tryparse(Int, y), split(line2, ","))
+    inservice = filter(x -> x != nothing, allservice)
     pairs =[[x , i] for (i, x) in enumerate(allservice) if x != nothing]
-
+    
     times = Int[]
     for route in inservice
         nexttime = div(t0 + route - 1, route) * route
         push!(times, nexttime - t0)
     end
     (t, i) = findmin(times)
-    println(inservice[i], "  ", t, "   part 1: ", inservice[i] * t)
+    println("part 1: ", inservice[i] * t)
 
     interval = 1
     n = 0
@@ -29,7 +29,6 @@ let
             end
         end
     end
-
     println("Part 2: $n")
 
 end
