@@ -291,6 +291,9 @@ const allranges = reduce(vcat, values(pdict))
 const yourticket = parseticket(lines[yourticketline + 1])
 const tickets = [parseticket(line) for line in lines[yourticketline+3:end]]
 const validtickets = filter(isvalidticket, tickets)
+hasparameter(idx, p) = all(t -> t[idx] in pdict[p][1] || t[idx] in pdict[p][2], validtickets)
+const parameters = [[p for p in collect(keys(pdict)) if hasparameter(i, p)] for i in eachindex(yourticket)]
+deletefrom!(arr, s) = (n = findfirst(x -> x == s, arr); n != nothing && deleteat!(arr, n); arr)
 
 function part1()
     errsum = 0
@@ -305,14 +308,20 @@ end
 println("Part 1: ", part1())
 
 function part2()
-    possibles = ["class", "type", "route", "departure station", "arrival track", "train",
-        "departure date", "price", "arrival location", "row", "duration", "arrival platform",
-        "zone", "departure platform", "departure location", "departure track", "arrival station",
-        "seat", "departure time", "wagon"]
-    departureparameters = [4, 7, 14, 15, 16, 19]
+    poss = deepcopy(parameters)
+    while any(x -> length(x) > 1, poss)
+        pcopy = deepcopy(poss)
+        for parr in poss
+            if length(parr) == 1
+                for p in pcopy
+                    length(p) > 1 && deletefrom!(p, parr[1])
+                end
+            end
+        end
+        poss = pcopy
+    end
+    possibles = reduce(vcat, poss)
+    departureparameters = [p[1] for p in enumerate(possibles) if length(p[2]) > 10 && p[2][1:6] == "depart"]
     return prod([yourticket[i] for i in departureparameters])
 end
-
-println(yourticket)
-
 println("Part 2: ", part2())
