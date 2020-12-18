@@ -378,48 +378,12 @@ input = """
 5 * 5 + 9 * 9 * 6 + (9 + (9 * 2 * 2))
 """
 
-function eval_noparentheses(s)
-    s2 = split(strip(s), r"\s+")
-    accum = parse(BigInt, s2[1])
-    op = ""
-    for substring in s2[2:end]
-        if substring == "*"
-            op = *
-        elseif substring == "+"
-            op = +
-        elseif (n = tryparse(BigInt, substring)) != nothing
-            accum = op(accum, n)
-        end
-    end
-    return accum
-end
-
-function eval_withparentheses(str)
-    s = deepcopy(str)
-    while(last_left_paren = findlast(x -> x == '(', s)) != nothing
-        next_right_paren = findfirst(x -> x == ')', s[last_left_paren:end])
-        next_right_paren == nothing && throw("bad string $(s[last_left_paren:end])")
-        accum = eval_noparentheses(s[last_left_paren+1:last_left_paren+next_right_paren-2])
-        s = s[1:last_left_paren-1] * " $accum " * s[last_left_paren+next_right_paren:end]
-    end
-    return eval_noparentheses(s)
-end
-
-function part1()
-    lines = filter(x -> length(x) > 2, split(input, "\n"))
-    total = sum(map(eval_withparentheses, lines))
-    println("Part 1: ", total)
-end
-
-import Base.:^
+import Base.:^, Base.:/
 Base.:^(i::BigInt, j::BigInt) = i + j
+Base.:/(i::Int, j::Int) = i + j
+const lines = filter(x -> length(x) > 2, split(input, "\n"))
 
-function part2()
-    lines = filter(x -> length(x) > 2, split(input, "\n"))
-    total = sum(map(line -> eval(Meta.parse(replace(replace(line, r"(\d+)" =>
-        s"BigInt(\1)"), "+" => "^"))), lines))
-    println("Part 2: ", total)
-end
+println("Part 1: ", sum(map(line -> eval(Meta.parse(replace(line, "+" => "/"))), lines)))
 
-part1()
-part2()
+println("Part 2: ", sum(map(line -> eval(Meta.parse(replace(replace(line, r"(\d+)" =>
+        s"BigInt(\1)"), "+" => "^"))), lines)))
