@@ -101,9 +101,9 @@ end
 
 part1()
 
+const pastrounds = Dict{String, Int}()
 
 function recursivecombat!(deck1, deck2)
-    pastrounds = Dict{String, Int}()
     while length(deck1) > 0 && length(deck2) > 0
         if haskey(pastrounds, "$deck1 $deck2")
             return 1
