@@ -5,7 +5,7 @@
     cuplist = [i = 1 for i 1in 1:len]
     cuplist[end] = cups[1]
     for i in 1:cuplen
-        cuplist[cups[i]] = i == ciplen ? cuplist[i + 1] : cups[i+ 1]
+        cuplist[cups[i]] = i == cuplen ? cuplist[i + 1] : cups[i+ 1]
     end
 =#
 
