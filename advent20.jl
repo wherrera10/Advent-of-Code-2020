@@ -1792,10 +1792,7 @@ function trytile(field)
                 newfield[x2, y2] = Pair(p[1], mat3)
                 placedcount = count(x -> x[1] != 0, newfield)
                 if placedcount == length(tiledict)
-                    println("Done, placed $placedcount.")
                     return true, newfield
-                else
-                    println("Placed count is $placedcount")
                 end
                 for nexttile in tiledict
                     success, fld = trytile(newfield)
@@ -1809,7 +1806,7 @@ function trytile(field)
 end
 
 function matchtiles()
-    success, field = return trytile(tilefield)
+    success, field = trytile(tilefield)
     if success
         println(field[13:end, 13:end])
     else
@@ -1827,20 +1824,18 @@ for p1 in tiledict
         psum += length(matches)
     end
     if psum == 2
-        println("Tile ", p1[1], " matches ", psum)
         push!(corners, p1[1])
     end
 end
 
-println("Corners $corners, prod ", prod(corners))
+println("Part 1: Corners $corners, prod ", prod(corners))
 
-const newfield = matchtiles()
-const cinput =  """
-                 #  
-#    ##    ##    ###
- #  #  #  #  #  #   
-"""
-const seamonster = reshape(collect(cinput[1:20] * cinput[22:41] * cinput[43:62), 3, 20)
+const seamonster =  Bool[
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0;
+1 0 0 0 0 1 1 0 0 0 0 1 1 0 0 0 0 1 1 1;
+0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 0]
+
+mmatches(a, m) = (for i in eachindex(m) m[i] && !a[i] && return false; end; return true)
 
 function part2(field)
     xm, ym = size(field)
@@ -1851,24 +1846,30 @@ function part2(field)
             break
         end
     end
-    trimfield = zeros(Bool, 9 * dim, 9 * dim)
-    for i in leastx:leastx+dim, j in leasty:leasty+dim
-        trimfield[9i-8:9i, 9j-8:9j] .= field[i, j][2][2:end-1, 2:end-1]
+    trimfield = zeros(Bool, 8 * dim, 8 * dim)
+    newmap = trimfield
+    for i in 1:dim, j in 1:dim
+        tile = field[leastx+i-1, leasty+j-1][2]
+        trimfield[8i-7:8i, 8j-7:8j] = tile[2:9, 2:9]
     end
+    locations = []
     for rot in (nop, rotr90, rot180, rotl90), flip in (nop, rev)
         newmap = rot(flip(trimfield))
-        width = height = dim * 9
-        locations = []
-        for i in 1:height-3, j in 1:width-20
-            if trimfield[i:i+3, j:j+20] .== seamonster
-                println("seamonster at $i, $j")
+        width = height = dim * 8
+        for i in 1:height-2, j in 1:width-19
+            if mmatches(newmap[i:i+2, j:j+19], seamonster)
                 push!(locations, [i, j])
             end
         end
+        !isempty(locations) && break
     end
     for loc in locations
-        trimfield[loc[1]:loc[1]+3, loc[2]:loc[2]+20] .= false
+        arr = view(newmap, loc[1]:loc[1]+2, loc[2]:loc[2]+19)
+        for i in eachindex(seamonster)
+            seamonster[i] && (arr[i] = false)
+        end
     end
-    return sum(trimfield)
+    println("Part 2: ", sum(newmap))
 end
 
+part2(matchtiles())
