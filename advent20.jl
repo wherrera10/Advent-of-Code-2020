@@ -1791,6 +1791,7 @@ function trytile(field)
                 newfield = deepcopy(field)
                 newfield[x2, y2] = Pair(p[1], mat3)
                 placedcount = count(x -> x[1] != 0, newfield)
+                print(rpad(placedcount, 5), placedcount % (dim * 2) == 0 ? "\n" : "")
                 if placedcount == length(tiledict)
                     return true, newfield
                 end
@@ -1807,9 +1808,7 @@ end
 
 function matchtiles()
     success, field = trytile(tilefield)
-    if success
-        println(field[13:end, 13:end])
-    else
+    if !success
         println("no solution found")
     end
     return field
@@ -1869,7 +1868,7 @@ function part2(field)
             seamonster[i] && (arr[i] = false)
         end
     end
-    println("Part 2: ", sum(newmap))
+    println("\nPart 2: Rough water points remaining: ", sum(newmap))
 end
 
 part2(matchtiles())
