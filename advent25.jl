@@ -17,8 +17,6 @@ function findloopsize(subject, target)
     return i
 end
 
-pubkey(loopsize) = transform(7, loopsize)
-
 function part1()
     cloops = findloopsize(7, card)
     dloops = findloopsize(7, door)
