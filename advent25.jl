@@ -9,12 +9,10 @@ function transform(subject, loopsize)
 end
 
 function findloopsize(subject, target)
-    i, v = 1, 1
-    while true
-        (v = rem(subject * v, 20201227)) == target && break
-        i += 1
+    v = 1
+    for i in 1:typemax(Int32)
+        (v = rem(subject * v, 20201227)) == target && return i
     end
-    return i
 end
 
 function part1()
